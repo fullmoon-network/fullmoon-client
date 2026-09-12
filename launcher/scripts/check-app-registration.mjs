@@ -21,6 +21,14 @@ const MC_LOGIN_URL = "https://api.minecraftservices.com/authentication/login_wit
 const MC_PROFILE_URL = "https://api.minecraftservices.com/minecraft/profile";
 const PROMPT_FILE = "/tmp/fullmoon-appid-check.txt";
 
+// A signal must not leave the code on disk: whoever holds it, together with the public
+// client id, can collect the tokens the browser sign-in hands back.
+for (const sig of ["SIGINT", "SIGTERM"]) {
+  process.on(sig, () => {
+    rm(PROMPT_FILE, { force: true }).finally(() => process.exit(130));
+  });
+}
+
 const here = dirname(fileURLToPath(import.meta.url));
 
 async function clientId() {
