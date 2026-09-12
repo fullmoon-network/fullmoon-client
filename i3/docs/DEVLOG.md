@@ -1407,3 +1407,21 @@ main이 이긴다.** 내 쪽이 더 새로워서가 아니라 그게 트리에 �
   `FULLMOON LAUNCHER VERIFICATION COMPLETED SUCCESSFULLY`. 해결한 충돌을 덮는 4장을
   `i3/docs/evidence/merge-*.png`로 남겼다 — 백드롭 레이어링, HUD 에디터, `--surface`,
   `--warning`.
+
+## 2026-09-12 · 모장 앱 ID 승인 확인 — 클라이언트 개발 마무리
+
+모장에서 앱 ID 리뷰 완료 메일이 왔는데 승인 여부를 적지 않아, 추측 대신 라이브 체인으로
+판정했다. `launcher/scripts/check-app-registration.mjs`가 기기 코드 로그인 뒤 런처와 같은
+순서(MSA → Xbox Live → XSTS → `login_with_xbox` → `profile`)를 그대로 걸어 각 단계의 HTTP
+상태만 찍는다. 토큰은 출력에도 디스크에도 남지 않는다.
+
+- 판정: `f5ccd6e4-9e7b-411f-ab67-21e8202adb93`은 Mojang allowlist에 있다. MSA 토큰 수신 →
+  Xbox Live 200 → XSTS 200 → `login_with_xbox` **200**(토큰 수신) → `profile` **200**
+  (`Person1010`). 이 절차에는 대시보드가 없어서 이 호출이 유일한 판정 수단이다.
+- 신청 경로 실측: `aka.ms/mce-reviewappid` → 신청 폼(200), `aka.ms/AppRegInfo` → 301 →
+  Minecraft Help 문서(16254801392141).
+- 문서: `docs/MICROSOFT-AUTH.md`의 "Mojang 수락 필요 · 지원팀에 확인" 서술을 위 실측으로
+  교체했고, `PLAN.md` P4의 "빈 `msClientId`라 미검증" 문장을 해소했다.
+- 결정: 런처 인증의 마지막 외부 게이트가 닫혔다. **이로써 클라이언트 개발을 마무리한다.**
+- 남은 것(사용자 결정 대기, 이번 결정에 포함되지 않음): `i3/mod`↔`pinion-mod` 계약 불일치
+  (2026-09-06 항목), `docs/economy-claim-design.md` 승인 대기, 릴리스·배포 경로.

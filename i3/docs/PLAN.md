@@ -53,8 +53,9 @@ profiler output or not claimed at all.
 
 Tauri v2 with the work in Rust: version manifest fetch, asset and library download with sha1
 verification and resume, Fabric loader install, instance layout, offline account, JVM argument
-composition, spawn, log streaming to the front end. The Microsoft device-code path is written
-against an empty `msClientId` and stays unverified until there is one — stated as unverified.
+composition, spawn, log streaming to the front end. The Microsoft device-code path was written
+against an empty `msClientId`; `brand.json` has carried one since 2026-09-05 and the full chain was
+verified against the live services on 2026-09-12 (`docs/MICROSOFT-AUTH.md`, `i3/docs/DEVLOG.md`).
 
 Evidence: the launcher spawning a game that reaches the title screen, with the spawn command
 and the client log quoted. A test that corrupts one asset's sha1 and fails the install.
