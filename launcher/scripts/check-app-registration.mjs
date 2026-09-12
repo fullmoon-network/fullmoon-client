@@ -8,7 +8,8 @@
 
    Usage: node check-app-registration.mjs [client-id]        (default: brand.json)
 */
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { rmSync, writeFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -22,10 +23,12 @@ const MC_PROFILE_URL = "https://api.minecraftservices.com/minecraft/profile";
 const PROMPT_FILE = "/tmp/fullmoon-appid-check.txt";
 
 // A signal must not leave the code on disk: whoever holds it, together with the public
-// client id, can collect the tokens the browser sign-in hands back.
+// client id, can collect the tokens the browser sign-in hands back. Sync so the signal
+// callback can never land between the remove and the write below.
 for (const sig of ["SIGINT", "SIGTERM"]) {
   process.on(sig, () => {
-    rm(PROMPT_FILE, { force: true }).finally(() => process.exit(130));
+    rmSync(PROMPT_FILE, { force: true });
+    process.exit(130);
   });
 }
 
@@ -81,8 +84,8 @@ async function msa() {
     "",
   ].join("\n");
   console.log(prompt);
-  await rm(PROMPT_FILE, { force: true });
-  await writeFile(PROMPT_FILE, prompt, { mode: 0o600 });
+  rmSync(PROMPT_FILE, { force: true });
+  writeFileSync(PROMPT_FILE, prompt, { mode: 0o600 });
 
   const deadline = Date.now() + dc.expires_in * 1000;
   let interval = Math.max(1, dc.interval ?? 5);
@@ -111,7 +114,7 @@ async function main() {
   try {
     msaToken = await msa();
   } finally {
-    await rm(PROMPT_FILE, { force: true });
+    rmSync(PROMPT_FILE, { force: true });
   }
   console.log(`MSA token received (${msaToken.length} chars)\n`);
 
