@@ -4,6 +4,8 @@ import dev.fullmoon.client.FullmoonClient;
 import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.render.Painter;
 
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -17,6 +19,11 @@ public final class HudOverlay {
 
     public static void init() {
         net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(ID, HudOverlay::render);
+        // A bet is placed from a casino menu, so the result lands while that screen is still up;
+        // the HUD layer is skipped under any screen and would hold the card until it expired.
+        ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) ->
+            ScreenEvents.afterExtract(screen).register((current, gfx, mouseX, mouseY, delta) ->
+                CasinoResultOverlay.draw(new Painter(gfx), System.currentTimeMillis())));
     }
 
     private static void render(GuiGraphicsExtractor gfx, DeltaTracker deltaTracker) {
@@ -36,6 +43,8 @@ public final class HudOverlay {
                 elem.draw(painter, bounds, client, false);
             }
         }
-        ServerNoticeOverlay.draw(painter, System.currentTimeMillis());
+        long now = System.currentTimeMillis();
+        ServerNoticeOverlay.draw(painter, now);
+        CasinoResultOverlay.draw(painter, now);
     }
 }

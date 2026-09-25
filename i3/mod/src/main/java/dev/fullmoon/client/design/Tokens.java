@@ -89,9 +89,21 @@ public final class Tokens {
         public static final int FAST = 90;
         public static final int BASE = 140;
         public static final int SLOW = 220;
+        public static final int REVEAL = 1200;
         public static final int REDUCED = 120;
 
         private Duration() {}
+    }
+
+    public static final class Easing {
+        /** Control points of a cubic Bézier from (0,0) to (1,1), as CSS cubic-bezier() takes them. */
+        public record Curve(float x1, float y1, float x2, float y2) {}
+
+        public static final Curve OUT = new Curve(0.16f, 1.00f, 0.30f, 1.00f);
+        public static final Curve IN = new Curve(0.70f, 0.00f, 0.84f, 0.00f);
+        public static final Curve IN_OUT = new Curve(0.83f, 0.00f, 0.17f, 1.00f);
+
+        private Easing() {}
     }
 
     public static final class Layer {

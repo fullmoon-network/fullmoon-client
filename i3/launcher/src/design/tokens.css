@@ -43,6 +43,7 @@
   --dur-fast: 90ms;
   --dur-base: 140ms;
   --dur-slow: 220ms;
+  --dur-reveal: 1200ms;
   --dur-reduced: 120ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
@@ -76,6 +77,7 @@
     --dur-fast: 120ms;
     --dur-base: 120ms;
     --dur-slow: 120ms;
+    --dur-reveal: 120ms;
     --dur-reduced: 120ms;
   }
 }
