@@ -5,7 +5,8 @@ mod. This is not a cheat client. The server retains authority; the client presen
 through native interfaces. Target: Minecraft `26.1.2` with Paper 26.1.2 and Velocity.
 
 - One-click launch directly into the Fullmoon lobby
-- A server-driven **native warp interface** instead of a ChestGUI substitute
+- Server-driven **native warp and menu interfaces** replace almost every ChestGUI while keeping
+  server authority and vanilla fallback
 - Microsoft OAuth, one managed instance, and automatic Sodium/Lithium installation
 - Coordinates, FPS, ping, clock, keystrokes, server tick, armor, and effects HUD elements with a
   drag editor; in-game settings, key bindings, and a terrain map; launcher edits are adopted by the
@@ -26,7 +27,7 @@ through native interfaces. Target: Minecraft `26.1.2` with Paper 26.1.2 and Velo
 - **`launcher/`** — Tauri v2 launcher with a Rust core for accounts, installation, launching, and
   economy reads, plus a React/TypeScript interface. `src/core/bindings.ts` is the single IPC contract
   between interface and core.
-- **`i3/mod/`** — In-game Fabric mod. It renders HUD and settings screens and native warp interfaces
+- **`i3/mod/`** — In-game Fabric mod. It renders HUD and settings screens plus native warp and server-menu interfaces
   from data received over the server's `fullmoon:v1` channel. Sibling directories contain the design
   token source and generator (`design/`), capture rig (`tools/`), and build plan, development log, and
   evidence (`docs/`).

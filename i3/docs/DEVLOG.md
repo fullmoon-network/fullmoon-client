@@ -1106,3 +1106,48 @@ matched the smoke result. The installed mod hash was
 The same clean-install script now gates tag releases before artifact collection. Microsoft OAuth
 application registration and Authenticode signing remain external release configuration; neither is
 claimed by this run.
+
+## 2026-09-01 · P11 — server-owned native menus
+
+The ChestGUI is the server's default UI; this phase gives the Fullmoon client its own surface for
+the same menus. `ServerMenuScreen` now renders a `menu_open` snapshot as a framed panel — brand
+eyebrow and serif title over a two-column action deck, a context rail that reads the hovered item
+and the server's facts, and a keyboard footer — while items without actions become facts rather
+than dead buttons, and the ChestGUI decoration characters are stripped from labels by
+`ServerMenuCopy`. The layout arithmetic moved into a pure `ServerMenuLayout` gated by tests at two
+column counts, three and four, plus the small-viewport containment case.
+
+The redesign was captured before it was correct, and the captures are why it is correct now. The
+first live session showed the display title overprinting the brand eyebrow — the P0 class of bug,
+a 22 px face drawing above its origin — and a clip on the context rail that began at the icon top
+while the chosen item's title carries its cap band three pixels higher, slicing the glyph tops
+into a strikethrough. The title now centres in the band below the eyebrow via `Typeset.centred`,
+the clip starts at `Typeset.capTop` of the title, and the committed frames are the second session.
+
+Evidence: five frames off one unbroken live Paper session at 960×540 GUI px plus one at 640×360,
+the menu opened by coin-bridge's `NativeMenuBridge` through the real channel, one click answered
+by the server's revision 1 snapshot, and `menu_close` returning to the world; the client log pairs
+with the server's join and handshake lines. A fresh 58-gate Hallmark audit answers the native
+surface. The only fixture was a 30-line plugin that runs `/casino` once after each join so the
+production menu path opens without a hand; Paper was stopped over RCON afterwards and nothing was
+installed on the production Oracle host.
+
+The first frames carried the server's block sprites as icons, and a gold cube does not say
+"coinflip" any more than a red cube says "roulette" — the native surface existed to read like the
+games it plays, so the snapshot now carries an optional `icon` id and the client draws each casino
+game as a hand-drawn 14×14 pixel mark in the vanilla HUD's own idiom: a coin stamped with a
+crescent, a die showing five, a pocketed wheel, triple seven, the moon with light streaking past
+it, a four-point sparkle. The first draft drew the six as SDF compositions and the frames judged
+them filler — shapes arranged near a label are not icons — so the marks were redone as sprites and
+captured twice more before settling. Unknown ids and icon-less items keep the item render, and the
+field is declared presentation-only in `docs/BRIDGE.md`. The same review that caught the two
+render defects above also probed the layout arithmetic past the captured sizes: the icon well now
+scales with its card, and a capped frame shrinks the deck gap instead of collapsing cards to
+zero, so a 54-slot menu at 320×240 stays clickable — both guarded by layout tests.
+
+The sprites took three passes to earn their place. The first flat pixel maps read as blobs at
+arm's length — a sprite without an outline and a shaded edge is not the game's item art — so every
+silhouette gained a dark outline and a lit/shaded side, and the square wells became chip discs so
+the deck reads as a table rather than a list of buttons. A slot-machine sprite was drawn and
+discarded when the frames showed it reading as a face; triple seven says the game without the
+lever. The committed frames are the fourth capture of the surface.

@@ -168,6 +168,129 @@ final class BridgeProtocolTest {
     }
 
     @Test
+    void menuOpenCarriesAnImmutableServerOwnedSurface() {
+        MenuProtocol.Open open = assertInstanceOf(
+            MenuProtocol.Open.class, BridgeProtocol.decode(json("""
+                {"type":"menu_open","proto":1,"id":"menu-123","revision":7,
+                 "title":"Casino","rows":6,"items":[
+                   {"slot":22,"label":"Spin","material":"minecraft:clock","count":1,
+                    "details":["Bet 100 won","Win rate 48%"],
+                    "actions":["left","shift_left"],
+                    "icon":"fullmoon.casino.slots"}
+                 ]}
+                """)).message().orElseThrow());
+
+        assertEquals("menu-123", open.id());
+        assertEquals(7, open.revision());
+        assertEquals("Casino", open.title());
+        assertEquals(6, open.rows());
+        MenuProtocol.Item item = open.items().getFirst();
+        assertEquals(22, item.slot());
+        assertEquals("Spin", item.label());
+        assertEquals("minecraft:clock", item.material());
+        assertEquals(List.of("Bet 100 won", "Win rate 48%"), item.details());
+        assertEquals(List.of(MenuProtocol.Click.LEFT, MenuProtocol.Click.SHIFT_LEFT),
+            item.actions());
+        assertEquals("fullmoon.casino.slots", item.icon());
+        assertThrows(UnsupportedOperationException.class, () -> open.items().clear());
+        assertThrows(UnsupportedOperationException.class, () -> item.details().clear());
+        assertThrows(UnsupportedOperationException.class, () -> item.actions().clear());
+    }
+
+    @Test
+    void menuOpenRejectsMalformedGeometryAndInteractionData() {
+        assertEquals("menu_open id is required", decodeError("""
+            {"type":"menu_open","proto":1,"revision":1,"title":"Shop","rows":3,"items":[]}
+            """));
+        assertEquals("menu_open id is required", decodeError("""
+            {"type":"menu_open","proto":1,"id":1,"revision":1,"title":"Shop","rows":3,"items":[]}
+            """));
+        assertEquals("menu_open rows must be between 1 and 6", decodeError("""
+            {"type":"menu_open","proto":1,"id":"m","revision":1,"title":"Shop","rows":7,"items":[]}
+            """));
+        assertEquals("menu item 0 slot is outside the menu", decodeError("""
+            {"type":"menu_open","proto":1,"id":"m","revision":1,"title":"Shop","rows":1,
+             "items":[{"slot":9,"label":"Buy","material":"minecraft:stone","count":1,
+             "details":[],"actions":["left"]}]}
+            """));
+        assertEquals("menu item slot is duplicated: 1", decodeError("""
+            {"type":"menu_open","proto":1,"id":"m","revision":1,"title":"Shop","rows":1,
+             "items":[
+               {"slot":1,"label":"One","material":"minecraft:stone","count":1,"details":[],"actions":[]},
+               {"slot":1,"label":"Two","material":"minecraft:dirt","count":1,"details":[],"actions":[]}
+             ]}
+            """));
+        assertEquals("menu item 0 action is invalid", decodeError("""
+            {"type":"menu_open","proto":1,"id":"m","revision":1,"title":"Shop","rows":1,
+             "items":[{"slot":1,"label":"Buy","material":"minecraft:stone","count":1,
+             "details":[],"actions":["middle"]}]}
+            """));
+        assertEquals("menu_open revision must be non-negative", decodeError("""
+            {"type":"menu_open","proto":1,"id":"m","revision":9223372036854775808,
+             "title":"Shop","rows":1,"items":[]}
+            """));
+        assertEquals("menu_open revision must be non-negative", decodeError("""
+            {"type":"menu_open","proto":1,"id":"m","revision":"1",
+             "title":"Shop","rows":1,"items":[]}
+            """));
+        assertEquals("menu item 0 slot is outside the menu", decodeError("""
+            {"type":"menu_open","proto":1,"id":"m","revision":1,"title":"Shop","rows":1,
+             "items":[{"slot":1.5,"label":"Buy","material":"minecraft:stone","count":1,
+             "details":[],"actions":["left"]}]}
+            """));
+        assertEquals("menu item 0 icon is invalid", decodeError("""
+            {"type":"menu_open","proto":1,"id":"m","revision":1,"title":"Shop","rows":1,
+             "items":[{"slot":1,"label":"Buy","material":"minecraft:stone","count":1,
+             "details":[],"actions":["left"],"icon":"Not An Icon!"}]}
+            """));
+    }
+
+    @Test
+    void menuItemsWithoutAnIconDefaultToTheItemRender() {
+        MenuProtocol.Open open = assertInstanceOf(
+            MenuProtocol.Open.class, BridgeProtocol.decode(json("""
+                {"type":"menu_open","proto":1,"id":"m","revision":1,"title":"Shop","rows":1,
+                 "items":[{"slot":1,"label":"Buy","material":"minecraft:stone","count":1,
+                 "details":[],"actions":["left"]}]}
+                """)).message().orElseThrow());
+
+        assertEquals("", open.items().getFirst().icon());
+    }
+
+    @Test
+    void menuActionsContainOnlyTheOpaqueSessionAndSelectedSlot() {
+        String action = new String(
+            MenuProtocol.action("menu-123", 7, 22, MenuProtocol.Click.SHIFT_LEFT),
+            StandardCharsets.UTF_8);
+        String close = new String(MenuProtocol.close("menu-123", 7), StandardCharsets.UTF_8);
+
+        assertEquals(
+            "{\"type\":\"menu_action\",\"id\":\"menu-123\",\"revision\":7,\"slot\":22,\"click\":\"shift_left\"}",
+            action);
+        assertEquals("{\"type\":\"menu_close\",\"id\":\"menu-123\",\"revision\":7}", close);
+        assertThrows(IllegalArgumentException.class,
+            () -> MenuProtocol.action(" ", 7, 22, MenuProtocol.Click.LEFT));
+        assertThrows(IllegalArgumentException.class,
+            () -> MenuProtocol.action("menu-123", -1, 22, MenuProtocol.Click.LEFT));
+        assertThrows(IllegalArgumentException.class,
+            () -> MenuProtocol.action("menu-123", 7, 54, MenuProtocol.Click.LEFT));
+    }
+
+    @Test
+    void menuCloseIsAValidatedServerInstruction() {
+        MenuProtocol.Close close = assertInstanceOf(
+            MenuProtocol.Close.class, BridgeProtocol.decode(json("""
+                {"type":"menu_close","proto":1,"id":"menu-123","revision":8}
+                """)).message().orElseThrow());
+
+        assertEquals("menu-123", close.id());
+        assertEquals(8, close.revision());
+        assertEquals("menu_close revision must be non-negative", decodeError("""
+            {"type":"menu_close","proto":1,"id":"menu-123","revision":-1}
+            """));
+    }
+
+    @Test
     void decoderRejectsMalformedAndOversizedPayloads() {
         BridgeProtocol.DecodeResult absent = BridgeProtocol.decode(null);
         BridgeProtocol.DecodeResult malformed = BridgeProtocol.decode(json("not-json"));

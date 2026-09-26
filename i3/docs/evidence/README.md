@@ -346,3 +346,38 @@ Three defects were found by driving and looking at the launcher rather than by c
   handler lived only on the stage node. Rows now take focus and dispatch the same immutable nudge.
 - At the declared 1040×680 minimum window, the two-column editor crushed the stage to 254×143 and
   wrapped its dimension label vertically. It now stacks below 1180 px and renders a 510×287 stage.
+
+## P11 — server-owned native menus
+
+| file | what it settles |
+| --- | --- |
+| `p11-menu-open-960x540.png` | A live coin-bridge session opened the casino menu over `fullmoon:v1`: brand eyebrow above the serif title, a two-column action deck where each game wears its own outlined pixel sprite on a chip disc — stamped coin, five-pip die, pocketed wheel, triple seven, the moon with coins streaking past, a three-chip stack — the context rail naming the first actionable item, and the keyboard footer. No ChestGUI and no raw block sprite anywhere in the frame. |
+| `p11-menu-hover-960x540.png` | The pointer on `동전`: accent border and wash on the tile, and the context rail follows the hover — reading, not choosing. |
+| `p11-menu-refreshed-960x540.png` | One click later the client's `menu_action` slot 19 met the server's revision 1 snapshot: `동전` now chosen, `승률 · 50.0%` and `배당 · 1.98x` in the rail. The refresh is the server's answer, not a client prediction. |
+| `p11-menu-closed-960x540.png` | `menu_close` returns the player to the live world; the surface leaves nothing on screen. |
+| `p11-menu-compact-640x360.png` | The same menu at 640×360 GUI px: header, deck, rail and footer all inside the panel, tile copy clipped by measure rather than overprinting. |
+| `p11-live-client.log` / `p11-live-server.log` | hello, welcome, `menu_open` revision 0, the slot-19 action, `menu_open` revision 1 and `menu_close` on one menu id, against the server's join and `handshake ok` lines for the same sessions. |
+| `p11-hallmark-audit.md` | The six-axis critique and all 58 Hallmark gates for the native menu surface. |
+
+The server side is coin-bridge's `NativeMenuBridge` on the `codex/native-server-menus` branch of
+the server repo, with the shipped ChestGUI retained as the fallback for clients that never
+complete the handshake. The capture ran the local Paper at `/home/person/mc-local` with that jar
+plus a 30-line `NativeMenuAudit` fixture whose only act is running `/casino` once after each
+join, so the menu the frames show is the production menu code path. Paper was stopped over RCON
+after the captures; nothing was installed on the production Oracle host.
+
+The marks are not the server's block sprites. A raw item render says "block", not "game", so the
+snapshot carries an optional `icon` id — the casino lobby names
+`fullmoon.casino.{coinflip,dice,roulette,slots,moonfall,jackpot}` — and the client draws each as
+a hand-drawn 14×14 pixel sprite, outlined and shaded like the game's own item art, seated on a
+chip disc so the deck reads as a table. Unknown ids fall back to the item render. The field is
+presentation only; the protocol rules in `docs/BRIDGE.md` say so.
+
+Two defects were found only in the rendered frames of the first redesign session and corrected
+before these frames were taken: the display title overprinted the brand eyebrow (the P0 class of
+bug — a large face draws above its origin), fixed by centring the title in the band below the
+eyebrow; and the context rail's clip sliced the cap tops of the chosen item's title into a
+strikethrough, fixed by starting the clip at `Typeset.capTop` of the title. A review of the
+finished tree added two more guards: the icon well now scales with its card instead of
+overprinting its neighbours in dense menus, and `ServerMenuLayout` shrinks the deck gap — rather
+than collapsing cards to zero — whenever a capped frame leaves the deck shorter than its ideal.

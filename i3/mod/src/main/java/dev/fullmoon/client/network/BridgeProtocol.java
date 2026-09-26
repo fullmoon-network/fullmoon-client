@@ -1,5 +1,6 @@
 package dev.fullmoon.client.network;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -38,8 +39,7 @@ public final class BridgeProtocol {
 
     private BridgeProtocol() {}
 
-    public sealed interface Message permits Hello, Welcome, HudSync, Notice, WaypointSync,
-            TpResult, ScreenOpen, Unknown {
+    public interface Message {
         int proto();
     }
 
@@ -126,11 +126,11 @@ public final class BridgeProtocol {
             }
         }
 
-        private static DecodeResult success(Message message) {
+        static DecodeResult success(Message message) {
             return new DecodeResult(Optional.of(message), Optional.empty());
         }
 
-        private static DecodeResult failure(String error) {
+        static DecodeResult failure(String error) {
             return new DecodeResult(Optional.empty(), Optional.of(error));
         }
     }
@@ -207,6 +207,9 @@ public final class BridgeProtocol {
             case "waypoint_sync" -> decodeWaypointSync(json);
             case "tp_result" -> decodeTpResult(json);
             case "screen_open" -> decodeScreenOpen(json);
+            case "menu_open" -> MenuProtocol.decodeOpen(json);
+            case "menu_close" -> MenuProtocol.decodeClose(json);
+            case "casino_result" -> CasinoProtocol.decodeResult(json);
             default -> decodeUnknown(json, type);
         };
     }
@@ -527,13 +530,13 @@ public final class BridgeProtocol {
         if (!json.has(key) || !json.get(key).isJsonPrimitive()) {
             return null;
         }
+        JsonPrimitive primitive = json.getAsJsonPrimitive(key);
+        if (!primitive.isNumber()) {
+            return null;
+        }
         try {
-            double value = json.get(key).getAsDouble();
-            if (!Double.isFinite(value) || value != Math.rint(value)) {
-                return null;
-            }
-            return json.get(key).getAsLong();
-        } catch (RuntimeException error) {
+            return new BigDecimal(primitive.getAsString()).longValueExact();
+        } catch (ArithmeticException | NumberFormatException error) {
             return null;
         }
     }
@@ -542,8 +545,12 @@ public final class BridgeProtocol {
         if (!json.has(key) || !json.get(key).isJsonPrimitive()) {
             return null;
         }
+        JsonPrimitive primitive = json.getAsJsonPrimitive(key);
+        if (!primitive.isNumber()) {
+            return null;
+        }
         try {
-            double value = json.get(key).getAsDouble();
+            double value = primitive.getAsDouble();
             return Double.isFinite(value) ? value : null;
         } catch (RuntimeException error) {
             return null;
@@ -554,8 +561,12 @@ public final class BridgeProtocol {
         if (!json.has(key) || !json.get(key).isJsonPrimitive()) {
             return "";
         }
+        JsonPrimitive primitive = json.getAsJsonPrimitive(key);
+        if (!primitive.isString()) {
+            return "";
+        }
         try {
-            return json.get(key).getAsString().trim();
+            return primitive.getAsString().trim();
         } catch (RuntimeException error) {
             return "";
         }

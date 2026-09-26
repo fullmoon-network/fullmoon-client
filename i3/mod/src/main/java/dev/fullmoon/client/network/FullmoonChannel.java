@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import dev.fullmoon.client.FullmoonClient;
+import dev.fullmoon.client.menu.ServerMenuScreen;
 import dev.fullmoon.client.warp.WarpScreen;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -15,6 +16,7 @@ import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.loader.api.FabricLoader;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -70,6 +72,10 @@ public final class FullmoonChannel {
         return BridgeState.liveWarpOutcome(STATE.get(), now);
     }
 
+    public static Optional<BridgeState.CasinoReveal> casino(long now) {
+        return BridgeState.liveCasino(STATE.get(), now);
+    }
+
     public static BridgeState state() {
         return STATE.get();
     }
@@ -86,6 +92,35 @@ public final class FullmoonChannel {
             if (STATE.compareAndSet(before, requested)) {
                 return sendWarpRequest(waypoint);
             }
+        }
+    }
+
+    public static boolean requestMenuAction(
+            String menuId, long revision, int slot, MenuProtocol.Click click) {
+        if (STATE.get().mode() != BridgeState.Mode.ACTIVE) {
+            return false;
+        }
+        try {
+            ClientPlayNetworking.send(
+                new Envelope(MenuProtocol.action(menuId, revision, slot, click)));
+            LOG.info("Sent fullmoon:v1 menu action {} slot {} ({})", menuId, slot,
+                click.wireName());
+            return true;
+        } catch (RuntimeException error) {
+            LOG.error("Failed to send fullmoon:v1 menu action {} slot {}", menuId, slot, error);
+            return false;
+        }
+    }
+
+    public static void closeMenu(String menuId, long revision) {
+        if (STATE.get().mode() != BridgeState.Mode.ACTIVE) {
+            return;
+        }
+        try {
+            ClientPlayNetworking.send(new Envelope(MenuProtocol.close(menuId, revision)));
+            LOG.info("Sent fullmoon:v1 menu close {}", menuId);
+        } catch (RuntimeException error) {
+            LOG.error("Failed to send fullmoon:v1 menu close {}", menuId, error);
         }
     }
 
@@ -129,8 +164,15 @@ public final class FullmoonChannel {
         } else if (message instanceof BridgeProtocol.TpResult result && after != before) {
             LOG.info("Received fullmoon:v1 warp result {} ({})", result.id(),
                 result.ok() ? "accepted" : result.reason());
+        } else if (message instanceof CasinoProtocol.Result result && after != before) {
+            LOG.info("Received fullmoon:v1 casino result {} ({})", result.game().wireName(),
+                result.won() ? "won x" + result.payoutMultiplier() : "lost");
         } else if (message instanceof BridgeProtocol.ScreenOpen open) {
             openScreen(before, open);
+        } else if (message instanceof MenuProtocol.Open open) {
+            openMenu(before, open);
+        } else if (message instanceof MenuProtocol.Close close) {
+            closeMenu(before, close);
         } else if (message instanceof BridgeProtocol.Unknown unknown) {
             LOG.debug("Ignored fullmoon:v1 payload type {}", unknown.type());
         }
@@ -170,6 +212,38 @@ public final class FullmoonChannel {
         Minecraft client = Minecraft.getInstance();
         if (client.screen instanceof WarpScreen screen) {
             client.setScreen(screen.refreshed());
+        }
+    }
+
+    private static void openMenu(BridgeState state, MenuProtocol.Open open) {
+        if (state.mode() != BridgeState.Mode.ACTIVE || open.proto() != state.serverProtocol()) {
+            return;
+        }
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null) {
+            return;
+        }
+        if (client.screen instanceof ServerMenuScreen current
+                && current.menuId().equals(open.id())) {
+            client.setScreen(current.refreshed(open));
+        } else {
+            Screen parent = client.screen instanceof ServerMenuScreen current
+                ? current.parentScreen() : client.screen;
+            client.setScreen(new ServerMenuScreen(parent, open));
+        }
+        LOG.info("Opened fullmoon:v1 server menu {} revision {} ({} items)",
+            open.id(), open.revision(), open.items().size());
+    }
+
+    private static void closeMenu(BridgeState state, MenuProtocol.Close close) {
+        if (state.mode() != BridgeState.Mode.ACTIVE || close.proto() != state.serverProtocol()) {
+            return;
+        }
+        Minecraft client = Minecraft.getInstance();
+        if (client.screen instanceof ServerMenuScreen current
+                && current.menuId().equals(close.id())) {
+            current.closeFromServer();
+            LOG.info("Closed fullmoon:v1 server menu {}", close.id());
         }
     }
 

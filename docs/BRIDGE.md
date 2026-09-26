@@ -1,88 +1,176 @@
-# BRIDGE.md — fullmoon:v1 프로토콜 스펙 (v0 초안)
+# `fullmoon:v1` bridge protocol
 
-서버(Paper `fullmoon-bridge`) ↔ 클라(`fullmoon-mod`) 간 채널. 이 문서는 공개된다
-(오픈소스 전제) — 따라서 **위조를 전제**한다: 프로토콜은 UX 배분만 하고, 모든 게임플레이
-효과(tp·상거래)의 권한·쿨다운 검증은 서버가 감지 결과와 무관하게 수행한다.
+`fullmoon:v1` is the public plugin-message contract between the Paper
+`fullmoon-bridge` plugin and the Fullmoon Fabric mod. It selects a presentation layer; it never
+changes server authority. Treat every client message as forged. Permissions, cooldowns, prices,
+inventory effects, and every other gameplay rule remain server-side.
 
-## 1. 채널 / 등록
+## Channel and framing
 
-- 채널명: **`fullmoon:v1`** (namespaced, Bukkit Messenger + Fabric networking 표준 형식).
-- 클라는 login/config 단계에서 채널을 등록한다. 서버는 join 직후 등록 여부를 확인한다.
-- 등록됨 = 후보. **handshake 완료 = 지원.** 두 단계로 나누는 이유: mod가 깔렸지만 깨졌거나
-  서버가 구버전인 경우를 조용히 걸러내기 위함.
+- Channel: `fullmoon:v1`, using Bukkit Messenger and Fabric custom payloads.
+- A registered channel is only a candidate. A player is supported only after a valid handshake.
+- The wire payload is one UTF-8 JSON object prefixed by Minecraft's unsigned VarInt byte length.
+  The framing matches `FriendlyByteBuf.writeByteArray`. The server also accepts bare JSON from older
+  clients.
+- Payloads must fit the plugin-message packet limit of 32,767 bytes.
+- Every object has a `type`. Operational server messages may omit `proto`, which defaults to `1`.
 
-## 2. Handshake
+## Handshake
 
+```text
+C -> S  {"type":"hello","proto":1,"client":"fullmoon","version":"3.0.0"}
+S -> C  {"type":"welcome","proto":1,"waypoints":[...]}
 ```
-C → S   {"type":"hello", "proto":1, "client":"fullmoon", "version":"0.1.0"}
-S → C   {"type":"welcome", "proto":1, "waypoints":[...]}
-```
 
-- 인코딩: 채널 페이로드 = **varint 길이 접두사 + UTF-8 JSON 한 객체**, 최상위에 항상
-  `"type"`. varint는 MC 표준 부호 없는 인코딩(LSB 우선, 7비트/바이트) — Fabric mod의
-  `FriendlyByteBuf.writeByteArray` 프레이밍과 정확히 일치한다. (v0 초안은 "bare JSON"이었는데,
-  양방향 구현·인게임 검증에서 프레이밍 없이는 Fabric 코덱이 못 읽는 걸 확인해 이렇게 확정했다.)
-  서버는 수신 시 bare JSON도 관용적으로 받는다(구 클라 하위호환).
-- `proto`: 정수, 호환 규칙 — 서버가 더 크면 클라는 bridge 비활성(구버전 서버 보호),
-  클라가 더 크면 클라가 자기 기능을 clamp. minor 기능 추가는 proto 올리지 않고 필드 추가로.
-- **timeout 5s**: hello 후 welcome이 안 오면 클라는 이 세션 동안 조용히 비활성.
-  서버도 등록만 되고 handshake 없는 플레이어에게 네이티브 스크린을 유도하지 않는다(폴백 사용).
-- 재협상은 없다. 판단은 로그인 세션당 1회.
+The client waits five seconds for `welcome`, then disables bridge-only presentation for that login
+session. The server never opens a native surface for a player that has only registered the channel
+without completing the handshake. There is no renegotiation within a session.
 
-## 3. 운영 페이로드
+A protocol mismatch disables bridge features for the session and leaves the vanilla fallback active.
+Additive fields that old readers can safely ignore do not require a protocol bump.
 
-| dir | type | 내용 |
-|-----|------|------|
-| S→C | `welcome` | handshake 응답 + 웨이포인트 전체 스냅샷 |
-| S→C | `waypoint_sync` | 스냅샷 교체 (풀 스냅샷 방식 — delta 없음. POI는 수십 개 규모) |
-| C→S | `tp_request` | `{"type":"tp_request","id":"<wp id>"}` |
-| S→C | `tp_result` | `{"type":"tp_result","id":"...","ok":true}` 또는 `{"ok":false,"reason":"cooldown"}` |
-| S→C | `screen_open` | `{"type":"screen_open","screen":"warp","data":{...}}` — 서버 주도 스크린 오픈 |
+## Messages
 
-웨이포인트 객체:
+| Direction | Type | Purpose |
+|---|---|---|
+| S -> C | `welcome` | Complete the handshake and provide the full waypoint snapshot. |
+| S -> C | `waypoint_sync` | Replace the full waypoint snapshot. |
+| C -> S | `tp_request` | Request a registered waypoint by opaque ID. |
+| S -> C | `tp_result` | Report an accepted or rejected teleport request. |
+| S -> C | `screen_open` | Open a named native surface. Protocol 1 defines `warp`. |
+| S -> C | `menu_open` | Open or replace a server-owned native menu snapshot. |
+| C -> S | `menu_action` | Request one action advertised by the current menu snapshot. |
+| C -> S | `menu_close` | Notify the server that the current native menu was dismissed. |
+| S -> C | `casino_result` | Present one bet the server has already settled. |
+
+### Waypoints
 
 ```json
 {
   "id": "palace_gate",
-  "name": "만월궁 정문",
+  "name": "Fullmoon Palace Gate",
   "icon": "moon",
-  "x": 500, "y": 72, "z": -140,
+  "x": 500,
+  "y": 72,
+  "z": -140,
   "world": "lobby",
   "group": "palace",
   "perm": "warp.palace"
 }
 ```
 
-- `perm`: 서버가 tp 시점에 검사하는 권한 키. 클라는 목록에서 미허가 항목을 숨길 뿐,
-  숨김 자체는 최적화일 뿐 신뢰 아님.
-- 페이로드 크기: 플러그인 메시지 패킷 한계(≈32KiB) 내. v1 스케일(수십 POI)에서 청킹 불필요 —
-  넘으면 그때 `waypoint_sync`를 페이지로 쪼갠다(proto bump).
+`perm` is a server permission key. Hiding a waypoint in the client is a convenience, not an access
+check. The server accepts only IDs from its registry; arbitrary coordinates are not part of the
+protocol.
 
-## 4. 폴백 (바닐라/타 클라)
+### Server-owned menus
 
-- `/워프` 커맨드: 목록 출력 + `<id>` 인자 실행. 권한·쿨다운 로직은 tp_request와 **동일 코드 경로**.
-- 필요시 ChestGUI 메뉴(기존 서버 관습) — bridge는 이걸 대체하지 않고 병존한다.
-- 서버는 클라 지원 여부에 따라 같은 기능을 어느 표면으로 보낼지 고를 뿐, 기능 집합이 달라지지
-  않게 한다.
+`menu_open` carries a complete immutable snapshot. Slots preserve the vanilla 9-column geometry so
+existing server menu layouts remain recognizable while the Fullmoon client renders them as its own
+screen.
 
-## 5. 서버 권위 규칙 (fullmoon-bridge 구현 요구)
+```json
+{
+  "type": "menu_open",
+  "proto": 1,
+  "id": "2ac6f3ea-8f45-4d72-bb9c-cbded41b57d1",
+  "revision": 4,
+  "title": "Casino",
+  "rows": 6,
+  "items": [
+    {
+      "slot": 19,
+      "label": "Coin Table",
+      "material": "minecraft:gold_nugget",
+      "count": 1,
+      "details": ["Choose heads or tails", "Server-verified result"],
+      "actions": ["left", "shift_left"],
+      "icon": "fullmoon.casino.coinflip"
+    }
+  ]
+}
+```
 
-1. `tp_request` 처리: perm → 쿨다운(moonportals와 동일 4000ms 글로벌) → world 일치 →
-   좌표 유효성(웨이포인트 레지스트리의 것과 일치하는지만 허용 — 임의 좌표는 프로토콜에 없음).
-2. 감지(등록+handshake)는 **렌더 편의 선택**에만 사용. 권한 상승·검증 생략과 무관.
-3. 모든 reject는 `tp_result{ok:false}`로 응답 — 클라 UI가 추측하지 않게.
-4. 로그: hello/welcome/tp_request 결과를 서버 로그에 남긴다(디버그 + 남용 추적).
+`icon` is optional. It names a bespoke client-side mark (the casino lobby ships
+`fullmoon.casino.{coinflip,dice,roulette,slots,moonfall,jackpot}`); an item without one — or a
+client that does not know the name — renders the `material` item instead. Presentation only:
+the icon never carries authority, exactly like `label` and `details`.
 
-## 6. 열린 항목
+The client sends only the opaque session ID, revision, selected slot, and an advertised click:
 
-- **Velocity 통과 검증**: BungeeCord 채널은 증명됨(moonportals). 임의 커스텀 채널의
-  player↔backend relay는 로컬 Velocity로 먼저 확인. 막히면 velocity 설정/포크로 풀기.
-- **구현 노트 (2026-08-24 로컬 검증에서 밝혀진 것)**:
-  - Bukkit은 플레이어가 `minecraft:register`로 채널을 신고하기 **전에** 보낸 S→C 페이로드를
-    **조용히 버린다.** Fabric 클라의 등록 패킷은 join 직후에 도착하므로, 서버는 hello를 받아도
-    곧장 welcome을 보내면 안 된다 — 스케줄러로 채널 등록을 기다렸다 보낸다 (main 스레드
-    sleep 금지: 그 스레드가 블록되면 등록 처리 자체가 멈춰 교착된다).
-  - 클라는 `ClientPlayConnectionEvents.JOIN`에서 곧장 hello를 보내는데, 이 시점엔 아직 등록이
-    안 떠 있어도 된다 — 서버 쪽 대기가 흡수한다.
-- `screen_open`의 v1 범위는 `warp` 하나. 상점·이벤트 스크린은 서버 콘텐츠 확정 후 proto 1 내
-  필드 확장으로.
+```text
+C -> S  {"type":"menu_action","id":"...","revision":4,"slot":19,"click":"left"}
+C -> S  {"type":"menu_close","id":"...","revision":4}
+```
+
+Rules:
+
+1. `id` is an unpredictable server-generated session identifier.
+2. `revision` is monotonic. The server rejects stale or replayed requests.
+3. The server accepts only a slot and click combination advertised in that exact snapshot.
+4. The server re-runs all domain validation before changing state. Menu data is not authorization.
+5. A successful action produces a fresh snapshot or a `menu_close`; the client does not predict the
+   result.
+6. `rows` is `1..6`, slots are within `rows * 9`, and duplicate slots are invalid.
+7. Supported clicks in protocol 1 are `left` and `shift_left`.
+
+Casino, shops, selling, enhancement, potential, guild, mail, titles, raid selection, kit selection,
+tutorial prompts, crafting, and lift selection use this native path. A synchronized player-to-player
+item trade remains a real inventory container because it transfers item stacks rather than selecting
+server menu commands.
+
+### Casino results
+
+The server pushes `casino_result` after the bet has settled and the money has moved. The payload
+is presentation only: the client plays a short reveal of an outcome it cannot influence, and the
+server's chat line stays the record, so a client that drops or rejects the event loses nothing.
+
+```json
+{"type":"casino_result","game":"slots","won":true,"payout_multiplier":12,
+ "detail":{"reels":["moon","moon","moon"],"matched":3}}
+{"type":"casino_result","game":"dice","won":false,"payout_multiplier":0,
+ "detail":{"roll":73,"target":50}}
+{"type":"casino_result","game":"roulette","won":true,"payout_multiplier":2,
+ "detail":{"pocket":17,"bet_type":"black"}}
+{"type":"casino_result","game":"coinflip","won":true,"payout_multiplier":1.98}
+```
+
+Rules:
+
+1. `proto` may be omitted and then means the current version; when present it must match the
+   accepted server protocol, like every operational message.
+2. `game` is `coinflip`, `dice`, `roulette`, or `slots`. Other games are rejected, not guessed at.
+3. `payout_multiplier` is finite, `0..1000`, and positive when `won` is true. A loss carries `0`.
+4. `dice`: `roll` is `0..99`, `target` is `0..100`, and the bet wins when `roll < target`.
+5. `roulette`: `pocket` is `0..36` on a single-zero wheel. `bet_type` is the server's own id
+   (`red`, `black`, `even`, `odd`, `low`, `high`, `straight:N`, `column:N`, `dozen:N`), at most
+   32 characters; the client names the known ids and shows any other id as sent.
+6. `slots`: `reels` holds 1 to 5 symbol ids matching `[a-z0-9][a-z0-9_-]{0,31}`, and `matched`
+   is the largest count of one symbol, `1..reels`.
+7. A newer result replaces the one on screen. The card lives for 4.5 seconds and is also drawn
+   over open screens, since the bet is placed from a menu.
+
+## Vanilla fallback
+
+- `/warp` lists and executes the same registered waypoint IDs through the same permission and
+  cooldown path as `tp_request`.
+- Every server-owned menu retains its ChestGUI inventory. The server opens it when the player has no
+  completed handshake, the bridge is unavailable, or a menu snapshot exceeds the channel limit.
+- Native and fallback surfaces expose the same actions. Client detection never changes the feature
+  set.
+
+## Server authority requirements
+
+1. Validate waypoint permission, the shared 4,000 ms cooldown, world, and registry coordinates at
+   execution time.
+2. Use registration and handshake state only to choose a rendering surface.
+3. Return `tp_result{ok:false}` for every denied teleport so the client does not infer outcomes.
+4. Validate menu IDs, revisions, slots, click types, and the underlying domain operation.
+5. Log handshake and rejected or completed gameplay requests for debugging and abuse analysis.
+
+## Implementation notes
+
+Bukkit silently discards a server payload sent before the player registers the channel. The server
+therefore waits asynchronously for registration before replying to `hello`; it must not block the
+main thread, because channel registration is processed there. The client may send `hello` from
+`ClientPlayConnectionEvents.JOIN`; the server-side wait absorbs that race.
