@@ -112,6 +112,8 @@ final class ServerMenuTile extends Widget {
         float cx = right - column / 2.0f;
         float cy = box.midY() - Tokens.Type.LABEL.leading() / 2.0f;
         painter.moon(cx, cy, r, chance, true, Tokens.Color.MOON_LIT, Tokens.Color.MOON_SHADOW);
+        // A sliver of a long shot would vanish into the tile without its rim.
+        painter.ring(cx, cy, r + 1.5f, Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT_FAINT);
         Typeset.tabular(painter, Tokens.Type.LABEL, figure, Math.round(cx - figureW / 2.0f),
             Math.round(cy + r + Tokens.Space.TIGHT), Tokens.Color.INK_SECONDARY);
         return right - column - Tokens.Space.COZY;

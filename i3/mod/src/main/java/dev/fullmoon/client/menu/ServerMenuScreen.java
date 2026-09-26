@@ -213,6 +213,7 @@ public final class ServerMenuScreen extends SurfaceScreen {
         y += Tokens.Space.COZY;
         float r = 11.0f;
         painter.moon(left + r, y + r, r, chance, true, Tokens.Color.MOON_LIT, Tokens.Color.MOON_SHADOW);
+        painter.ring(left + r, y + r, r + 2.0f, Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT);
         int textX = left + Math.round(r * 2) + Tokens.Space.COZY;
         Typeset.draw(painter, Tokens.Type.LABEL, "이길 확률", textX, y, Tokens.Color.INK_TERTIARY);
         Typeset.tabular(painter, Tokens.Type.TITLE, ServerMenuCopy.percent(chance), textX,
