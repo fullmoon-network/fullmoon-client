@@ -63,6 +63,52 @@ redrawn in P2. Its footer carries P1-D's key line. The specimen matches `p1d-spe
 everywhere but its geometry readout and its frame counter, and three Studio runs of the kit are
 identical to each other to the pixel.
 
+<<<<<<< HEAD
+=======
+## The title panorama
+
+`mod/src/main/resources/assets/minecraft/textures/gui/title/background/panorama_0.png` to `_5.png`
+put the Fullmoon lobby at night behind the title screen, in place of vanilla's cherry grove: mod
+assets sit above the vanilla pack, which serves its 1024 px faces from the asset index — the jar
+holds 69-byte placeholders. They were taken on 2026-09-26 from `pass4`, the flagship review
+harness's live world, with the command that retakes them after the lobby changes:
+
+```sh
+tools/studio-panorama.sh /tmp/pano --world ~/mc-flagship-review/pass4 \
+    'gamma 1.0' 'view lobby-n 0 81 84 180 5' 'panorama lobby 0 81 84 180'
+```
+
+The wrapper copies the world, never opens it in place, and quick-plays the copy as singleplayer in
+the Studio. `tools/panorama/PanoramaGrab.java` is compiled into a throwaway copy of the mod there,
+never into the jar, and runs the steps. Every run first sets spectator mode, `time set 18000`,
+`time pause` and `weather clear`: time is a world clock in 26.1, `time set` sets its total ticks,
+and the moon-phase timeline is eight 24000-tick days starting at `FULL_MOON`, so tick 18000 is
+midnight of a full moon, which then stands at the zenith on face 4, outside the title's view.
+Gamma 1.0 is the options screen's brightest setting: the night stays blue, and the lawns and the
+undersides of the clouds come up off black.
+
+The eye is at (0, 82.6, 84), 9.6 blocks over the forecourt paving and 4 behind spawn, on the
+north–south axis, with face 0 looking north up the canal walk. Face 0 carries the dome, the
+portico and both wings over the pleached allées and their canals; faces 3 and 1 the forecourt's
+lamps and the gardens either side, a lit pavilion on the west; face 2 the south exedra with the sea
+and a sea rock behind it. Spawn itself, at
+paving height, gave the lower half of every face to the dark rondel and hid the wings behind the
+allée trees, and halfway up the walk the hall filled face 0 and trees filled the rest.
+
+The faces are the game's own `Minecraft.grabPanoramixScreenshot`, which renders each at
+4096 px with a 90° field of view and writes it at 1024. It shoots face 0 along the player's yaw,
+1 a quarter turn right, 2 behind, 3 a quarter turn left, 4 straight up and 5 straight down;
+`CubeMapTexture` reads them into the cube's +X −X +Y −Y +Z −Z layers as `_1 _3 _5 _4 _0 _2` and
+`CubeMap` draws the cube flipped about X, so at spin 0 the title looks at face 0 — the order and
+orientation vanilla's own faces follow. The section compiler only builds what the camera sees, so
+the hook turns to all six faces first and holds each until nothing is queued and the counts have
+held for 4 s. Paper keeps `world_gen_settings.dat` inside each dimension and singleplayer wants
+one at the world root ("Overworld settings missing"), so the wrapper copies the overworld's up.
+The grab writes RGBA with an opaque alpha; the wrapper rewrites the faces as RGB at zlib's
+strongest setting, pixel for pixel the same: 3.5 MB for the six against 5.8 MB as grabbed and
+6.2 MB for vanilla's. The run took 177 s in the Studio at render distance 16.
+
+>>>>>>> RedHatOnTop/fmc-panorama
 ## P0 — render layer and design specimen
 
 | file | what it settles |
