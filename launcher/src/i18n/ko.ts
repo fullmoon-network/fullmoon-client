@@ -114,7 +114,7 @@ const ko = {
     lobbyLive: "로비 · {n}명 · {ms} ms",
     lobbyOpen: "로비 · {ms} ms",
     lobbyDown: "로비 응답 없음",
-    lobbyBrowser: "브라우저에선 로비를 확인할 수 없어요",
+    lobbyBrowser: "브라우저에선 확인 불가",
     joinServer: "{name} 접속",
     launchOnly: "게임만 열기",
     serverList: "서버 목록",

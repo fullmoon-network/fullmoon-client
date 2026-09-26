@@ -267,7 +267,7 @@ function ActiveHero({ account, onAdd }: { account: Account; onAdd: () => void })
         <span className="acc-hero-kicker">{t("accounts.heroKicker")}</span>
         <h2 className="acc-hero-name">{account.username}</h2>
         <div className="acc-hero-badges">
-          <Badge tone={account.source === "microsoft" ? "accent" : account.source === "imported" ? "ok" : "dim"}>
+          <Badge tone={account.source === "microsoft" ? "accent" : account.source === "offline" ? "warn" : "dim"}>
             {t(`accounts.source.${account.source}`)}
           </Badge>
           {/* Mojang's own capes, which are a different thing from the ones this
@@ -353,7 +353,7 @@ function AccountCard({ account }: { account: Account }) {
         <div className="acc-meta">
           <strong>{account.username}</strong>
           <span className="acc-uuid mono">{account.uuid.slice(0, 13)}…</span>
-          <Badge tone={account.source === "microsoft" ? "accent" : account.source === "imported" ? "ok" : "dim"}>
+          <Badge tone={account.source === "microsoft" ? "accent" : account.source === "offline" ? "warn" : "dim"}>
             {t(`accounts.source.${account.source}`)}
           </Badge>
         </div>

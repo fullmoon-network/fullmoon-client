@@ -89,7 +89,7 @@ export function Sidebar() {
 
       <div className="rail-foot">
         <RailItem id="settings" icon="gear" current={here === "settings"} onPick={setScreen} label={t("nav.settings")} />
-        <Tonight />
+        {here !== "play" && <Tonight />}
         <button className="rail-account pf-tile" onClick={() => setScreen("accounts")}>
           {activeAccount ? (
             <>

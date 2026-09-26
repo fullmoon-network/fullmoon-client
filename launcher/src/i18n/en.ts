@@ -116,7 +116,7 @@ const en: Dict = {
     lobbyLive: "Lobby · {n} online · {ms} ms",
     lobbyOpen: "Lobby · {ms} ms",
     lobbyDown: "Lobby not answering",
-    lobbyBrowser: "The browser build cannot check the lobby",
+    lobbyBrowser: "Not checkable in a browser",
     joinServer: "Join {name}",
     launchOnly: "Open the game only",
     serverList: "Server list",

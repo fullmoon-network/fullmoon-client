@@ -167,6 +167,8 @@
   position: absolute;
   top: var(--space-gutter);
   right: var(--space-section);
+  width: clamp(124px, 9vw, 184px);
+  height: auto;
 }
 
 .hero-plaque {
@@ -177,6 +179,7 @@
   width: 100%;
 }
 .plaque-band { padding: var(--space-cozy) var(--space-loose) var(--space-base); }
+.plaque-band .pf-wordmark-name { font-size: 48px; }
 .plaque-tagline {
   display: block;
   margin-bottom: var(--space-snug);
@@ -232,10 +235,12 @@
 .lobby-btn-starting:hover { border-color: var(--color-line-gilt); }
 .lobby-btn-installing { justify-content: center; cursor: default; }
 .lobby-btn-label {
+  flex: none;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 20px;
   letter-spacing: 0.06em;
+  white-space: nowrap;
 }
 .lobby-btn-status {
   display: inline-flex;
@@ -243,8 +248,9 @@
   gap: var(--space-snug);
   min-width: 0;
   font: var(--type-label);
-  text-align: right;
+  white-space: nowrap;
 }
+.lobby-btn-status > span { overflow: hidden; text-overflow: ellipsis; }
 .lobby-btn-status i {
   flex: none;
   width: 7px;
@@ -338,11 +344,7 @@
   justify-content: space-between;
   gap: var(--space-cozy);
 }
-.hero-account { display: flex; align-items: center; gap: var(--space-snug); padding: var(--space-tight); }
-.hero-account > span { display: flex; flex-direction: column; text-align: left; line-height: 1.25; }
-.hero-account strong { font: var(--type-body-strong); color: var(--color-ink-primary); }
-.hero-account em { font: var(--type-label); font-weight: 400; color: var(--color-ink-tertiary); }
-.hero-account:hover strong { color: var(--color-accent); }
+.hero-bar { justify-content: flex-end; }
 .hero-meta { font: var(--type-label); font-weight: 400; color: var(--color-ink-tertiary); }
 
 /* ═══ Dashboard ═══ */
@@ -418,7 +420,14 @@
 .ledger-flow > div { display: flex; flex-direction: column; align-items: flex-end; }
 .ledger-flow dt { font: var(--type-label); font-weight: 400; color: var(--color-ink-tertiary); }
 .ledger-flow dd { margin: 0; font: var(--type-heading); color: var(--color-ink-primary); }
-.ledger-rows { display: flex; flex-direction: column; }
+.ledger-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--space-cozy);
+  background: var(--color-surface-base);
+  border: 1px solid var(--color-line-gilt-faint);
+}
+.ledger-row:last-child { border-bottom: 0; }
 .ledger-row {
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr) 120px 120px;
@@ -436,7 +445,14 @@
 .ledger-delta.is-out { color: var(--color-ink-secondary); }
 .ledger-after { text-align: right; font: var(--type-label); font-weight: 400; color: var(--color-ink-tertiary); }
 
-.news-list { display: flex; flex-direction: column; }
+.news-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--space-loose) 0 var(--space-cozy);
+  background: var(--color-surface-base);
+  border: 1px solid var(--color-line-gilt-faint);
+}
+.news-row:last-child { border-bottom: 0; }
 .news-row {
   display: flex;
   gap: var(--space-cozy);
@@ -814,7 +830,7 @@
 .add-option-meta span { font: var(--type-label); font-weight: 400; color: var(--color-ink-tertiary); }
 .add-offline { margin-top: var(--space-loose); padding-top: var(--space-cozy); border-top: 1px solid var(--color-line-hairline); }
 .add-offline-row { display: flex; gap: var(--space-snug); align-items: center; margin-top: var(--space-snug); }
-.add-offline-row .input { flex: 1; }
+.add-offline-row .input { flex: 1; min-width: 0; }
 .add-offline .set-hint { margin-top: var(--space-snug); }
 
 .device-flow { display: flex; flex-direction: column; align-items: center; gap: var(--space-base); padding: var(--space-base) 0; text-align: center; }
@@ -1207,11 +1223,24 @@
 
 /* ═══ narrow windows (the Tauri minimum is 1040×680) ═══ */
 
+/* a short window keeps the whole plaque on screen */
+@media (max-height: 760px) {
+  .hero { padding-top: var(--space-loose); row-gap: var(--space-snug); }
+  .plaque-band { padding-top: var(--space-base); padding-bottom: var(--space-snug); }
+  .plaque-band .pf-wordmark-name { font-size: 40px; }
+  .plaque-band .pf-seal { width: 36px; height: 36px; }
+  .plaque-body { padding-top: var(--space-base); padding-bottom: var(--space-cozy); }
+  .lobby-btn { height: 50px; margin-top: var(--space-base); }
+  .plaque-menu { margin-top: var(--space-snug); }
+  .title-row { height: 30px; }
+}
+
 @media (max-width: 1240px) {
   .dash-grid { grid-template-columns: minmax(0, 1fr) 280px; gap: var(--space-loose); }
   .mod-layout { grid-template-columns: minmax(0, 1fr) 248px; gap: var(--space-loose); }
-  .srv { grid-template-columns: minmax(0, 1fr) auto; }
-  .srv-nums { grid-column: 1; grid-row: 2; }
+  .srv { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--space-snug); }
+  .srv-nums { grid-column: 1; grid-row: 2; gap: var(--space-loose); }
+  .srv-nums > div { flex-direction: row; align-items: baseline; gap: 6px; min-width: 0; }
   .srv-actions { grid-column: 2; grid-row: 1 / span 2; }
   .ledger-row { grid-template-columns: 84px minmax(0, 1fr) 100px; }
   .ledger-after { display: none; }
@@ -1225,6 +1254,7 @@
   }
   .hero-news { display: none; }
   .hero-moon { right: var(--space-gutter); }
+  .plaque-band .pf-wordmark-name { font-size: 40px; }
   .cos-layout { grid-template-columns: 272px minmax(0, 1fr); gap: var(--space-loose); }
   .acc-hero { grid-template-columns: 220px minmax(0, 1fr); }
   .set-layout { grid-template-columns: 176px minmax(0, 1fr); gap: var(--space-loose); }

@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { Icon } from "../components/Icon";
 import { Dancheong, Marker, MoonDial, MoonDisc, Wordmark } from "../components/Palace";
-import { SkinFace } from "../components/ui";
 import { PlayLabel } from "../components/PlayDock";
 import { useStore } from "../state/store";
 import { usePlayAction } from "../state/playAction";
@@ -19,8 +18,7 @@ const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "
    (the panorama the title screen turns behind itself), tonight's real moon on its dial, and the
    palace plaque with one loud way into the lobby. The dashboard reads on below it. */
 export function PlayScreen() {
-  const { servers, serverStatus, versions, activeAccount, news, instances, selectedInstance, launch, toast, setScreen } =
-    useStore();
+  const { servers, serverStatus, versions, news, instances, selectedInstance, launch, toast, setScreen } = useStore();
   const { t } = useT();
 
   const lobby = servers[0] ?? null;
@@ -69,7 +67,7 @@ export function PlayScreen() {
 
         <div className="hero-plaque pf-frame">
           <div className="plaque-band pf-band">
-            <span className="plaque-tagline">{BRAND.tagline}</span>
+            <span className="plaque-tagline">{t("settings.aboutDesc")}</span>
             <Wordmark size="lg" name={BRAND.name} />
           </div>
           <Dancheong />
@@ -96,9 +94,9 @@ export function PlayScreen() {
                 <>
                   <span className="lobby-btn-label">{t("home.joinLobby")}</span>
                   {status && (
-                    <span className="lobby-btn-status num">
+                    <span className="lobby-btn-status num" title={status}>
                       <i className={reachable ? "is-live" : ""} aria-hidden />
-                      {status}
+                      <span>{status}</span>
                     </span>
                   )}
                 </>
@@ -110,7 +108,11 @@ export function PlayScreen() {
             <ul className="plaque-menu">
               {others.map((s) => (
                 <li key={s.id}>
-                  <button className="title-row" onClick={() => quickPlay(s.address)}>
+                  <button
+                    className="title-row"
+                    onClick={() => quickPlay(s.address)}
+                    disabled={launchOnly.state.kind !== "ready"}
+                  >
                     <Marker />
                     <span>{t("home.joinServer", { name: s.name })}</span>
                     <em className="mono">{s.address}</em>
@@ -171,21 +173,6 @@ export function PlayScreen() {
         )}
 
         <footer className="hero-bar">
-          <button className="hero-account" onClick={() => setScreen("accounts")}>
-            {activeAccount ? (
-              <>
-                <SkinFace hue={activeAccount.skinHue} skin={activeAccount.skinUrl} size={22} />
-                <span>
-                  <strong>{activeAccount.username}</strong>
-                  <em>{t(`accounts.source.${activeAccount.source}`)}</em>
-                </span>
-              </>
-            ) : (
-              <span>
-                <strong>{t("dock.needsAccount")}</strong>
-              </span>
-            )}
-          </button>
           <span className="hero-meta num">
             {t("home.footMeta", { version: APP_VERSION, mc: target })}
           </span>

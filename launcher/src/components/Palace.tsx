@@ -153,7 +153,7 @@ export function MoonDial({
           className={on ? "pf-dial-major is-on" : "pf-dial-major"}
           cx={Math.cos(a) * tickIn}
           cy={Math.sin(a) * tickIn}
-          r={Math.max(1.6, r * 0.045)}
+          r={Math.max(2, r * 0.06)}
         />,
       );
     }

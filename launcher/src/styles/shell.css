@@ -26,8 +26,10 @@
   background: linear-gradient(180deg, var(--color-surface-void) 0%, var(--color-surface-void) 55%, var(--color-surface-sunken) 100%);
 }
 .starfield { position: absolute; inset: 0; }
-.star { fill: var(--color-line-strong); }
-.star-bright { fill: var(--color-ink-disabled); }
+.star { fill: var(--color-line-hairline); }
+.star-bright { fill: var(--color-line-strong); }
+/* paper has no sky */
+[data-theme="light"] .starfield { display: none; }
 
 .shell {
   display: grid;
@@ -80,6 +82,7 @@
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .winbtn:hover { background: var(--color-surface-raised); color: var(--color-ink-primary); }
+.winbtn:focus-visible { outline-offset: -3px; }
 .winbtn-close:hover { background: var(--color-status-danger); color: var(--color-ink-primary); }
 
 /* ── rail: the places of the launcher, a quiet list on the sunken ground ── */
@@ -449,6 +452,7 @@ button.dock-chip:hover { background: var(--color-surface-raised); }
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  white-space: nowrap;
   font: var(--type-body-strong);
   line-height: 1.25;
   color: var(--color-ink-primary);
@@ -540,7 +544,7 @@ button.dock-chip:hover { background: var(--color-surface-raised); }
 .pdock {
   position: fixed;
   right: var(--space-loose);
-  bottom: var(--space-loose);
+  bottom: 112px;
   z-index: var(--layer-rail);
   width: 300px;
   display: flex;
@@ -573,7 +577,7 @@ button.dock-chip:hover { background: var(--color-surface-raised); }
 .toasts {
   position: fixed;
   right: var(--space-loose);
-  bottom: var(--space-loose);
+  top: calc(var(--titlebar-h) + var(--topbar-h) + var(--pf-dancheong) + var(--space-cozy));
   z-index: var(--layer-toast);
   display: flex;
   flex-direction: column;

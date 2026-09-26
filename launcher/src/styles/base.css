@@ -54,6 +54,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 input, select, textarea { font: inherit; color: inherit; }
 a { color: var(--color-accent); text-decoration: underline; text-underline-offset: 3px; }
 ul, ol { margin: 0; padding: 0; list-style: none; }
+dl, dd { margin: 0; }
 kbd { font: inherit; }
 
 ::selection { background: var(--color-accent-wash); color: var(--color-ink-primary); }
