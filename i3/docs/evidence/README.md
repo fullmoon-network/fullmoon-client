@@ -21,6 +21,48 @@ one column, and the well's floor lands at 546 where `footerY(540)` is 505. It si
 the client window off the one number, because a client smaller than its display is a photograph
 with a mat around it.
 
+## Taking captures in the Studio
+
+The workstation stops build-class processes on sight, and a capture is a Gradle build, a JVM and a
+rasteriser at once, so since 2026-09-26 captures are taken in the Lightning Studio.
+`tools/studio-capture.sh` takes `capture.py`'s arguments unchanged:
+
+```sh
+tools/studio-capture.sh /tmp/shots --geometry 1920x1080 --scale 2 kit:F7 focus-1:Tab focus-2:Tab
+```
+
+It uploads `i3/mod` and `i3/tools` from the working tree through `spectre-offload`, so a capture is
+of what is on disk, not of what is committed. `tools/studio-setup.sh` runs first and installs what
+the Studio lacks — Xvfb, Mesa, python-xlib, the X libraries GLFW opens, a JDK 25 — checking before
+it acts, because the Studio's root filesystem does not survive a restart. The build is warmed
+before `capture.py` starts, so its 240 s wait for the atlases is spent on a client starting.
+`/tmp/shots` gets what `capture.py` writes, a PNG per shot and `run.log`, and beside them
+`build.log`, `glinfo.txt` and `timings.txt`; the upload is deleted from the Studio once they are
+pulled. `STUDIO_OFFLOAD` names a different wrapper with `spectre-offload`'s interface, such as one
+that queues agents sharing the Studio.
+
+One thing differs from a run on the workstation. `run/` is never uploaded, so every Studio run is a
+first launch, and a first launch opens on the accessibility onboarding screen rather than the title
+screen. The wrapper seeds `run/options.txt` with `onboardAccessibility:false` before `capture.py`
+pins its own lines.
+
+The Studio has no GPU: frames are drawn by Mesa's llvmpipe, `llvmpipe (LLVM 20.1.2, 256 bits)` on
+OpenGL 4.5 core, Mesa 25.2.8, which `glinfo.txt` records for every run. That costs time, not
+pixels. The specimen's live frame counter went from 7 to 60 over 11.6 s, so a 1920×1080 dev
+surface draws at under 5 fps, and a shot that waits on something counted in frames needs a longer
+`wait=` than it would on a GPU. A warm run spent 77 s in the Studio, 11 s of it Gradle, for four
+shots one of which was a 10 s wait; starting, uploading and pulling add about a minute. A first run
+on an empty Gradle home fetches 1.2 GB, 447 MB of it Minecraft's assets, and took 139 s in the
+Studio and 197 s end to end. The queue for a Studio shared with other builds is in none of these
+and was the larger part of both runs that met one.
+
+The layout does not move. Retaken in the Studio, the P1-C kit is identical to
+`p1c-kit-960x540.png` in its masthead, and once the P1-D rail's 50 px are allowed for, its body
+differs in 0.065% of pixels: the focus ring on a switch that is on and the text field's caret, both
+redrawn in P2. Its footer carries P1-D's key line. The specimen matches `p1d-specimen-960x600.png`
+everywhere but its geometry readout and its frame counter, and three Studio runs of the kit are
+identical to each other to the pixel.
+
 ## P0 — render layer and design specimen
 
 | file | what it settles |
