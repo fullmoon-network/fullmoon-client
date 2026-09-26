@@ -84,6 +84,18 @@ public final class Palace {
         painter.fill(x + w - s, y + h - arm, s, arm, color);
     }
 
+    /**
+     * Two brackets on opposite corners, top-left and bottom-right: the frame's mark at the size
+     * of a HUD chip, where four would crowd the text.
+     */
+    public static void ticks(Painter painter, float x, float y, float w, float h, float arm) {
+        float s = Tokens.Stroke.HAIR;
+        painter.fill(x, y, arm, s, Tokens.Color.ACCENT);
+        painter.fill(x, y, s, arm, Tokens.Color.ACCENT);
+        painter.fill(x + w - arm, y + h - s, arm, s, Tokens.Color.ACCENT);
+        painter.fill(x + w - s, y + h - arm, s, arm, Tokens.Color.ACCENT);
+    }
+
     /** Window lattice over a header band. The band's own ground is drawn by the caller. */
     public static void lattice(Painter painter, int x, int y, int w, int h) {
         painter.pushClip(x, y, w, h);
