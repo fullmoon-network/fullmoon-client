@@ -42,6 +42,8 @@ import net.minecraft.server.network.EventLoopGroupHolder;
 public final class FullmoonTitleScreen extends SurfaceScreen {
     private static final String LOBBY = "play.fullmoon.ink";
     private static final int WIDE = 800;
+    /** A lobby that has not answered by now is reported as not answering. */
+    private static final long PING_PATIENCE_MILLIS = 8_000;
 
     private final ServerStatusPinger pinger = new ServerStatusPinger();
     private final ServerData lobby;
@@ -53,6 +55,7 @@ public final class FullmoonTitleScreen extends SurfaceScreen {
     private final String version;
 
     private boolean pinged;
+    private long pingedAt;
     private Box plaque = Box.EMPTY;
     private int band;
 
@@ -126,11 +129,18 @@ public final class FullmoonTitleScreen extends SurfaceScreen {
         }
     }
 
+    /**
+     * The pinger fills in the players and the round trip but leaves the state to its caller, as
+     * the vanilla server list does: the response callback is what makes the lobby reachable.
+     */
     private void ping() {
+        Minecraft client = Minecraft.getInstance();
         lobby.setState(ServerData.State.PINGING);
+        pingedAt = System.currentTimeMillis();
         try {
-            pinger.pingServer(lobby, () -> {}, () -> {},
-                EventLoopGroupHolder.remote(Minecraft.getInstance().options.useNativeTransport()));
+            pinger.pingServer(lobby, () -> {},
+                () -> client.execute(() -> lobby.setState(ServerData.State.SUCCESSFUL)),
+                EventLoopGroupHolder.remote(client.options.useNativeTransport()));
         } catch (UnknownHostException | RuntimeException e) {
             lobby.setState(ServerData.State.UNREACHABLE);
         }
@@ -139,6 +149,10 @@ public final class FullmoonTitleScreen extends SurfaceScreen {
     @Override
     public void tick() {
         pinger.tick();
+        if (lobby.state() == ServerData.State.PINGING
+                && System.currentTimeMillis() - pingedAt >= PING_PATIENCE_MILLIS) {
+            lobby.setState(ServerData.State.UNREACHABLE);
+        }
     }
 
     @Override

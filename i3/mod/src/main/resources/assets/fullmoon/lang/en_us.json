@@ -153,7 +153,7 @@
     "fullmoon.title.lobby.checking": "Checking the lobby",
     "fullmoon.title.lobby.live": "Lobby · %s online · %s ms",
     "fullmoon.title.lobby.open": "Lobby · %s ms",
-    "fullmoon.title.lobby.down": "Lobby under maintenance",
+    "fullmoon.title.lobby.down": "Lobby not answering",
     "fullmoon.title.singleplayer": "Singleplayer",
     "fullmoon.title.multiplayer": "Server list",
     "fullmoon.title.fullmoon_settings": "Fullmoon settings",
