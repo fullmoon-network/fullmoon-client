@@ -10,6 +10,7 @@ import dev.fullmoon.client.settings.SettingsScreen;
 import dev.fullmoon.client.text.Typeset;
 import dev.fullmoon.client.title.FullmoonTitleScreen;
 import dev.fullmoon.client.ui.DevScreen;
+import dev.fullmoon.client.warp.WarpScreen;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -142,6 +143,9 @@ public final class FullmoonClient implements ClientModInitializer {
                     && client.screen instanceof FullmoonTitleScreen title) {
                 fixtureShown = true;
                 ServerMenuSample.requested().ifPresent(menu -> client.setScreen(new ServerMenuScreen(title, menu)));
+                if (!ServerMenuSample.waypoints().isEmpty()) {
+                    client.setScreen(new WarpScreen(title));
+                }
             }
         });
 

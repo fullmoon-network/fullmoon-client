@@ -6,6 +6,7 @@ import java.util.Optional;
 import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.network.BridgeProtocol;
+import dev.fullmoon.client.menu.ServerMenuSample;
 import dev.fullmoon.client.network.BridgeState;
 import dev.fullmoon.client.network.FullmoonChannel;
 import dev.fullmoon.client.render.Painter;
@@ -53,7 +54,8 @@ public final class WarpScreen extends SurfaceScreen {
     private WarpScreen(Screen parent, String selectedId) {
         super(Component.translatable("fullmoon.warp.title"));
         this.parent = parent;
-        this.routes = WarpRoutes.ordered(FullmoonChannel.waypoints());
+        List<BridgeProtocol.Waypoint> live = FullmoonChannel.waypoints();
+        this.routes = WarpRoutes.ordered(live.isEmpty() ? ServerMenuSample.waypoints() : live);
         this.selected = selectedIndex(routes, selectedId);
         this.destinations = surface.add(new ListPanel(
             tr("destinations.label"), rows(routes), tr("destinations.empty"), selected,
