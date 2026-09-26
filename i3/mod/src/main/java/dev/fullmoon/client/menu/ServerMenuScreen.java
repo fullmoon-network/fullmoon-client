@@ -25,6 +25,7 @@ import net.minecraft.network.chat.Component;
 public final class ServerMenuScreen extends SurfaceScreen {
     private static final long REQUEST_TIMEOUT_MILLIS = 5_000;
     private static final int FACT_VALUE_LINES = 2;
+    private static final int DETAIL_LINES = 3;
 
     private final Screen parent;
     private final MenuProtocol.Open menu;
@@ -190,13 +191,18 @@ public final class ServerMenuScreen extends SurfaceScreen {
             y = chance(painter, left, right, y, (float) entry.item().chance().getAsDouble());
         }
 
-        painter.pushClip(left, y, right - left, Tokens.Type.BODY.leading() * 3);
-        for (String line : entry.details().stream().limit(3).toList()) {
-            Typeset.draw(painter, Tokens.Type.BODY, Typeset.ellipsized(Tokens.Type.BODY, line, right - left),
-                left, y, Tokens.Color.INK_SECONDARY);
-            y += Tokens.Type.BODY.leading();
+        int budget = DETAIL_LINES;
+        for (String detail : entry.details()) {
+            if (budget == 0) {
+                break;
+            }
+            List<String> lines = Typeset.lines(Tokens.Type.BODY, detail, right - left, budget);
+            for (String line : lines) {
+                Typeset.draw(painter, Tokens.Type.BODY, line, left, y, Tokens.Color.INK_SECONDARY);
+                y += Tokens.Type.BODY.leading();
+            }
+            budget -= lines.size();
         }
-        painter.popClip();
 
         if (!facts.isEmpty()) {
             y += Tokens.Space.COZY;
@@ -204,8 +210,13 @@ public final class ServerMenuScreen extends SurfaceScreen {
             y += Tokens.Space.COZY;
             Typeset.draw(painter, Tokens.Type.LABEL, "현재 정보", left, y,
                 Tokens.Color.INK_TERTIARY);
+            int headY = y;
             y += Tokens.Type.LABEL.leading() + Tokens.Space.SNUG;
-            drawFacts(painter, left, right, y, context.bottom() - Tokens.Space.COZY);
+            int shown = drawFacts(painter, left, right, y, context.bottom() - Tokens.Space.COZY);
+            if (shown < facts.size()) {
+                Typeset.drawRight(painter, Tokens.Type.LABEL, "외 " + (facts.size() - shown) + "개", right,
+                    headY, Tokens.Color.INK_TERTIARY);
+            }
         }
     }
 
@@ -226,35 +237,40 @@ public final class ServerMenuScreen extends SurfaceScreen {
     /**
      * The facts, each its name and its value (the first detail). A value short enough to share
      * the line sits on the right; a longer one, which a server sends as a sentence, goes under
-     * its name on up to {@link #FACT_VALUE_LINES} lines. Whatever still does not fit ends in an
-     * ellipsis, and a fact that would not fit whole below the last one is left out.
+     * its name on as many of {@link #FACT_VALUE_LINES} lines as the panel has left, and whatever
+     * still does not fit ends in an ellipsis. Returns how many facts it drew; the rest did not
+     * fit even as a name and one line.
      */
-    private void drawFacts(Painter painter, int left, int right, int top, int bottom) {
+    private int drawFacts(Painter painter, int left, int right, int top, int bottom) {
         int width = right - left;
         int y = top;
+        int shown = 0;
         for (ServerMenuEntry fact : facts) {
             String value = fact.details().isEmpty() ? "" : fact.details().getFirst();
             int labelW = Typeset.width(Tokens.Type.BODY, fact.label());
             int valueW = Typeset.width(Tokens.Type.BODY_STRONG, value);
-            boolean shared = labelW + Tokens.Space.COZY + valueW <= width;
-            List<String> lines = shared || value.isEmpty() ? List.of()
-                : Typeset.lines(Tokens.Type.BODY_STRONG, value, width, FACT_VALUE_LINES);
-            int height = Tokens.Type.BODY.leading() + lines.size() * Tokens.Type.BODY_STRONG.leading();
-            if (y + height > bottom) {
-                return;
+            boolean shared = value.isEmpty() || labelW + Tokens.Space.COZY + valueW <= width;
+            int room = (bottom - y - Tokens.Type.BODY.leading()) / Tokens.Type.BODY_STRONG.leading();
+            if (room < 0 || !shared && room < 1) {
+                break;
             }
             Typeset.draw(painter, Tokens.Type.BODY, Typeset.ellipsized(Tokens.Type.BODY, fact.label(), width),
                 left, y, Tokens.Color.INK_SECONDARY);
+            y += Tokens.Type.BODY.leading();
             if (shared) {
-                Typeset.drawRight(painter, Tokens.Type.BODY_STRONG, value, right, y, Tokens.Color.INK_PRIMARY);
+                Typeset.drawRight(painter, Tokens.Type.BODY_STRONG, value, right,
+                    y - Tokens.Type.BODY.leading(), Tokens.Color.INK_PRIMARY);
+            } else {
+                for (String line : Typeset.lines(Tokens.Type.BODY_STRONG, value, width,
+                        Math.min(FACT_VALUE_LINES, room))) {
+                    Typeset.draw(painter, Tokens.Type.BODY_STRONG, line, left, y, Tokens.Color.INK_PRIMARY);
+                    y += Tokens.Type.BODY_STRONG.leading();
+                }
             }
-            for (int i = 0; i < lines.size(); i++) {
-                Typeset.draw(painter, Tokens.Type.BODY_STRONG, lines.get(i), left,
-                    y + Tokens.Type.BODY.leading() + i * Tokens.Type.BODY_STRONG.leading(),
-                    Tokens.Color.INK_PRIMARY);
-            }
-            y += height + Tokens.Space.TIGHT;
+            y += Tokens.Space.TIGHT;
+            shown++;
         }
+        return shown;
     }
 
     private void footer(Painter painter) {
@@ -328,10 +344,10 @@ public final class ServerMenuScreen extends SurfaceScreen {
             return "클릭  ·  Shift+클릭 보조 동작";
         }
         if (left) {
-            return "클릭하여 실행";
+            return "클릭하면 실행돼요";
         }
         if (shift) {
-            return "Shift+클릭하여 실행";
+            return "Shift+클릭하면 실행돼요";
         }
         return "읽기 전용";
     }
