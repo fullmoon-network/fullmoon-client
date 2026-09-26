@@ -85,7 +85,7 @@ public final class MenuIcons {
         "..............",
     };
 
-    /** The moon with wagered coins streaking down past it. */
+    /** Pachinko: a moonlit bead dropping past the pins. The server's game id is still moonfall. */
     private static final String[] MOONFALL = {
         "..............",
         "...kkkk.......",
