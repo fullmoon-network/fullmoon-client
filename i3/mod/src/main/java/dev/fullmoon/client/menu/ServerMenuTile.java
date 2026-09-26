@@ -83,10 +83,12 @@ final class ServerMenuTile extends Widget {
         int labelY = entry.details().isEmpty() || box.h() < 42
             ? Typeset.centred(Tokens.Type.BODY_STRONG, box.y(), box.h())
             : box.midY() - Tokens.Type.BODY_STRONG.leading();
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG, entry.label(), left, labelY,
+        Typeset.draw(painter, Tokens.Type.BODY_STRONG,
+            Typeset.ellipsized(Tokens.Type.BODY_STRONG, entry.label(), textWidth), left, labelY,
             Tokens.Color.INK_PRIMARY);
         if (!entry.details().isEmpty() && box.h() >= 42) {
-            Typeset.draw(painter, Tokens.Type.LABEL, entry.details().getFirst(), left,
+            Typeset.draw(painter, Tokens.Type.LABEL,
+                Typeset.ellipsized(Tokens.Type.LABEL, entry.details().getFirst(), textWidth), left,
                 labelY + Tokens.Type.BODY_STRONG.leading() + Tokens.Space.TIGHT,
                 Tokens.Color.INK_TERTIARY);
         }

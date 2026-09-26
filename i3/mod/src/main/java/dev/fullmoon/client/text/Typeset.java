@@ -1,7 +1,10 @@
 package dev.fullmoon.client.text;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.function.ToIntFunction;
 
 import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.render.Painter;
@@ -33,6 +36,7 @@ public final class Typeset {
      * above its origin and a band that wants a face centred in it has to work from here.
      */
     private static final int ASCENT = 7;
+    private static final String ELLIPSIS = "…";
 
     private static final Map<String, Style> STYLES = new HashMap<>();
     private static final Map<String, Integer> DIGIT_CELLS = new HashMap<>();
@@ -59,15 +63,61 @@ public final class Typeset {
 
     /** The longest complete-code-point prefix that fits inside {@code width}. */
     public static String fittingPrefix(Tokens.Type.Role role, String text, int width) {
+        return fittingPrefix(t -> width(role, t), text, width);
+    }
+
+    /** The text cut to fit {@code width}, ending in an ellipsis when anything was cut. */
+    public static String ellipsized(Tokens.Type.Role role, String text, int width) {
+        return ellipsized(t -> width(role, t), text, width);
+    }
+
+    /**
+     * The text broken into at most {@code maxLines} lines no wider than {@code width}: at a space
+     * where one fits, inside a word where none does. A last line that had to be cut ends in an
+     * ellipsis, so nothing is ever silently clipped.
+     */
+    public static List<String> lines(Tokens.Type.Role role, String text, int width, int maxLines) {
+        return lines(t -> width(role, t), text, width, maxLines);
+    }
+
+    static String fittingPrefix(ToIntFunction<String> measure, String text, int width) {
         int end = 0;
         while (end < text.length()) {
             int next = end + Character.charCount(text.codePointAt(end));
-            if (width(role, text.substring(0, next)) > width) {
+            if (measure.applyAsInt(text.substring(0, next)) > width) {
                 break;
             }
             end = next;
         }
         return text.substring(0, end);
+    }
+
+    static String ellipsized(ToIntFunction<String> measure, String text, int width) {
+        if (measure.applyAsInt(text) <= width) {
+            return text;
+        }
+        return fittingPrefix(measure, text, width - measure.applyAsInt(ELLIPSIS)).stripTrailing() + ELLIPSIS;
+    }
+
+    static List<String> lines(ToIntFunction<String> measure, String text, int width, int maxLines) {
+        List<String> lines = new ArrayList<>();
+        String rest = text.strip();
+        while (!rest.isEmpty() && lines.size() < maxLines) {
+            if (lines.size() == maxLines - 1) {
+                lines.add(ellipsized(measure, rest, width));
+                break;
+            }
+            String fit = fittingPrefix(measure, rest, width);
+            if (fit.length() == rest.length()) {
+                lines.add(rest);
+                break;
+            }
+            int space = fit.lastIndexOf(' ');
+            int cut = space > 0 ? space : Math.max(fit.length(), Character.charCount(rest.codePointAt(0)));
+            lines.add(rest.substring(0, cut).stripTrailing());
+            rest = rest.substring(cut).stripLeading();
+        }
+        return lines;
     }
 
     /** Draws left-aligned from the text's top-left corner. */

@@ -40,7 +40,8 @@ import net.minecraft.server.network.EventLoopGroupHolder;
  * both settings screens, language, accessibility and quit.
  */
 public final class FullmoonTitleScreen extends SurfaceScreen {
-    private static final String LOBBY = "play.fullmoon.ink";
+    /** Capture and rehearsal rigs point this at their own server so they never ping production. */
+    private static final String LOBBY = System.getProperty("fullmoon.lobby", "play.fullmoon.ink");
     private static final int WIDE = 800;
     /** A lobby that has not answered by now is reported as not answering. */
     private static final long PING_PATIENCE_MILLIS = 8_000;

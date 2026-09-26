@@ -64,8 +64,12 @@ public final class CasinoResultOverlay {
         int y = painter.height() - HEIGHT - BOTTOM_CLEARANCE;
         int top = y + Math.round(HEIGHT * hidden(age));
         boolean settled = age >= SETTLE;
+        if (top >= y + HEIGHT) {
+            return;
+        }
 
-        painter.pushClip(x, y, width, HEIGHT);
+        // One pixel of slack all round: the verdict ticks sit just outside the card's edge.
+        painter.pushClip(x - 1, y - 1, width + 2, HEIGHT + 2);
         painter.fill(x, top, width, HEIGHT, Tokens.Radius.NONE,
             Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.90f));
         painter.border(x, top, width, HEIGHT, Tokens.Radius.NONE,
@@ -241,7 +245,7 @@ public final class CasinoResultOverlay {
 
     static String title(CasinoProtocol.Result result, boolean settled) {
         if (settled) {
-            return result.won() ? "당첨이에요" : "아쉽지만 다음 기회에요";
+            return result.won() ? "당첨이에요" : "아쉽지만 다음 기회예요";
         }
         return switch (result.game()) {
             case COINFLIP -> "동전이 돌고 있어요";

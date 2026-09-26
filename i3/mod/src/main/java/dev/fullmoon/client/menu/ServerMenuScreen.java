@@ -24,6 +24,7 @@ import net.minecraft.network.chat.Component;
 
 public final class ServerMenuScreen extends SurfaceScreen {
     private static final long REQUEST_TIMEOUT_MILLIS = 5_000;
+    private static final int FACT_VALUE_LINES = 2;
 
     private final Screen parent;
     private final MenuProtocol.Open menu;
@@ -177,7 +178,8 @@ public final class ServerMenuScreen extends SurfaceScreen {
         int copyX = left + 28 + Tokens.Space.COZY;
         int clipTop = Typeset.capTop(Tokens.Type.HEADING, y);
         painter.pushClip(copyX, clipTop, right - copyX, y + 30 - clipTop);
-        Typeset.draw(painter, Tokens.Type.HEADING, entry.label(), copyX, y,
+        Typeset.draw(painter, Tokens.Type.HEADING,
+            Typeset.ellipsized(Tokens.Type.HEADING, entry.label(), right - copyX), copyX, y,
             Tokens.Color.INK_PRIMARY);
         Typeset.draw(painter, Tokens.Type.LABEL, actionHint(entry.item()), copyX,
             y + Tokens.Type.HEADING.leading(), Tokens.Color.ACCENT);
@@ -190,8 +192,8 @@ public final class ServerMenuScreen extends SurfaceScreen {
 
         painter.pushClip(left, y, right - left, Tokens.Type.BODY.leading() * 3);
         for (String line : entry.details().stream().limit(3).toList()) {
-            Typeset.draw(painter, Tokens.Type.BODY, line, left, y,
-                Tokens.Color.INK_SECONDARY);
+            Typeset.draw(painter, Tokens.Type.BODY, Typeset.ellipsized(Tokens.Type.BODY, line, right - left),
+                left, y, Tokens.Color.INK_SECONDARY);
             y += Tokens.Type.BODY.leading();
         }
         painter.popClip();
@@ -221,23 +223,37 @@ public final class ServerMenuScreen extends SurfaceScreen {
         return y + Math.round(r * 2) + Tokens.Space.COZY;
     }
 
-    /** One fact per line: its name on the left and its value, the first detail, on the right. */
+    /**
+     * The facts, each its name and its value (the first detail). A value short enough to share
+     * the line sits on the right; a longer one, which a server sends as a sentence, goes under
+     * its name on up to {@link #FACT_VALUE_LINES} lines. Whatever still does not fit ends in an
+     * ellipsis, and a fact that would not fit whole below the last one is left out.
+     */
     private void drawFacts(Painter painter, int left, int right, int top, int bottom) {
-        int height = Tokens.Type.BODY.leading() + Tokens.Space.TIGHT;
-        for (int index = 0; index < facts.size(); index++) {
-            ServerMenuEntry fact = facts.get(index);
-            int y = top + index * height;
-            if (y + Tokens.Type.BODY.leading() > bottom) {
+        int width = right - left;
+        int y = top;
+        for (ServerMenuEntry fact : facts) {
+            String value = fact.details().isEmpty() ? "" : fact.details().getFirst();
+            int labelW = Typeset.width(Tokens.Type.BODY, fact.label());
+            int valueW = Typeset.width(Tokens.Type.BODY_STRONG, value);
+            boolean shared = labelW + Tokens.Space.COZY + valueW <= width;
+            List<String> lines = shared || value.isEmpty() ? List.of()
+                : Typeset.lines(Tokens.Type.BODY_STRONG, value, width, FACT_VALUE_LINES);
+            int height = Tokens.Type.BODY.leading() + lines.size() * Tokens.Type.BODY_STRONG.leading();
+            if (y + height > bottom) {
                 return;
             }
-            String value = fact.details().isEmpty() ? "" : fact.details().getFirst();
-            int valueW = Math.min(Typeset.width(Tokens.Type.BODY_STRONG, value), (right - left) * 3 / 5);
-            painter.pushClip(left, y, right - left - valueW - Tokens.Space.SNUG, height);
-            Typeset.draw(painter, Tokens.Type.BODY, fact.label(), left, y, Tokens.Color.INK_SECONDARY);
-            painter.popClip();
-            painter.pushClip(right - valueW, y, valueW, height);
-            Typeset.drawRight(painter, Tokens.Type.BODY_STRONG, value, right, y, Tokens.Color.INK_PRIMARY);
-            painter.popClip();
+            Typeset.draw(painter, Tokens.Type.BODY, Typeset.ellipsized(Tokens.Type.BODY, fact.label(), width),
+                left, y, Tokens.Color.INK_SECONDARY);
+            if (shared) {
+                Typeset.drawRight(painter, Tokens.Type.BODY_STRONG, value, right, y, Tokens.Color.INK_PRIMARY);
+            }
+            for (int i = 0; i < lines.size(); i++) {
+                Typeset.draw(painter, Tokens.Type.BODY_STRONG, lines.get(i), left,
+                    y + Tokens.Type.BODY.leading() + i * Tokens.Type.BODY_STRONG.leading(),
+                    Tokens.Color.INK_PRIMARY);
+            }
+            y += height + Tokens.Space.TIGHT;
         }
     }
 

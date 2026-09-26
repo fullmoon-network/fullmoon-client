@@ -65,7 +65,7 @@ final class CasinoResultOverlayTest {
 
         assertEquals("주사위를 굴리고 있어요", CasinoResultOverlay.title(dice, false));
         assertEquals("당첨이에요", CasinoResultOverlay.title(dice, true));
-        assertEquals("아쉽지만 다음 기회에요", CasinoResultOverlay.title(wheel, true));
+        assertEquals("아쉽지만 다음 기회예요", CasinoResultOverlay.title(wheel, true));
         assertEquals("목표 50 미만이 나오면 이겨요", CasinoResultOverlay.detail(dice, false));
         assertEquals("굴림 42 · 목표 50 미만", CasinoResultOverlay.detail(dice, true));
         assertEquals("빨강에 걸었어요", CasinoResultOverlay.detail(wheel, false));

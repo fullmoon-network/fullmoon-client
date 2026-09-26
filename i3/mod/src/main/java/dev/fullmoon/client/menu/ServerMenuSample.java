@@ -24,7 +24,7 @@ public final class ServerMenuSample {
         {"type":"menu_open","proto":1,"id":"casino","revision":1,"title":"카지노","rows":6,"items":[
           {"slot":10,"label":"동전","material":"minecraft:gold_nugget","count":1,"actions":["left"],
            "icon":"fullmoon.casino.coinflip","chance":0.5,
-           "details":["앞일까 뒤일까, 반반 승부","배당 1.98배 · 한 판 최대 10,000원"]},
+           "details":["던져서 앞이나 뒤나. 반반에 가장 가까운 승부예요","배당 1.98배 · 한 판 최대 10,000원"]},
           {"slot":11,"label":"주사위","material":"minecraft:bone","count":1,"actions":["left"],
            "icon":"fullmoon.casino.dice","chance":0.5,
            "details":["목표가 낮을수록 배당이 커요","목표 50 · 배당 1.96배"]},
@@ -41,7 +41,10 @@ public final class ServerMenuSample {
            "icon":"fullmoon.casino.jackpot","chance":0.004,
            "details":["티켓을 사고 추첨을 기다려요","누적 3,200,000원"]},
           {"slot":30,"label":"오늘의 나","material":"minecraft:paper","count":1,"actions":[],"details":["+2,400원"]},
-          {"slot":31,"label":"하우스 몫","material":"minecraft:paper","count":1,"actions":[],"details":["1.0%"]},
+          {"slot":31,"label":"하우스 몫","material":"minecraft:paper","count":1,"actions":[],
+           "details":["길게 하면 하우스가 이겨요. 그 차이가 이만큼이에요.","동전: 1.0%"]},
+          {"slot":33,"label":"아직 결과가 없어요","material":"minecraft:paper","count":1,"actions":[],
+           "details":["던지기를 누르면 여기 나와요"]},
           {"slot":32,"label":"내 잔액","material":"minecraft:paper","count":1,"actions":[],"details":["128,450원"]},
           {"slot":49,"label":"닫기","material":"minecraft:barrier","count":1,"actions":["left"],"details":[]}
         ]}
