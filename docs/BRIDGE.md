@@ -41,6 +41,7 @@ Additive fields that old readers can safely ignore do not require a protocol bum
 | S -> C | `menu_open` | Open or replace a server-owned native menu snapshot. |
 | C -> S | `menu_action` | Request one action advertised by the current menu snapshot. |
 | C -> S | `menu_close` | Notify the server that the current native menu was dismissed. |
+| S -> C | `casino_result` | Present one bet the server has already settled. |
 
 ### Waypoints
 
@@ -117,6 +118,37 @@ Casino, shops, selling, enhancement, potential, guild, mail, titles, raid select
 tutorial prompts, crafting, and lift selection use this native path. A synchronized player-to-player
 item trade remains a real inventory container because it transfers item stacks rather than selecting
 server menu commands.
+
+### Casino results
+
+The server pushes `casino_result` after the bet has settled and the money has moved. The payload
+is presentation only: the client plays a short reveal of an outcome it cannot influence, and the
+server's chat line stays the record, so a client that drops or rejects the event loses nothing.
+
+```json
+{"type":"casino_result","game":"slots","won":true,"payout_multiplier":12,
+ "detail":{"reels":["moon","moon","moon"],"matched":3}}
+{"type":"casino_result","game":"dice","won":false,"payout_multiplier":0,
+ "detail":{"roll":73,"target":50}}
+{"type":"casino_result","game":"roulette","won":true,"payout_multiplier":2,
+ "detail":{"pocket":17,"bet_type":"black"}}
+{"type":"casino_result","game":"coinflip","won":true,"payout_multiplier":1.98}
+```
+
+Rules:
+
+1. `proto` may be omitted and then means the current version; when present it must match the
+   accepted server protocol, like every operational message.
+2. `game` is `coinflip`, `dice`, `roulette`, or `slots`. Other games are rejected, not guessed at.
+3. `payout_multiplier` is finite, `0..1000`, and positive when `won` is true. A loss carries `0`.
+4. `dice`: `roll` is `0..99`, `target` is `0..100`, and the bet wins when `roll < target`.
+5. `roulette`: `pocket` is `0..36` on a single-zero wheel. `bet_type` is the server's own id
+   (`red`, `black`, `even`, `odd`, `low`, `high`, `straight:N`, `column:N`, `dozen:N`), at most
+   32 characters; the client names the known ids and shows any other id as sent.
+6. `slots`: `reels` holds 1 to 5 symbol ids matching `[a-z0-9][a-z0-9_-]{0,31}`, and `matched`
+   is the largest count of one symbol, `1..reels`.
+7. A newer result replaces the one on screen. The card lives for 4.5 seconds and is also drawn
+   over open screens, since the bet is placed from a menu.
 
 ## Vanilla fallback
 
