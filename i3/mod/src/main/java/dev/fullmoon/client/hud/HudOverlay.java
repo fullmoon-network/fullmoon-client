@@ -19,11 +19,15 @@ public final class HudOverlay {
 
     public static void init() {
         net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(ID, HudOverlay::render);
+        ScoreboardSidebar.init();
         // A bet is placed from a casino menu, so the result lands while that screen is still up;
         // the HUD layer is skipped under any screen and would hold the card until it expired.
         ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) ->
-            ScreenEvents.afterExtract(screen).register((current, gfx, mouseX, mouseY, delta) ->
-                CasinoResultOverlay.draw(new Painter(gfx), System.currentTimeMillis())));
+            ScreenEvents.afterExtract(screen).register((current, gfx, mouseX, mouseY, delta) -> {
+                Painter painter = new Painter(gfx);
+                ScoreboardSidebar.drawFixture(painter);
+                CasinoResultOverlay.draw(painter, System.currentTimeMillis());
+            }));
     }
 
     private static void render(GuiGraphicsExtractor gfx, DeltaTracker deltaTracker) {

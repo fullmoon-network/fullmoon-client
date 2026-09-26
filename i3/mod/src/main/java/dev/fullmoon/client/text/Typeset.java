@@ -61,6 +61,24 @@ public final class Typeset {
         return font().width(say(role, text));
     }
 
+    /** A server's own text set in the role's face, keeping the colours and styles it carries. */
+    public static Component restyle(Tokens.Type.Role role, Component text) {
+        return Component.empty().withStyle(style(role)).append(text);
+    }
+
+    public static int width(Tokens.Type.Role role, Component text) {
+        return font().width(restyle(role, text));
+    }
+
+    /** Draws server text left-aligned; {@code color} is only for the parts it leaves uncoloured. */
+    public static int draw(Painter painter, Tokens.Type.Role role, Component text, int x, int y, int color) {
+        Component styled = restyle(role, text);
+        painter.gfx().nextStratum();
+        painter.gfx().text(font(), styled, x, y, color, false);
+        painter.gfx().nextStratum();
+        return font().width(styled);
+    }
+
     /** The longest complete-code-point prefix that fits inside {@code width}. */
     public static String fittingPrefix(Tokens.Type.Role role, String text, int width) {
         return fittingPrefix(t -> width(role, t), text, width);
