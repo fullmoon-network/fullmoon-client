@@ -72,6 +72,10 @@ public final class FullmoonChannel {
         return BridgeState.liveWarpOutcome(STATE.get(), now);
     }
 
+    public static Optional<BridgeState.CasinoReveal> casino(long now) {
+        return BridgeState.liveCasino(STATE.get(), now);
+    }
+
     public static BridgeState state() {
         return STATE.get();
     }
@@ -160,6 +164,9 @@ public final class FullmoonChannel {
         } else if (message instanceof BridgeProtocol.TpResult result && after != before) {
             LOG.info("Received fullmoon:v1 warp result {} ({})", result.id(),
                 result.ok() ? "accepted" : result.reason());
+        } else if (message instanceof CasinoProtocol.Result result && after != before) {
+            LOG.info("Received fullmoon:v1 casino result {} ({})", result.game().wireName(),
+                result.won() ? "won x" + result.payoutMultiplier() : "lost");
         } else if (message instanceof BridgeProtocol.ScreenOpen open) {
             openScreen(before, open);
         } else if (message instanceof MenuProtocol.Open open) {

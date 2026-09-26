@@ -11,7 +11,7 @@ import dev.fullmoon.client.render.Painter;
  * The server names the mark through the menu item's icon id; anything it does
  * not name falls back to the item render in {@link ServerMenuEntry}.
  */
-final class MenuIcons {
+public final class MenuIcons {
     private static final float CELL_INSET = 0.92f;
 
     /** A gold coin: milled rim, top-left shine, crescent stamped in the face. */
@@ -125,7 +125,7 @@ final class MenuIcons {
     private MenuIcons() {}
 
     /** Draws the mark centred on {@code cx},{@code cy} in a {@code size} box; false if unknown. */
-    static boolean draw(Painter painter, String icon, float cx, float cy, float size) {
+    public static boolean draw(Painter painter, String icon, float cx, float cy, float size) {
         String[] art = switch (icon) {
             case "fullmoon.casino.coinflip" -> COIN;
             case "fullmoon.casino.dice" -> DICE;

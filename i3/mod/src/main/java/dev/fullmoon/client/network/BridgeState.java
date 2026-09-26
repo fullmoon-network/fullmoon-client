@@ -12,11 +12,13 @@ public record BridgeState(
         Optional<ActiveNotice> notice,
         List<BridgeProtocol.Waypoint> waypoints,
         Optional<PendingWarp> pendingWarp,
-        Optional<WarpOutcome> warpOutcome) {
+        Optional<WarpOutcome> warpOutcome,
+        Optional<CasinoReveal> casino) {
     public static final long HANDSHAKE_TIMEOUT_MILLIS = 5_000;
     public static final long METRICS_STALE_MILLIS = 5_000;
     public static final long WARP_TIMEOUT_MILLIS = 5_000;
     public static final long WARP_OUTCOME_MILLIS = 4_000;
+    public static final long CASINO_CARD_MILLIS = 4_500;
 
     public BridgeState {
         Objects.requireNonNull(mode, "mode");
@@ -25,6 +27,7 @@ public record BridgeState(
         waypoints = List.copyOf(Objects.requireNonNull(waypoints, "waypoints"));
         Objects.requireNonNull(pendingWarp, "pendingWarp");
         Objects.requireNonNull(warpOutcome, "warpOutcome");
+        Objects.requireNonNull(casino, "casino");
     }
 
     public enum Mode {
@@ -69,6 +72,12 @@ public record BridgeState(
         }
     }
 
+    public record CasinoReveal(CasinoProtocol.Result result, long receivedAt) {
+        public CasinoReveal {
+            Objects.requireNonNull(result, "result");
+        }
+    }
+
     public static BridgeState disconnected() {
         return empty(Mode.DISCONNECTED, 0, 0);
     }
@@ -99,6 +108,9 @@ public record BridgeState(
         if (message instanceof BridgeProtocol.TpResult result) {
             return warpResult(state, result, now);
         }
+        if (message instanceof CasinoProtocol.Result result) {
+            return casino(state, new CasinoReveal(result, now));
+        }
         return state;
     }
 
@@ -110,7 +122,8 @@ public record BridgeState(
         }
         return new BridgeState(
             state.mode, state.serverProtocol, state.connectedAt, state.metrics, state.notice,
-            state.waypoints, Optional.of(new PendingWarp(waypointId, now)), Optional.empty());
+            state.waypoints, Optional.of(new PendingWarp(waypointId, now)), Optional.empty(),
+            state.casino);
     }
 
     public static BridgeState failWarp(
@@ -155,6 +168,11 @@ public record BridgeState(
             value -> now - value.receivedAt < WARP_OUTCOME_MILLIS);
     }
 
+    public static Optional<CasinoReveal> liveCasino(BridgeState state, long now) {
+        Objects.requireNonNull(state, "state");
+        return state.casino.filter(value -> now - value.receivedAt < CASINO_CARD_MILLIS);
+    }
+
     private static BridgeState welcome(BridgeState state, BridgeProtocol.Welcome welcome) {
         if (state.mode != Mode.WAITING) {
             return state;
@@ -167,7 +185,7 @@ public record BridgeState(
         }
         return new BridgeState(
             Mode.ACTIVE, welcome.proto(), state.connectedAt, Optional.empty(), Optional.empty(),
-            welcome.waypoints(), Optional.empty(), Optional.empty());
+            welcome.waypoints(), Optional.empty(), Optional.empty(), Optional.empty());
     }
 
     private static BridgeState metrics(
@@ -180,7 +198,7 @@ public record BridgeState(
             sync.revision(), sync.ticksPerSecond(), sync.tickMilliseconds(), now);
         return new BridgeState(
             state.mode, state.serverProtocol, state.connectedAt, Optional.of(next), state.notice,
-            state.waypoints, state.pendingWarp, state.warpOutcome);
+            state.waypoints, state.pendingWarp, state.warpOutcome, state.casino);
     }
 
     private static BridgeState notice(
@@ -190,14 +208,14 @@ public record BridgeState(
             now, now + incoming.durationMillis());
         return new BridgeState(
             state.mode, state.serverProtocol, state.connectedAt, state.metrics, Optional.of(next),
-            state.waypoints, state.pendingWarp, state.warpOutcome);
+            state.waypoints, state.pendingWarp, state.warpOutcome, state.casino);
     }
 
     private static BridgeState waypoints(
             BridgeState state, List<BridgeProtocol.Waypoint> waypoints) {
         return new BridgeState(
             state.mode, state.serverProtocol, state.connectedAt, state.metrics, state.notice,
-            waypoints, state.pendingWarp, state.warpOutcome);
+            waypoints, state.pendingWarp, state.warpOutcome, state.casino);
     }
 
     private static BridgeState warpResult(
@@ -210,15 +228,21 @@ public record BridgeState(
             new WarpOutcome(result.id(), result.ok(), result.reason(), now));
     }
 
+    private static BridgeState casino(BridgeState state, CasinoReveal reveal) {
+        return new BridgeState(
+            state.mode, state.serverProtocol, state.connectedAt, state.metrics, state.notice,
+            state.waypoints, state.pendingWarp, state.warpOutcome, Optional.of(reveal));
+    }
+
     private static BridgeState withWarpOutcome(BridgeState state, WarpOutcome outcome) {
         return new BridgeState(
             state.mode, state.serverProtocol, state.connectedAt, state.metrics, state.notice,
-            state.waypoints, Optional.empty(), Optional.of(outcome));
+            state.waypoints, Optional.empty(), Optional.of(outcome), state.casino);
     }
 
     private static BridgeState empty(Mode mode, int serverProtocol, long connectedAt) {
         return new BridgeState(
             mode, serverProtocol, connectedAt, Optional.empty(), Optional.empty(), List.of(),
-            Optional.empty(), Optional.empty());
+            Optional.empty(), Optional.empty(), Optional.empty());
     }
 }

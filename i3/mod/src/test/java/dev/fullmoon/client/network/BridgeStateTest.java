@@ -191,6 +191,36 @@ final class BridgeStateTest {
         assertEquals(19.95, synced.metrics().orElseThrow().ticksPerSecond());
     }
 
+    @Test
+    void casinoResultsNeedAnActiveMatchingSession() {
+        CasinoProtocol.Result coin = coin(1, true);
+
+        BridgeState waiting = BridgeState.connected(1_000);
+
+        assertSame(waiting, BridgeState.apply(waiting, coin, 1_050));
+        assertTrue(BridgeState.apply(active(), coin(2, true), 2_000).casino().isEmpty());
+        assertEquals(coin, BridgeState.apply(active(), coin, 2_000).casino().orElseThrow().result());
+    }
+
+    @Test
+    void aNewerCasinoResultReplacesTheCardAndExpiresExactly() {
+        BridgeState first = BridgeState.apply(active(), coin(1, true), 2_000);
+        BridgeState second = BridgeState.apply(first, coin(1, false), 3_000);
+        long expiry = 3_000 + BridgeState.CASINO_CARD_MILLIS;
+
+        assertFalse(BridgeState.liveCasino(second, expiry - 1).orElseThrow().result().won());
+        assertTrue(BridgeState.liveCasino(second, expiry).isEmpty());
+    }
+
+    @Test
+    void aReconnectStartsWithoutACard() {
+        BridgeState shown = BridgeState.apply(active(), coin(1, true), 2_000);
+
+        assertTrue(shown.casino().isPresent());
+        assertTrue(BridgeState.disconnected().casino().isEmpty());
+        assertTrue(active().casino().isEmpty());
+    }
+
     private static BridgeState active() {
         return BridgeState.apply(
             BridgeState.connected(1_000), new BridgeProtocol.Welcome(1), 1_100);
@@ -210,5 +240,10 @@ final class BridgeStateTest {
         return new BridgeProtocol.Notice(
             1, id, "Maintenance", "Restart in five minutes",
             BridgeProtocol.Severity.WARNING, durationMillis);
+    }
+
+    private static CasinoProtocol.Result coin(int proto, boolean won) {
+        return new CasinoProtocol.Result(
+            proto, CasinoProtocol.Game.COINFLIP, won, won ? 2 : 0, new CasinoProtocol.Coin());
     }
 }

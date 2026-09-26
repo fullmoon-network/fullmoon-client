@@ -73,6 +73,16 @@ j('');
 j('        private Duration() {}');
 j('    }');
 j('');
+j('    public static final class Easing {');
+j('        /** Control points of a cubic Bézier from (0,0) to (1,1), as CSS cubic-bezier() takes them. */');
+j('        public record Curve(float x1, float y1, float x2, float y2) {}');
+j('');
+for (const [k, v] of Object.entries(tokens.motion.easing))
+  j(`        public static final Curve ${CONST(k)} = new Curve(${v.map((n) => n.toFixed(2) + 'f').join(', ')});`);
+j('');
+j('        private Easing() {}');
+j('    }');
+j('');
 j('    public static final class Layer {');
 for (const [k, v] of Object.entries(tokens.layer).filter(([k]) => !k.startsWith('$')))
   j(`        public static final int ${CONST(k)} = ${v};`);

@@ -209,6 +209,7 @@ public final class BridgeProtocol {
             case "screen_open" -> decodeScreenOpen(json);
             case "menu_open" -> MenuProtocol.decodeOpen(json);
             case "menu_close" -> MenuProtocol.decodeClose(json);
+            case "casino_result" -> CasinoProtocol.decodeResult(json);
             default -> decodeUnknown(json, type);
         };
     }
