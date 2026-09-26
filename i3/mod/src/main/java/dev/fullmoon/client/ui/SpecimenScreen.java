@@ -54,6 +54,7 @@ public final class SpecimenScreen extends DevScreen {
 
         int leftBottom = shapeRail(painter, body.x(),
             typeRoll(painter, body.x(), body.y(), leftW) + Tokens.Space.SECTION, leftW);
+        leftBottom = palace(painter, body.x(), leftBottom + Tokens.Space.SECTION, leftW);
         int rightBottom = figures(painter, rightX,
             colorBands(painter, rightX, body.y(), rightW) + Tokens.Space.SECTION, rightW);
 
@@ -149,6 +150,51 @@ public final class SpecimenScreen extends DevScreen {
                 cx + cellW / 2, cursor + cellH + Tokens.Space.SNUG, Tokens.Color.INK_TERTIARY);
         }
         return cursor + cellH + Tokens.Space.SNUG + Tokens.Type.LABEL.leading();
+    }
+
+    /**
+     * The palace vocabulary on one small panel, then the moon at five phases. The phases are
+     * the ones the casino and the clock reach — a sliver, a crescent, the half, a gibbous and
+     * the full disc — so a terminator that bends the wrong way shows up here first.
+     */
+    private static int palace(Painter painter, int x, int y, int w) {
+        int cursor = DevChrome.sectionHead(painter, "궁궐 · 달", x, y);
+        int out = Palace.BRACKET_OUTSET;
+        int px = x + out;
+        int py = cursor + out;
+        int pw = w - out * 2;
+        int band = 22;
+        int ph = band + Palace.DANCHEONG_HEIGHT + 30;
+
+        Palace.panel(painter, px, py, pw, ph);
+        painter.fill(px + 1, py + 1, pw - 2, band - 1, Tokens.Color.SURFACE_RAISED);
+        Palace.lattice(painter, px + 1, py + 1, pw - 2, band - 1);
+        int seal = band - 8;
+        Palace.seal(painter, px + 6, py + 4, seal);
+        Typeset.draw(painter, Tokens.Type.HEADING, "만월궁",
+            px + 6 + seal + Tokens.Space.COZY, Typeset.centred(Tokens.Type.HEADING, py, band), Tokens.Color.INK_PRIMARY);
+        Palace.dancheong(painter, px + 1, py + band, pw - 2);
+
+        int rowY = py + band + Palace.DANCHEONG_HEIGHT + 8;
+        String[] rows = {"선택한 줄", "다른 줄"};
+        for (int i = 0; i < rows.length; i++) {
+            int ry = rowY + i * 11;
+            Palace.marker(painter, px + 10, ry + Typeset.capHeight(Tokens.Type.BODY) / 2.0f + 1, i == 0);
+            Typeset.draw(painter, Tokens.Type.BODY, rows[i], px + 18, ry,
+                i == 0 ? Tokens.Color.INK_PRIMARY : Tokens.Color.INK_SECONDARY);
+        }
+        cursor = py + ph + out + Tokens.Space.LOOSE;
+
+        float[] phases = {0.08f, 0.3f, 0.5f, 0.75f, 1.0f};
+        float r = 9.0f;
+        int cell = w / phases.length;
+        for (int i = 0; i < phases.length; i++) {
+            float cx = x + cell * i + cell / 2.0f;
+            painter.moon(cx, cursor + r, r, phases[i], true, Tokens.Color.MOON_LIT, Tokens.Color.MOON_SHADOW);
+            Typeset.drawCentered(painter, Tokens.Type.LABEL, Math.round(phases[i] * 100) + "%",
+                Math.round(cx), (int) (cursor + r * 2 + Tokens.Space.SNUG), Tokens.Color.INK_TERTIARY);
+        }
+        return (int) (cursor + r * 2 + Tokens.Space.SNUG + Tokens.Type.LABEL.leading());
     }
 
     private static int colorBands(Painter painter, int x, int y, int w) {

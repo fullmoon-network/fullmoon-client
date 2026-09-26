@@ -2,6 +2,7 @@ package dev.fullmoon.client.menu;
 
 import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.render.Painter;
+import dev.fullmoon.client.render.PixelArt;
 
 /**
  * Hand-drawn 14×14 pixel marks for the casino's six games — the same idiom as
@@ -12,8 +13,6 @@ import dev.fullmoon.client.render.Painter;
  * not name falls back to the item render in {@link ServerMenuEntry}.
  */
 public final class MenuIcons {
-    private static final float CELL_INSET = 0.92f;
-
     /** A gold coin: milled rim, top-left shine, crescent stamped in the face. */
     private static final String[] COIN = {
         "..............",
@@ -138,18 +137,7 @@ public final class MenuIcons {
         if (art == null) {
             return false;
         }
-        float cell = size * CELL_INSET / art.length;
-        float left = cx - art.length * cell / 2;
-        float top = cy - art[0].length() * cell / 2;
-        float pad = cell + Math.max(0.02f, cell * 0.02f);
-        for (int row = 0; row < art.length; row++) {
-            for (int col = 0; col < art[row].length(); col++) {
-                int color = color(art[row].charAt(col));
-                if (color != 0) {
-                    painter.fill(left + col * cell, top + row * cell, pad, pad, color);
-                }
-            }
-        }
+        PixelArt.draw(painter, art, cx, cy, size, pixel -> color((char) pixel));
         return true;
     }
 
