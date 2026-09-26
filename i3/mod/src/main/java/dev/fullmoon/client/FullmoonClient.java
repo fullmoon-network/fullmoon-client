@@ -132,10 +132,16 @@ public final class FullmoonClient implements ClientModInitializer {
                         client.setScreen(new FullmoonTitleScreen());
                     }
                 });
-            } else if (screen instanceof FullmoonTitleScreen title && !fixtureShown) {
+            }
+        });
+
+        // The game builds its title screen once more when the loading overlay lifts, so a fixture
+        // opened on the first one would be replaced; wait until nothing is loading.
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (!fixtureShown && client.getOverlay() == null
+                    && client.screen instanceof FullmoonTitleScreen title) {
                 fixtureShown = true;
-                ServerMenuSample.requested().ifPresent(menu ->
-                    client.execute(() -> client.setScreen(new ServerMenuScreen(title, menu))));
+                ServerMenuSample.requested().ifPresent(menu -> client.setScreen(new ServerMenuScreen(title, menu)));
             }
         });
 

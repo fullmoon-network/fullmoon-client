@@ -246,7 +246,10 @@ def capture_framebuffer(d, destination):
         created = list(set(directory.glob("*.png")) - before)
         if created:
             source = max(created, key=lambda path: path.stat().st_mtime_ns)
-            if source.stat().st_size > 0:
+            size = source.stat().st_size
+            # The game writes the file off-thread; a copy taken mid-write is a truncated PNG.
+            time.sleep(0.3)
+            if size > 0 and source.stat().st_size == size:
                 shutil.copy2(source, destination)
                 return
         time.sleep(0.05)
