@@ -54,9 +54,9 @@ public final class SpecimenScreen extends DevScreen {
 
         int leftBottom = shapeRail(painter, body.x(),
             typeRoll(painter, body.x(), body.y(), leftW) + Tokens.Space.SECTION, leftW);
-        leftBottom = palace(painter, body.x(), leftBottom + Tokens.Space.SECTION, leftW);
         int rightBottom = figures(painter, rightX,
             colorBands(painter, rightX, body.y(), rightW) + Tokens.Space.SECTION, rightW);
+        rightBottom = palace(painter, rightX, rightBottom + Tokens.Space.SECTION, rightW);
 
         painter.vRule(body.x() + leftW + Tokens.Space.GUTTER / 2, body.y(),
             Math.max(leftBottom, rightBottom) - body.y(), Tokens.Color.LINE_HAIRLINE);
