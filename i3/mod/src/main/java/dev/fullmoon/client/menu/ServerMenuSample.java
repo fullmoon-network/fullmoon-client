@@ -88,6 +88,30 @@ public final class ServerMenuSample {
             .map(result -> new BridgeState.CasinoReveal((CasinoProtocol.Result) result, now - now % RESULT_LOOP));
     }
 
+    /** The lobby's campus routes as FullmoonBridge sends them (flagship waypoints, pass5). */
+    private static final String CAMPUS = """
+        {"type":"welcome","proto":1,"waypoints":[
+          {"id":"plaza","name":"달빛 광장","icon":"moon","x":0,"y":73,"z":80,"world":"world","group":"광장"},
+          {"id":"portico","name":"로톤다 정문","icon":"moon","x":0,"y":77,"z":10,"world":"world","group":"궁궐"},
+          {"id":"casino","name":"달빛 카지노","icon":"moon","x":39,"y":77,"z":-31,"world":"world","group":"궁궐"},
+          {"id":"archive","name":"기록보관동","icon":"moon","x":-92,"y":73,"z":29,"world":"world","group":"궁궐"},
+          {"id":"moon_gate","name":"달빛 문","icon":"moon","x":0,"y":74,"z":-112,"world":"world","group":"문"},
+          {"id":"water_garden","name":"물의 정원","icon":"moon","x":75,"y":73,"z":50,"world":"world","group":"정원"},
+          {"id":"exedra","name":"남쪽 원형극장","icon":"moon","x":4,"y":73,"z":95,"world":"world","group":"정원"}
+        ]}
+        """;
+
+    /** The routes the {@code warp} fixture shows, decoded like a live welcome. */
+    public static List<BridgeProtocol.Waypoint> waypoints() {
+        if (!System.getProperty(PROPERTY, "").equals("warp")) {
+            return List.of();
+        }
+        return BridgeProtocol.decode(CAMPUS.getBytes(StandardCharsets.UTF_8)).message()
+            .filter(BridgeProtocol.Welcome.class::isInstance)
+            .map(welcome -> ((BridgeProtocol.Welcome) welcome).waypoints())
+            .orElse(List.of());
+    }
+
     /** The fixture the {@value #PROPERTY} system property names, if it names one. */
     public static Optional<MenuProtocol.Open> requested() {
         String name = System.getProperty(PROPERTY, "");
