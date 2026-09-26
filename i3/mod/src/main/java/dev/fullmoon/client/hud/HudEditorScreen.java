@@ -9,6 +9,7 @@ import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.text.Typeset;
 import dev.fullmoon.client.ui.Button;
 import dev.fullmoon.client.ui.Chord;
+import dev.fullmoon.client.ui.Palace;
 import dev.fullmoon.client.ui.Surface;
 import dev.fullmoon.client.ui.Toggle;
 import dev.fullmoon.client.ui.Voice;
@@ -411,10 +412,11 @@ public final class HudEditorScreen extends Screen {
     private void drawTopHeader(Painter painter) {
         int barY = 12;
 
-        // 1. Left Title & Accent Bar
+        // 1. Left Title & Seal
         int capH = Typeset.capHeight(Tokens.Type.BODY_STRONG);
-        painter.fill(24, barY + (INSPECTOR_H - capH) / 2, Tokens.Stroke.FOCUS, capH, Tokens.Color.ACCENT);
-        int titleX = 24 + Tokens.Stroke.FOCUS + Tokens.Space.COZY;
+        int seal = capH + Tokens.Space.SNUG;
+        Palace.seal(painter, 24, barY + (INSPECTOR_H - seal) / 2.0f, seal);
+        int titleX = 24 + seal + Tokens.Space.COZY;
         int titleY = barY + (INSPECTOR_H - 9) / 2;
         Typeset.draw(painter, Tokens.Type.BODY_STRONG, "Fullmoon HUD Studio", titleX, titleY, Tokens.Color.INK_PRIMARY);
 
