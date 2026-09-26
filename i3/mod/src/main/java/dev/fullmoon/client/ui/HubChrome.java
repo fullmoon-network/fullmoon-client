@@ -23,10 +23,7 @@ public final class HubChrome {
     public static void masthead(Painter painter, Box content, boolean compact) {
         Tokens.Type.Role brand = compact ? Tokens.Type.TITLE : Tokens.Type.DISPLAY;
         int y = content.y();
-        painter.fill(content.x(), Typeset.capTop(brand, y), Tokens.Stroke.FOCUS,
-            Typeset.capHeight(brand), Tokens.Color.ACCENT);
-        int textX = content.x() + Tokens.Stroke.FOCUS + Tokens.Space.COZY;
-        Typeset.draw(painter, brand, "Fullmoon", textX, y, Tokens.Color.INK_PRIMARY);
+        Palace.brand(painter, brand, content.x(), y);
         connection(painter, content, y + Tokens.Space.TIGHT);
     }
 

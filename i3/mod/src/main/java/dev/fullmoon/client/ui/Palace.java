@@ -56,6 +56,18 @@ public final class Palace {
 
     private Palace() {}
 
+    /**
+     * The wordmark with the moon seal before it, sized to the role's capitals. Returns the x the
+     * wordmark starts at, so a subtitle can align under it.
+     */
+    public static int brand(Painter painter, Tokens.Type.Role role, int x, int y) {
+        int size = Typeset.capHeight(role) + Tokens.Space.SNUG;
+        seal(painter, x, Typeset.capTop(role, y) - Tokens.Space.TIGHT, size);
+        int textX = x + size + Tokens.Space.COZY;
+        Typeset.draw(painter, role, "Fullmoon", textX, y, Tokens.Color.INK_PRIMARY);
+        return textX;
+    }
+
     /** A panel: plain ground inside the gilt frame. */
     public static void panel(Painter painter, int x, int y, int w, int h) {
         painter.fill(x, y, w, h, Tokens.Color.SURFACE_BASE);
