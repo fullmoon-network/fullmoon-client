@@ -24,7 +24,7 @@ final class ServerMenuSampleTest {
         System.setProperty(ServerMenuSample.PROPERTY, "casino-menu");
         MenuProtocol.Open menu = ServerMenuSample.requested().orElseThrow();
         assertEquals("casino", menu.id());
-        assertEquals(10, menu.items().size());
+        assertEquals(11, menu.items().size());
         assertEquals(5, menu.items().stream().filter(item -> item.chance().isPresent()).count());
     }
 
