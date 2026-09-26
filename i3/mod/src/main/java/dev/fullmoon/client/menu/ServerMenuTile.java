@@ -5,6 +5,7 @@ import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.network.MenuProtocol;
 import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.text.Typeset;
+import dev.fullmoon.client.ui.Palace;
 import dev.fullmoon.client.ui.State;
 import dev.fullmoon.client.ui.Voice;
 import dev.fullmoon.client.ui.Widget;
@@ -36,22 +37,26 @@ final class ServerMenuTile extends Widget {
     @Override
     public void draw(Painter painter, State state) {
         Box box = bounds();
-        int ground = switch (state) {
+        boolean chosen = state == State.HOVER || state == State.ACTIVE || state == State.FOCUS_VISIBLE;
+        int top = switch (state) {
             case HOVER, FOCUS_VISIBLE -> Tokens.Color.ACCENT_WASH;
             case ACTIVE -> Tokens.Color.SURFACE_OVERLAY;
             case LOADING -> Tokens.Color.SURFACE_SUNKEN;
             default -> Tokens.Color.SURFACE_RAISED;
         };
+        int bottom = state == State.LOADING ? Tokens.Color.SURFACE_SUNKEN : Tokens.Color.SURFACE_BASE;
         int line = switch (state) {
             case HOVER, ACTIVE, FOCUS_VISIBLE -> Tokens.Color.ACCENT;
             case LOADING -> Tokens.Color.STATUS_WARN;
-            default -> Tokens.Color.LINE_HAIRLINE;
+            default -> Tokens.Color.LINE_GILT_FAINT;
         };
 
-        painter.fill(box.x(), box.y(), box.w(), box.h(), Tokens.Radius.MD, ground);
-        painter.border(box.x(), box.y(), box.w(), box.h(), Tokens.Radius.MD,
-            Tokens.Stroke.HAIR, line);
-        ring(painter, state, Tokens.Radius.MD);
+        painter.fillGradient(box.x(), box.y(), box.w(), box.h(), top, bottom);
+        painter.border(box.x(), box.y(), box.w(), box.h(), Tokens.Radius.NONE, Tokens.Stroke.HAIR, line);
+        if (chosen) {
+            Palace.marker(painter, box.x(), box.y(), true);
+        }
+        ring(painter, state, Tokens.Radius.NONE);
 
         int wellX = box.x() + Tokens.Space.COZY;
         int well = Math.min(ICON_WELL, box.h() - Tokens.Space.TIGHT);
@@ -62,14 +67,18 @@ final class ServerMenuTile extends Widget {
             float cy = box.midY();
             painter.dot(cx, cy, well / 2f, Tokens.Color.SURFACE_SUNKEN);
             painter.ring(cx, cy, well / 2f - Tokens.Stroke.HAIR / 2f,
-                Tokens.Stroke.HAIR, Tokens.Color.LINE_HAIRLINE);
+                Tokens.Stroke.HAIR, chosen ? Tokens.Color.ACCENT : Tokens.Color.LINE_GILT);
             entry.drawIcon(painter, wellX, (int) (cy - well / 2f), well);
             left = wellX + well + Tokens.Space.COZY;
         } else {
             left = wellX;
         }
+        int right = box.right() - Tokens.Space.COZY;
+        if (item().chance().isPresent()) {
+            right = chance(painter, right, box, (float) item().chance().getAsDouble());
+        }
         int countSpace = item().count() > 1 ? Tokens.Space.SECTION : 0;
-        int textWidth = Math.max(0, box.right() - Tokens.Space.COZY - countSpace - left);
+        int textWidth = Math.max(0, right - countSpace - left);
         painter.pushClip(left, box.y(), textWidth, box.h());
         int labelY = entry.details().isEmpty() || box.h() < 42
             ? Typeset.centred(Tokens.Type.BODY_STRONG, box.y(), box.h())
@@ -89,6 +98,23 @@ final class ServerMenuTile extends Widget {
                 box.bottom() - Tokens.Type.LABEL.leading() - Tokens.Space.SNUG,
                 Tokens.Color.INK_TERTIARY);
         }
+    }
+
+    /**
+     * The game's win chance as a moon filled that far, with the figure under it. Returns the
+     * left edge it took, so the label clips short of it.
+     */
+    private static int chance(Painter painter, int right, Box box, float chance) {
+        float r = Math.min(7.0f, box.h() / 5.0f);
+        String figure = ServerMenuCopy.percent(chance);
+        int figureW = Typeset.tabularWidth(Tokens.Type.LABEL, figure);
+        int column = Math.max(figureW, Math.round(r * 2));
+        float cx = right - column / 2.0f;
+        float cy = box.midY() - Tokens.Type.LABEL.leading() / 2.0f;
+        painter.moon(cx, cy, r, chance, true, Tokens.Color.MOON_LIT, Tokens.Color.MOON_SHADOW);
+        Typeset.tabular(painter, Tokens.Type.LABEL, figure, Math.round(cx - figureW / 2.0f),
+            Math.round(cy + r + Tokens.Space.TIGHT), Tokens.Color.INK_SECONDARY);
+        return right - column - Tokens.Space.COZY;
     }
 
     @Override

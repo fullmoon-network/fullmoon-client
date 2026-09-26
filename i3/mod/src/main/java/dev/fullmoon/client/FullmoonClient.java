@@ -3,6 +3,8 @@ package dev.fullmoon.client;
 import java.util.List;
 
 import dev.fullmoon.client.map.MapScreen;
+import dev.fullmoon.client.menu.ServerMenuSample;
+import dev.fullmoon.client.menu.ServerMenuScreen;
 import dev.fullmoon.client.network.FullmoonChannel;
 import dev.fullmoon.client.settings.SettingsScreen;
 import dev.fullmoon.client.text.Typeset;
@@ -51,6 +53,8 @@ public final class FullmoonClient implements ClientModInitializer {
     private static final KeyMapping SETTINGS = key("settings", InputConstants.KEY_F9);
     private static final KeyMapping HUD_EDITOR = key("hud", InputConstants.KEY_F10);
     private static final KeyMapping MAP = key("map", InputConstants.KEY_M);
+
+    private static boolean fixtureShown;
 
     @Override
     public void onInitializeClient() {
@@ -128,6 +132,10 @@ public final class FullmoonClient implements ClientModInitializer {
                         client.setScreen(new FullmoonTitleScreen());
                     }
                 });
+            } else if (screen instanceof FullmoonTitleScreen title && !fixtureShown) {
+                fixtureShown = true;
+                ServerMenuSample.requested().ifPresent(menu ->
+                    client.execute(() -> client.setScreen(new ServerMenuScreen(title, menu))));
             }
         });
 

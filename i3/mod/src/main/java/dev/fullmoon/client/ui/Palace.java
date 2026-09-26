@@ -3,6 +3,7 @@ package dev.fullmoon.client.ui;
 import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.render.PixelArt;
+import dev.fullmoon.client.text.Typeset;
 
 /**
  * The palace vocabulary every Fullmoon surface is framed in: a gilt double frame with corner
@@ -122,6 +123,21 @@ public final class Palace {
         } else {
             painter.diamond(cx, cy, 3.5f, Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT);
         }
+    }
+
+    /**
+     * A keycap: the key's name in a gilt outline with a deeper bottom edge. Returns the width it
+     * took, so a footer can lay a row of them out.
+     */
+    public static int key(Painter painter, int x, int y, String name) {
+        int w = Typeset.width(Tokens.Type.LABEL, name) + Tokens.Space.COZY;
+        int h = Tokens.Type.LABEL.leading() + Tokens.Space.TIGHT;
+        painter.fill(x, y, w, h, Tokens.Color.SURFACE_SUNKEN);
+        painter.border(x, y, w, h, Tokens.Radius.NONE, Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT_FAINT);
+        painter.hRule(x, y + h - 1, w, Tokens.Color.LINE_GILT);
+        Typeset.drawCentered(painter, Tokens.Type.LABEL, name, x + w / 2,
+            Typeset.centred(Tokens.Type.LABEL, y, h - 1), Tokens.Color.INK_SECONDARY);
+        return w;
     }
 
     /** A dashed gilt rule, the divider inside a scroll-like detail panel. */

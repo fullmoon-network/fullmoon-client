@@ -78,6 +78,8 @@ def main():
                     help="language pinned in options.txt (default: %(default)s)")
     ap.add_argument("--server",
                     help="quick-play multiplayer address, for captures over a live world")
+    ap.add_argument("--dev-screen",
+                    help="open a fixture of a server-driven screen after boot (e.g. casino-menu)")
     ap.add_argument("--gap", type=float, default=0.6,
                     help="seconds between a tap and the next thing (default: %(default)s)")
     args = ap.parse_args()
@@ -118,6 +120,8 @@ def main():
                        f"-Pclient_width={width}", f"-Pclient_height={height}"]
             if args.server:
                 command.append(f"-Pquick_play_server={args.server}")
+            if args.dev_screen:
+                command.append(f"-Pdev_screen={args.dev_screen}")
             client = subprocess.Popen(
                 command,
                 cwd=MOD, env=env, stdout=sink, stderr=subprocess.STDOUT,
