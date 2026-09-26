@@ -96,6 +96,12 @@ screen.
 client that does not know the name — renders the `material` item instead. Presentation only:
 the icon never carries authority, exactly like `label` and `details`.
 
+`chance` is optional: the item's win probability as a finite number in `[0, 1]` (the casino sends
+it for coinflip, dice and roulette at the advertised bet, and for slots from its weights; pachinko
+and the jackpot have no single probability and omit it). The client draws it as a moon filled that
+far beside the figure. A `chance` that is present but not such a number rejects the whole menu, like
+any other malformed field. Presentation only: the server settles every bet itself.
+
 The client sends only the opaque session ID, revision, selected slot, and an advertised click:
 
 ```text
