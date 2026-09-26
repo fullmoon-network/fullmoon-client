@@ -13,6 +13,11 @@ type Props = {
   zoom?: number;
 };
 
+/* A figure that turns on its own is motion the player did not ask for, so reduced motion stills
+   the turntable and the idle sway; a walk the player picks still walks. */
+const stillness = () =>
+  typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 export default function Skin3D({
   skin = "/skins/blackcow.png",
   cape = null,
@@ -29,12 +34,13 @@ export default function Skin3D({
   useEffect(() => {
     if (!canvas.current) return;
     const v = new SkinViewer({ canvas: canvas.current, width, height, skin });
-    v.autoRotate = rotate;
+    const still = stillness();
+    v.autoRotate = rotate && !still;
     v.autoRotateSpeed = 0.55;
     v.playerWrapper.rotation.y = angle;
     v.zoom = zoom;
     v.fov = 42;
-    v.animation = walk ? new WalkingAnimation() : new IdleAnimation();
+    v.animation = walk ? new WalkingAnimation() : still ? null : new IdleAnimation();
     v.controls.enableZoom = false;
     v.controls.enablePan = false;
     viewer.current = v;
@@ -55,8 +61,8 @@ export default function Skin3D({
   useEffect(() => {
     const v = viewer.current;
     if (!v) return;
-    v.animation = walk ? new WalkingAnimation() : new IdleAnimation();
+    v.animation = walk ? new WalkingAnimation() : stillness() ? null : new IdleAnimation();
   }, [walk]);
 
-  return <canvas ref={canvas} style={{ width, height, display: "block" }} />;
+  return <canvas ref={canvas} className="skin3d" style={{ width, height, display: "block" }} />;
 }

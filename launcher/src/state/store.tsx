@@ -57,6 +57,8 @@ export interface DownloadInfo {
 
 export interface LogEntry {
   id: number;
+  /** the run that printed it, so a surface can read one session and not the tail of the last */
+  session: string;
   level: LogLevel;
   line: string;
   ts: string;
@@ -139,7 +141,7 @@ const BOOT_SETTINGS: Settings = {
   memoryMb: 4096,
   concurrency: 8,
   theme: "dark",
-  accent: "#F5D06E",
+  accent: "gilt",
   language: "ko",
   telemetry: false,
 };
@@ -263,8 +265,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           (lines) =>
             alive &&
             setLogs(
-              lines.map(({ level, line }) => ({
+              lines.map(({ sessionId, level, line }) => ({
                 id: ++logSeq,
+                session: sessionId,
                 level,
                 line,
                 // stamping the whole backlog with the moment we asked for it
@@ -321,8 +324,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       });
     });
 
-    const offLog = core.on("game://log", ({ level, line }) => {
-      setLogs((l) => [...l.slice(-900), { id: ++logSeq, level, line, ts: now() }]);
+    const offLog = core.on("game://log", ({ sessionId, level, line }) => {
+      setLogs((l) => [...l.slice(-900), { id: ++logSeq, session: sessionId, level, line, ts: now() }]);
     });
 
     const offState = core.on("game://state", ({ sessionId, state, exitCode }) => {
@@ -355,24 +358,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (selectedInstanceId) localStorage.setItem("pinion.v1.sel", selectedInstanceId);
   }, [selectedInstanceId]);
 
-  /* apply theme + accent to the document. The accent *fill* stays the
-     brand hex on both themes; accent *text/line* lightens on dark so it
-     clears contrast on ink surfaces (DESIGN.md §2). Legacy persisted
-     "amoled" collapses to dark. */
+  /* Theme and accent are attributes on the document; the palettes themselves are the generated
+     tokens. An accent stored by an older launcher as a hex has no metal and reads as gilt. */
   useEffect(() => {
     if (!settings) return;
     const root = document.documentElement;
-    const theme = settings.theme === "light" ? "light" : "dark";
-    root.dataset.theme = theme;
-    const hex = settings.accent;
-    const dark = theme === "dark";
-    root.style.setProperty("--accent", dark ? relight(hex, 0.6, 0.7) : relight(hex, 0.26));
-    root.style.setProperty("--accent-hover", dark ? relight(hex, 0.71, 0.66) : relight(hex, 0.18));
-    root.style.setProperty("--accent-fill", hex);
-    root.style.setProperty("--accent-fill-hover", relight(hex, dark ? 0.46 : 0.31));
-    root.style.setProperty("--accent-soft", alpha(hex, dark ? 0.16 : 0.1));
-    root.style.setProperty("--accent-line", alpha(hex, dark ? 0.42 : 0.3));
-    root.style.setProperty("--accent-wash", alpha(hex, dark ? 0.13 : 0.07));
+    root.dataset.theme = settings.theme === "light" ? "light" : "dark";
+    root.dataset.accent = accentMetal(settings.accent);
   }, [settings]);
 
   /* ── actions ── */
@@ -622,43 +614,9 @@ function hashCode(s: string): number {
   return h;
 }
 
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace("#", "");
-  const v = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
-  return [parseInt(v.slice(0, 2), 16), parseInt(v.slice(2, 4), 16), parseInt(v.slice(4, 6), 16)];
-}
-function alpha(hex: string, a: number): string {
-  const [r, g, b] = hexToRgb(hex);
-  return `rgba(${r}, ${g}, ${b}, ${a})`;
-}
-/** Re-light an accent in HSL, keeping its hue. Mixing toward white instead
-    desaturates — a warm accent turns salmon and a cool one turns chalk.
-    `satScale` damps saturation for the light-on-dark case, where a straight
-    lightness raise reads neon. */
-function relight(hex: string, lightness: number, satScale = 1): string {
-  const [r, g, b] = hexToRgb(hex).map((c) => c / 255);
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-  const d = max - min;
-  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
-  let h = 0;
-  if (d !== 0) {
-    if (max === r) h = ((g - b) / d) % 6;
-    else if (max === g) h = (b - r) / d + 2;
-    else h = (r - g) / d + 4;
-    h *= 60;
-    if (h < 0) h += 360;
-  }
-  const s2 = Math.min(1, s * satScale);
-  const c = (1 - Math.abs(2 * lightness - 1)) * s2;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = lightness - c / 2;
-  const seg = Math.floor(h / 60) % 6;
-  const [r2, g2, b2] = [
-    [c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x],
-  ][seg];
-  return `#${[r2, g2, b2]
-    .map((v) => Math.round((v + m) * 255).toString(16).padStart(2, "0"))
-    .join("")}`;
+export const ACCENT_METALS = ["gilt", "silver", "bronze"] as const;
+export type AccentMetal = (typeof ACCENT_METALS)[number];
+
+export function accentMetal(stored: string): AccentMetal {
+  return (ACCENT_METALS as readonly string[]).includes(stored) ? (stored as AccentMetal) : "gilt";
 }

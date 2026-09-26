@@ -92,6 +92,9 @@
   --color-ornament-lapis: oklch(0.36 0.09 268); /* #29396c · dancheong band: the blue panel */
   --color-moon-lit: oklch(0.93 0.055 90); /* #f6e7bf · the lit face of a moon phase */
   --color-moon-shadow: oklch(0.235 0.025 260); /* #171e2a · the unlit face of a moon phase */
+  --metal-gilt: oklch(0.835 0.115 88);
+  --metal-silver: oklch(0.85 0.03 250);
+  --metal-bronze: oklch(0.77 0.08 42);
 }
 
 [data-theme="light"] {
@@ -123,6 +126,9 @@
   --color-ornament-lapis: oklch(0.42 0.09 268); /* #384a7e · dancheong band: the blue panel */
   --color-moon-lit: oklch(0.93 0.055 90); /* #f6e7bf · the lit face of a moon phase */
   --color-moon-shadow: oklch(0.26 0.028 260); /* #1c2432 · the unlit face of a moon phase */
+  --metal-gilt: oklch(0.52 0.105 78);
+  --metal-silver: oklch(0.5 0.04 255);
+  --metal-bronze: oklch(0.52 0.095 40);
 }
 
 [data-accent="silver"],

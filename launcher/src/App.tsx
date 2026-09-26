@@ -7,7 +7,7 @@ import { PlayDock } from "./components/PlayDock";
 import { ProgressDock, Toasts } from "./components/Docks";
 import { LaunchOverlay } from "./widgets/LaunchOverlay";
 import { AtmosphericBackdrop } from "./widgets/AtmosphericBackdrop";
-import { Logo } from "./components/Logo";
+import { Seal } from "./components/Palace";
 import { PlayScreen } from "./screens/Play";
 import { DashboardScreen } from "./screens/Dashboard";
 import { HomeScreen } from "./screens/Home";
@@ -58,7 +58,7 @@ export default function App() {
   if (!ready) {
     return (
       <div className="app-splash">
-        <Logo size={44} withWord={false} />
+        <Seal size={44} />
       </div>
     );
   }
@@ -69,7 +69,6 @@ export default function App() {
     <div className="app">
       <TitleBar />
       <AtmosphericBackdrop />
-      <div className="grain" aria-hidden />
       <div className="shell">
         <Sidebar />
         <div className="main">

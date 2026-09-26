@@ -2,6 +2,7 @@
    these primitives so the whole skin speaks one language. */
 
 import {
+  forwardRef,
   useEffect,
   useRef,
   type ButtonHTMLAttributes,
@@ -9,37 +10,35 @@ import {
   type ReactNode,
 } from "react";
 import { Icon, type IconName } from "./Icon";
+import { Dancheong } from "./Palace";
 import { useT } from "../i18n";
 
 /* ── Button ── */
 
-type BtnVariant = "primary" | "soft" | "ghost" | "outline" | "danger" | "success";
+type BtnVariant = "primary" | "soft" | "ghost" | "outline" | "danger";
 
-export function Button({
-  variant = "soft",
-  size = "md",
-  icon,
-  loading = false,
-  children,
-  className = "",
-  ...rest
-}: {
-  variant?: BtnVariant;
-  size?: "sm" | "md" | "lg";
-  icon?: IconName;
-  loading?: boolean;
-} & ButtonHTMLAttributes<HTMLButtonElement>) {
+export const Button = forwardRef<
+  HTMLButtonElement,
+  {
+    variant?: BtnVariant;
+    size?: "sm" | "md" | "lg";
+    icon?: IconName;
+    loading?: boolean;
+  } & ButtonHTMLAttributes<HTMLButtonElement>
+>(function Button({ variant = "soft", size = "md", icon, loading = false, children, className = "", ...rest }, ref) {
   return (
     <button
+      ref={ref}
+      {...rest}
       className={`btn btn-${variant} btn-${size} ${className}`}
       disabled={rest.disabled || loading}
-      {...rest}
+      aria-busy={loading || undefined}
     >
       {loading ? <span className="spinner" /> : icon ? <Icon name={icon} size={size === "sm" ? 14 : 16} /> : null}
       {children && <span>{children}</span>}
     </button>
   );
-}
+});
 
 /* ── IconButton ── */
 
@@ -62,15 +61,18 @@ export function Toggle({
   checked,
   onChange,
   disabled,
+  label,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   disabled?: boolean;
+  label?: string;
 }) {
   return (
     <button
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       className={`toggle ${checked ? "on" : ""}`}
       disabled={disabled}
       onClick={() => onChange(!checked)}
@@ -97,6 +99,7 @@ export function Segmented<T extends string>({
         <button
           key={o.value}
           className={`segmented-item ${o.value === value ? "active" : ""}`}
+          aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
         >
           {o.label}
@@ -205,6 +208,7 @@ export function Modal({
   children: ReactNode;
   width?: number;
 }) {
+  const { t } = useT();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -221,11 +225,12 @@ export function Modal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="modal" style={{ width }} ref={ref} role="dialog" aria-modal>
-        <div className="modal-head">
+      <div className="modal pf-frame" style={{ width }} ref={ref} role="dialog" aria-modal aria-label={typeof title === "string" ? title : undefined}>
+        <div className="modal-head pf-band">
           <h3>{title}</h3>
-          <IconButton icon="x" label="close" onClick={onClose} />
+          <IconButton icon="x" label={t("common.close")} onClick={onClose} />
         </div>
+        <Dancheong />
         <div className="modal-body">{children}</div>
       </div>
     </div>
@@ -271,32 +276,42 @@ export function ConfirmModal({
   );
 }
 
-/* ── SkinFace: blocky avatar rendered from a hue (mock skin) ── */
+/* ── SkinFace: the face off the account's own skin, or a drawn one when it has none ── */
 
-export function SkinFace({ hue, size = 32 }: { hue: number; size?: number }) {
-  const hair = `hsl(${hue} 45% 34%)`;
-  const skin = `hsl(26 42% 60%)`;
-  const skinShade = `hsl(26 40% 50%)`;
-  const iris = `hsl(${hue} 60% 45%)`;
+export function SkinFace({ hue, skin = null, size = 32 }: { hue: number; skin?: string | null; size?: number }) {
+  if (skin) {
+    // a 64×64 skin: the face is the 8×8 at (8,8) and the hat layer the 8×8 at (40,8)
+    return (
+      <span
+        className="skin-face"
+        aria-hidden
+        style={{
+          width: size,
+          height: size,
+          backgroundImage: `url(${skin}), url(${skin})`,
+          backgroundSize: "800% 800%, 800% 800%",
+          backgroundPosition: "71.4286% 14.2857%, 14.2857% 14.2857%",
+        }}
+      />
+    );
+  }
+  // A depiction of a Minecraft skin for an account that sent none; content, not interface colour.
+  const hair = `hsl(${hue} 45% 34%)`; // TOKENS-OK
+  const face = `hsl(26 42% 60%)`; // TOKENS-OK
+  const shade = `hsl(26 40% 50%)`; // TOKENS-OK
+  const iris = `hsl(${hue} 60% 45%)`; // TOKENS-OK
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 8 8"
-      shapeRendering="crispEdges"
-      style={{ borderRadius: 3, overflow: "hidden", flex: "none" }}
-      aria-hidden
-    >
-      <rect x="0" y="0" width="8" height="8" fill={skin} />
+    <svg className="skin-face" width={size} height={size} viewBox="0 0 8 8" shapeRendering="crispEdges" aria-hidden>
+      <rect x="0" y="0" width="8" height="8" fill={face} />
       <rect x="0" y="0" width="8" height="2" fill={hair} />
       <rect x="0" y="2" width="1" height="2" fill={hair} />
       <rect x="7" y="2" width="1" height="2" fill={hair} />
-      <rect x="1" y="3" width="1" height="1" fill="#fff" />
+      <rect x="1" y="3" width="1" height="1" className="skin-face-eye" />
       <rect x="2" y="3" width="1" height="1" fill={iris} />
       <rect x="5" y="3" width="1" height="1" fill={iris} />
-      <rect x="6" y="3" width="1" height="1" fill="#fff" />
-      <rect x="3" y="4" width="2" height="1" fill={skinShade} />
-      <rect x="3" y="6" width="2" height="1" fill={skinShade} />
+      <rect x="6" y="3" width="1" height="1" className="skin-face-eye" />
+      <rect x="3" y="4" width="2" height="1" fill={shade} />
+      <rect x="3" y="6" width="2" height="1" fill={shade} />
     </svg>
   );
 }

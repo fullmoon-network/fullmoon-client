@@ -4,23 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark light" />
-    <link
-      rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230B101F'/%3E%3Cpath d='M22.6 17.9a7.4 7.4 0 0 1-8.5-8.5 7.4 7.4 0 1 0 8.5 8.5z' fill='%23F5D06E'/%3E%3C/svg%3E"
-    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>%BRAND_NAME%</title>
+    <!-- the generated tokens load before anything paints, so the boot mark below needs no colour of its own -->
+    <link rel="stylesheet" href="/src/design/tokens.css" />
     <style>
-      /* paint the void before the bundle lands — no white flash, ever */
-      html, body { margin: 0; background: #0B101F; }
+      html, body { margin: 0; background: var(--color-surface-void); }
       #root { min-height: 100vh; }
       #boot {
         position: fixed; inset: 0; display: grid; place-items: center;
-        background: #0B101F;
+        background: var(--color-surface-void);
       }
       #boot .mark {
-        width: 44px; height: 44px; border-radius: 10px;
-        border: 1px solid #232B47;
-        background: #F5D06E;
+        width: 44px; height: 44px;
+        background: var(--color-ornament-cinnabar);
+        box-shadow: inset 0 0 0 4px var(--color-ornament-cinnabar), inset 0 0 0 5px var(--color-ink-primary);
       }
     </style>
   </head>

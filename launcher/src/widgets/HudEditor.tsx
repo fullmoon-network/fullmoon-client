@@ -15,6 +15,8 @@ import { core } from "../core/client";
 import type { HudConfig, HudElementState } from "../core/bindings";
 import { Icon } from "../components/Icon";
 import { Button, Segmented, Toggle } from "../components/ui";
+import { MoonDisc } from "../components/Palace";
+import { moonAt } from "../core/moonPhase";
 import { useT } from "../i18n";
 import { useStore } from "../state/store";
 import {
@@ -35,11 +37,12 @@ import {
 
 /* What each chip reads on the plane, verbatim from the element's own `formatText(client, true)` —
    the editor branch, which is what the mod itself draws while a layout is being arranged. */
-const CHIPS: Record<string, { key?: string; value?: string; dot?: boolean; reserve?: string }> = {
+const CHIPS: Record<string, { key?: string; value?: string; dot?: boolean; moon?: boolean; reserve?: string }> = {
   coords: { key: "XYZ", value: "124.5  64.0  -320.8 · N (180°)" },
   fps: { key: "FPS", value: "144 fps · 6.9 ms" },
   ping: { dot: true, value: "18 ms · 0% loss" },
-  clock: { key: "TIME" },
+  // ClockHud draws tonight's real moon before its key, 4 px in radius
+  clock: { key: "TIME", moon: true },
   tps: { key: "TPS", value: "20.0 · 14.2 ms", reserve: "20.0 · 1000.0 ms" },
   effects: { key: "FX", value: "신속 II · 02:45" },
 };
@@ -111,9 +114,15 @@ function Chip({ id, now }: { id: string; now: string }) {
     );
   }
   const value = spec.value ?? now;
+  const moon = spec.moon ? moonAt(Date.now()) : null;
   return (
     <span className="hud-chip">
       {spec.dot && <span className="hud-dot" />}
+      {moon && (
+        <svg className="hud-moon" width="8" height="8" viewBox="-4 -4 8 8" aria-hidden>
+          <MoonDisc r={4} lit={moon.lit} waxing={moon.waxing} />
+        </svg>
+      )}
       {spec.key && <span className="hud-k">{spec.key}</span>}
       {spec.reserve ? (
         <span className="hud-v hud-v-reserve" data-wide={spec.reserve}>
@@ -419,6 +428,7 @@ export function HudEditor({ instanceId }: { instanceId: string }) {
               <li key={id} className={`hud-row ${sel === id ? "active" : ""} ${el.enabled ? "on" : ""}`}>
                 <button
                   className="hud-row-pick"
+                  aria-pressed={sel === id}
                   onClick={() => setSel(id)}
                   onKeyDown={(e) => onKey(e, id)}
                 >
@@ -428,7 +438,7 @@ export function HudEditor({ instanceId }: { instanceId: string }) {
                     {el.offsetX},{el.offsetY}
                   </span>
                 </button>
-                <Toggle checked={el.enabled} onChange={(v) => patch(id, { enabled: v }, true)} />
+                <Toggle checked={el.enabled} label={label(id)} onChange={(v) => patch(id, { enabled: v }, true)} />
               </li>
             );
           })}

@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { Icon, type IconName } from "./Icon";
+import { Marker, MoonDisc } from "./Palace";
 import { SkinFace } from "./ui";
 import { useStore, type Screen } from "../state/store";
+import { daysToFull, daysToNextFull, isFull, moonAt, moonName } from "../core/moonPhase";
 import { useT } from "../i18n";
 
 const GROUPS: Array<{ labelKey: string; items: Array<{ id: Screen; icon: IconName }> }> = [
@@ -22,77 +24,105 @@ const GROUPS: Array<{ labelKey: string; items: Array<{ id: Screen; icon: IconNam
   },
 ];
 
-export function Sidebar() {
-  const { screen, setScreen, accounts, activeAccount, selectAccount, game } = useStore();
-  const { t } = useT();
-  const inGame = game.state === "running" || game.state === "starting";
+function RailItem({ id, icon, current, onPick, label }: {
+  id: Screen;
+  icon: IconName;
+  current: boolean;
+  onPick: (s: Screen) => void;
+  label: string;
+}) {
+  return (
+    <button
+      className={`rail-item ${current ? "is-current" : ""}`}
+      aria-current={current ? "page" : undefined}
+      onClick={() => onPick(id)}
+    >
+      <Marker on={current} />
+      <Icon name={icon} size={18} />
+      <span>{label}</span>
+    </button>
+  );
+}
 
-  const rows: ReactNode[] = [];
-  for (const g of GROUPS) {
-    rows.push(
-      <div key={g.labelKey} className="sidebar-group">
-        {t(g.labelKey)}
-      </div>,
-    );
-    for (const item of g.items) {
-      rows.push(
-        <button
-          key={item.id}
-          className={`sidebar-item ${screen === item.id ? "active" : ""}`}
-          onClick={() => setScreen(item.id)}
-        >
-          {screen === item.id && <span className="sidebar-pill" aria-hidden />}
-          <Icon name={item.icon} size={20} />
-          <span>{t(`nav.${item.id}`)}</span>
-        </button>,
-      );
-    }
-  }
+/** Tonight's moon, one line, at the foot of every screen's rail. */
+function Tonight() {
+  const { t } = useT();
+  const moon = useMemo(() => moonAt(Date.now()), []);
+  const full = isFull(moon);
+  return (
+    <div className="rail-tonight" title={t(`moon.${moonName(moon)}`)}>
+      <svg width="18" height="18" viewBox="-9 -9 18 18" aria-hidden className={`rail-tonight-moon ${full ? "is-full" : ""}`}>
+        <MoonDisc r={6} lit={moon.lit} waxing={moon.waxing} />
+        <circle className="rail-tonight-ring" r={8.5} fill="none" />
+      </svg>
+      <span>
+        <b>{t(`moon.${moonName(moon)}`)}</b>
+        <em className="num">
+          {full ? t("moon.next", { n: daysToNextFull(moon) }) : t("moon.until", { n: daysToFull(moon) })}
+        </em>
+      </span>
+    </div>
+  );
+}
+
+export function Sidebar() {
+  const { screen, setScreen, accounts, activeAccount, selectAccount } = useStore();
+  const { t } = useT();
+  const here = screen === "home" ? "play" : screen;
 
   return (
-    <nav className="sidebar">
-      <div className="sidebar-items">{rows}</div>
+    <nav className="rail" aria-label={t("nav.label")}>
+      {GROUPS.map((g) => (
+        <div key={g.labelKey} className="rail-group">
+          <div className="rail-group-label">{t(g.labelKey)}</div>
+          {g.items.map((item) => (
+            <RailItem
+              key={item.id}
+              {...item}
+              current={here === item.id}
+              onPick={setScreen}
+              label={t(`nav.${item.id}`)}
+            />
+          ))}
+        </div>
+      ))}
 
-      <div className="sidebar-bottom">
-        <button className="sidebar-item" onClick={() => setScreen("settings")}>
-          <Icon name="gear" size={20} />
-          <span>{t("nav.settings")}</span>
-        </button>
-
-        <div className="sidebar-account" onClick={() => setScreen("accounts")} role="button" tabIndex={0}>
+      <div className="rail-foot">
+        <RailItem id="settings" icon="gear" current={here === "settings"} onPick={setScreen} label={t("nav.settings")} />
+        <Tonight />
+        <button className="rail-account pf-tile" onClick={() => setScreen("accounts")}>
           {activeAccount ? (
             <>
-              <SkinFace hue={activeAccount.skinHue} size={34} />
-              <div className="sidebar-account-meta">
+              <SkinFace hue={activeAccount.skinHue} skin={activeAccount.skinUrl} size={32} />
+              <span className="rail-account-meta">
                 <strong>{activeAccount.username}</strong>
                 <span>{t(`accounts.source.${activeAccount.source}`)}</span>
-              </div>
-              {accounts.length > 1 && (
-                <span className="account-count num">{accounts.length}</span>
-              )}
+              </span>
+              {accounts.length > 1 && <span className="rail-account-count num">{accounts.length}</span>}
             </>
           ) : (
             <>
-              <div className="sidebar-account-empty">
+              <span className="rail-account-empty">
                 <Icon name="user" size={16} />
-              </div>
-              <div className="sidebar-account-meta">
+              </span>
+              <span className="rail-account-meta">
                 <strong>{t("dock.needsAccount")}</strong>
-              </div>
+              </span>
             </>
           )}
-        </div>
-        {/* quick-switch strip for multi-account */}
+        </button>
         {accounts.length > 1 && (
-          <div className="account-strip">
+          <div className="rail-faces">
             {accounts.slice(0, 5).map((a) => (
               <button
                 key={a.uuid}
-                className={`account-strip-face ${a.uuid === activeAccount?.uuid ? "active" : ""}`}
+                className={`rail-face ${a.uuid === activeAccount?.uuid ? "is-current" : ""}`}
                 title={a.username}
-                onClick={() => selectAccount(a.uuid)}
+                aria-label={a.username}
+                aria-pressed={a.uuid === activeAccount?.uuid}
+                onClick={() => void selectAccount(a.uuid)}
               >
-                <SkinFace hue={a.skinHue} size={22} />
+                <SkinFace hue={a.skinHue} skin={a.skinUrl} size={22} />
               </button>
             ))}
           </div>

@@ -143,12 +143,17 @@ const metals = Object.entries(tokens.accentMetal).filter(([k]) => !k.startsWith(
 
 const css = [];
 const c = (s = '') => css.push(s);
-const colorBlock = (selector, scheme, entries) => {
+// Each palace also names every metal's accent, so a picker can show all three at once
+// without scoping itself into a theme it is not in.
+const colorBlock = (selector, scheme, entries, hour) => {
   c(`${selector} {`);
   c(`  color-scheme: ${scheme};`);
   for (const [name, entry] of entries) {
     c(`  --color-${CSSVAR(name)}: ${oklchCss(entry)}; /* ${hex(entry)} · ${entry.use} */`);
   }
+  const gilt = entries.find(([name]) => name === 'accent')[1];
+  c(`  --metal-gilt: ${oklchCss(gilt)};`);
+  for (const [metal, set] of metals) c(`  --metal-${metal}: ${oklchCss(set[hour].accent)};`);
   c('}');
   c('');
 };
@@ -182,8 +187,8 @@ for (const [k, v] of Object.entries(tokens.type).filter(([k]) => !k.startsWith('
 }
 c('}');
 c('');
-colorBlock(':root,\n[data-theme="dark"]', 'dark', resolved.map(({ name, entry }) => [name, entry]));
-colorBlock('[data-theme="light"]', 'light', dayColors);
+colorBlock(':root,\n[data-theme="dark"]', 'dark', resolved.map(({ name, entry }) => [name, entry]), 'night');
+colorBlock('[data-theme="light"]', 'light', dayColors, 'day');
 for (const [metal, { night, day }] of metals) {
   const withUse = (set) => Object.entries(set).map(([k, e]) => [k, { ...e, use: `${metal} ${k}` }]);
   c(`[data-accent="${metal}"],`);

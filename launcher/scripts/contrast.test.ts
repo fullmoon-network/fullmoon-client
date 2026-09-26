@@ -1,48 +1,45 @@
+/* The launcher reads its colours from the tokens i3/design/generate.mjs writes, and its small
+   meta text clears the small-text floor in both palaces. */
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import test from "node:test";
+import { contrast, oklchToRgb } from "../../i3/design/_oklch.mjs";
 
-const css = readFileSync(new URL("../src/styles/tokens.css", import.meta.url), "utf8");
+const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
+const css = read("../src/design/tokens.css");
 
-const declaration = (source: string, name: string) => {
-  const match = source.match(new RegExp(`${name}:\\s*([^;]+);`));
-  assert.ok(match, `${name} is declared`);
-  return match[1].trim();
+const block = (selector: string) => {
+  const at = css.indexOf(`${selector} {`);
+  assert.ok(at >= 0, `${selector} block is generated`);
+  return css.slice(at, css.indexOf("\n}", at));
 };
 
-const resolve = (value: string): string => {
-  const alias = value.match(/^var\((--[^)]+)\)$/);
-  return alias ? resolve(declaration(css, alias[1])) : value;
+const hexOf = (source: string, name: string) => {
+  const m = source.match(new RegExp(`--color-${name}: oklch\\(([\\d.]+) ([\\d.]+) ([\\d.]+)\\)`));
+  assert.ok(m, `--color-${name} is declared`);
+  const [r, g, b] = oklchToRgb(Number(m[1]), Number(m[2]), Number(m[3])) as number[];
+  return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 };
 
-const rgb = (hex: string) => {
-  const value = Number.parseInt(hex.slice(1), 16);
-  return [(value >> 16) & 255, (value >> 8) & 255, value & 255] as const;
-};
-
-const luminance = (hex: string) => {
-  const channels = rgb(hex).map((channel) => {
-    const value = channel / 255;
-    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+for (const [palace, selector] of [["night", '[data-theme="dark"]'], ["day", '[data-theme="light"]']] as const) {
+  test(`${palace}: tertiary text clears the small-text floor on every ground it sits on`, () => {
+    const src = block(selector);
+    const ink = hexOf(src, "ink-tertiary");
+    for (const ground of ["surface-base", "surface-sunken", "surface-void"]) {
+      const ratio = contrast(ink, hexOf(src, ground)) as number;
+      assert.ok(ratio >= 4.5, `ink-tertiary on ${ground} is ${ratio.toFixed(2)}:1`);
+    }
   });
-  return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
-};
+}
 
-const contrast = (foreground: string, background: string) => {
-  const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
-  return (values[0] + 0.05) / (values[1] + 0.05);
-};
+test("the page loads the generated tokens before it paints", () => {
+  assert.match(read("../index.html"), /<link rel="stylesheet" href="\/src\/design\/tokens\.css"/);
+});
 
-test("dark tertiary text clears the small-text contrast floor", () => {
-  const dark = css.match(/\[data-theme="dark"\]\s*\{([\s\S]*?)\n\}/)?.[1];
-  assert.ok(dark, "dark theme block exists");
-  const foreground = resolve(declaration(dark, "--text-3"));
-
-  for (const backgroundName of ["--bg", "--surface"]) {
-    const background = resolve(declaration(dark, backgroundName));
-    assert.ok(
-      contrast(foreground, background) >= 4.5,
-      `${foreground} on ${background} clears 4.5:1`,
-    );
+test("the old sky and moon palettes are gone from the launcher's styles", () => {
+  const dir = new URL("../src/styles/", import.meta.url);
+  for (const name of readdirSync(dir)) {
+    const source = readFileSync(new URL(name, dir), "utf8");
+    assert.doesNotMatch(source, /--(sky|moon|teal|lavender|rose|amber)-\d/, name);
   }
 });
