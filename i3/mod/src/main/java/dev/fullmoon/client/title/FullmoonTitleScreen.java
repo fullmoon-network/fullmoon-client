@@ -170,7 +170,7 @@ public final class FullmoonTitleScreen extends SurfaceScreen {
         extractPanorama(gfx, partialTick);
         Painter painter = new Painter(gfx);
         painter.fillGradient(0, 0, width, height,
-            Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.42f), Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.8f));
+            Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.62f), Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.86f));
         skyMoon(painter);
     }
 
