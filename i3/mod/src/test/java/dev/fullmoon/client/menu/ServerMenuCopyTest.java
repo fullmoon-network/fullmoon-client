@@ -19,4 +19,13 @@ final class ServerMenuCopyTest {
         assertEquals("다음", ServerMenuCopy.label("다음 »"));
         assertEquals("1만원 · 보유", ServerMenuCopy.label("1만원 · 보유"));
     }
+
+    @Test
+    void chancesReadAsPlayersSayThem() {
+        assertEquals("50%", ServerMenuCopy.percent(0.5));
+        assertEquals("48.6%", ServerMenuCopy.percent(18.0 / 37.0));
+        assertEquals("0.4%", ServerMenuCopy.percent(0.004));
+        assertEquals("100%", ServerMenuCopy.percent(1.0));
+        assertEquals("0.0%", ServerMenuCopy.percent(0.0));
+    }
 }

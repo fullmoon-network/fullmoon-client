@@ -20,14 +20,15 @@ import org.joml.Matrix3x2fc;
  * @param hx        shape half extent
  * @param radius    corner radius, clamped to the smaller half extent
  * @param thickness ring width, growing inwards from the edge; {@code <= 0} fills
- * @param color     packed 0xAARRGGBB
+ * @param color     packed 0xAARRGGBB along the top edge
+ * @param colorBottom packed 0xAARRGGBB along the bottom edge; equal to {@code color} for a flat fill
  */
 public record ShapeRenderState(
     Matrix3x2fc pose,
     float cx, float cy,
     float hx, float hy,
     float radius, float thickness,
-    int color,
+    int color, int colorBottom,
     ScreenRectangle scissorArea,
     ScreenRectangle bounds
 ) implements GuiElementRenderState {
@@ -39,10 +40,10 @@ public record ShapeRenderState(
         float cx, float cy,
         float hx, float hy,
         float radius, float thickness,
-        int color,
+        int color, int colorBottom,
         ScreenRectangle scissorArea
     ) {
-        this(pose, cx, cy, hx, hy, radius, thickness, color, scissorArea,
+        this(pose, cx, cy, hx, hy, radius, thickness, color, colorBottom, scissorArea,
             paddedBounds(cx, cy, hx, hy, pose, scissorArea));
     }
 
@@ -60,7 +61,7 @@ public record ShapeRenderState(
         float ox = sx * (hx + PAD);
         float oy = sy * (hy + PAD);
         consumer.addVertexWith2DPose(pose, cx + ox, cy + oy)
-            .setColor(color)
+            .setColor(sy < 0.0f ? color : colorBottom)
             .setUv(ox, oy)
             .setUv1(Math.round(hx * FIXED), Math.round(hy * FIXED))
             .setUv2(Math.round(radius * FIXED), Math.round(thickness * FIXED));
@@ -76,7 +77,7 @@ public record ShapeRenderState(
         return TextureSetup.noTexture();
     }
 
-    private static ScreenRectangle paddedBounds(
+    static ScreenRectangle paddedBounds(
         float cx, float cy, float hx, float hy, Matrix3x2fc pose, ScreenRectangle scissor
     ) {
         int x0 = (int) Math.floor(cx - hx - PAD);

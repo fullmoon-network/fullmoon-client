@@ -78,6 +78,11 @@ def main():
                     help="language pinned in options.txt (default: %(default)s)")
     ap.add_argument("--server",
                     help="quick-play multiplayer address, for captures over a live world")
+    ap.add_argument("--lobby", default="127.0.0.1:25565",
+                    help="address the title screen pings and joins; the default keeps captures off "
+                         "the production lobby (default: %(default)s)")
+    ap.add_argument("--dev-screen",
+                    help="open a fixture of a server-driven screen after boot (e.g. casino-menu)")
     ap.add_argument("--gap", type=float, default=0.6,
                     help="seconds between a tap and the next thing (default: %(default)s)")
     args = ap.parse_args()
@@ -118,6 +123,9 @@ def main():
                        f"-Pclient_width={width}", f"-Pclient_height={height}"]
             if args.server:
                 command.append(f"-Pquick_play_server={args.server}")
+            command.append(f"-Plobby={args.lobby}")
+            if args.dev_screen:
+                command.append(f"-Pdev_screen={args.dev_screen}")
             client = subprocess.Popen(
                 command,
                 cwd=MOD, env=env, stdout=sink, stderr=subprocess.STDOUT,
@@ -242,7 +250,10 @@ def capture_framebuffer(d, destination):
         created = list(set(directory.glob("*.png")) - before)
         if created:
             source = max(created, key=lambda path: path.stat().st_mtime_ns)
-            if source.stat().st_size > 0:
+            size = source.stat().st_size
+            # The game writes the file off-thread; a copy taken mid-write is a truncated PNG.
+            time.sleep(0.3)
+            if size > 0 and source.stat().st_size == size:
                 shutil.copy2(source, destination)
                 return
         time.sleep(0.05)

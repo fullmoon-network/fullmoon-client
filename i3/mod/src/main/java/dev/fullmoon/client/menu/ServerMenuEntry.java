@@ -54,6 +54,15 @@ final class ServerMenuEntry {
             return ItemStack.EMPTY;
         }
         Item resolved = BuiltInRegistries.ITEM.getValue(id);
-        return resolved == null ? ItemStack.EMPTY : new ItemStack(resolved, item.count());
+        if (resolved == null) {
+            return ItemStack.EMPTY;
+        }
+        try {
+            return new ItemStack(resolved, item.count());
+        } catch (NullPointerException unbound) {
+            // Item components are bound with a world's registries; with none loaded a stack cannot
+            // be built, and the tile falls back to its pixel mark or no icon.
+            return ItemStack.EMPTY;
+        }
     }
 }

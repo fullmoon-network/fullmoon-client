@@ -5,8 +5,8 @@ import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.text.Typeset;
 
 /**
- * The frame this client's development surfaces share: a masthead with an accent bar, a section
- * head, and a footer rule that names the keys out of the screen.
+ * The frame this client's development surfaces share: a masthead with the moon seal and the
+ * dancheong band, a section head, and a footer rule that names the keys out of the screen.
  *
  * <p>It exists so the pages read as one document rather than three screens that happen to draw
  * from the same tokens. The heights are published separately from the drawing because a screen
@@ -29,27 +29,23 @@ public final class DevChrome {
 
     /** The masthead. Returns the y its content starts at. */
     public static int header(Painter painter, int x, int y, int w, String subtitle) {
-        painter.fill(x, Typeset.capTop(Tokens.Type.DISPLAY, y), Tokens.Stroke.FOCUS,
-            Typeset.capHeight(Tokens.Type.DISPLAY), Tokens.Color.ACCENT);
-        int textX = x + Tokens.Stroke.FOCUS + Tokens.Space.COZY;
-
-        Typeset.draw(painter, Tokens.Type.DISPLAY, "Fullmoon", textX, y, Tokens.Color.INK_PRIMARY);
+        int brandY = y + Palace.brandRise(Tokens.Type.DISPLAY);
+        int textX = Palace.brand(painter, Tokens.Type.DISPLAY, x, brandY);
         Typeset.draw(painter, Tokens.Type.LABEL, subtitle, textX,
-            y + Tokens.Type.DISPLAY.leading(), Tokens.Color.INK_TERTIARY);
+            brandY + Tokens.Type.LABEL.leading() + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
         Typeset.tabularRight(painter, Tokens.Type.LABEL,
             painter.width() + " × " + painter.height() + " gui px",
-            x + w, y + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
+            x + w, brandY, Tokens.Color.INK_TERTIARY);
 
-        painter.hRule(x, y + Tokens.Type.DISPLAY.leading() + Tokens.Type.LABEL.leading(), w,
-            Tokens.Color.LINE_STRONG);
+        Palace.dancheong(painter, x, y + Tokens.Type.DISPLAY.leading() + Tokens.Type.LABEL.leading(), w);
         return y + headerHeight();
     }
 
     /** A section head is a label with an accent tick, never a tag left and a value right. */
     public static int sectionHead(Painter painter, String name, int x, int y) {
-        painter.fill(x, Typeset.capTop(Tokens.Type.LABEL, y), Tokens.Stroke.HAIR,
-            Typeset.capHeight(Tokens.Type.LABEL), Tokens.Color.ACCENT);
-        Typeset.draw(painter, Tokens.Type.LABEL, name, x + Tokens.Space.BASE, y,
+        painter.diamond(x + Tokens.Space.TIGHT, Typeset.capTop(Tokens.Type.LABEL, y)
+            + Typeset.capHeight(Tokens.Type.LABEL) / 2.0f, Tokens.Space.TIGHT + 0.5f, 0.0f, Tokens.Color.ACCENT);
+        Typeset.draw(painter, Tokens.Type.LABEL, name, x + Tokens.Space.BASE + Tokens.Space.TIGHT, y,
             Tokens.Color.INK_SECONDARY);
         return y + sectionHeadHeight();
     }

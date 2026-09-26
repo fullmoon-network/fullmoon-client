@@ -48,5 +48,20 @@ public final class ShapePipeline {
         .withVertexFormat(FORMAT, VertexFormat.Mode.QUADS)
         .build();
 
+    /**
+     * The lit face of a moon phase. It shares the vertex stage and format with {@link #PIPELINE}
+     * and only swaps the fragment's distance: a disc cut by the terminator ellipse instead of a
+     * rounded box, so a phase is one quad on top of a {@link Painter#dot} for the unlit face.
+     */
+    public static final RenderPipeline MOON = RenderPipeline.builder()
+        .withLocation(Identifier.fromNamespaceAndPath("fullmoon", "pipeline/moon"))
+        .withVertexShader(Identifier.fromNamespaceAndPath("fullmoon", "core/shape"))
+        .withFragmentShader(Identifier.fromNamespaceAndPath("fullmoon", "core/moon"))
+        .withUniform("DynamicTransforms", UniformType.UNIFORM_BUFFER)
+        .withUniform("Projection", UniformType.UNIFORM_BUFFER)
+        .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
+        .withVertexFormat(FORMAT, VertexFormat.Mode.QUADS)
+        .build();
+
     private ShapePipeline() {}
 }

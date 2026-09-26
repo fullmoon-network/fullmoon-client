@@ -195,6 +195,29 @@ final class BridgeProtocolTest {
         assertThrows(UnsupportedOperationException.class, () -> open.items().clear());
         assertThrows(UnsupportedOperationException.class, () -> item.details().clear());
         assertThrows(UnsupportedOperationException.class, () -> item.actions().clear());
+        assertTrue(item.chance().isEmpty());
+    }
+
+    @Test
+    void menuItemsMayCarryTheirWinChance() {
+        MenuProtocol.Open open = assertInstanceOf(
+            MenuProtocol.Open.class, BridgeProtocol.decode(json("""
+                {"type":"menu_open","proto":1,"id":"casino","revision":1,"title":"Casino","rows":1,
+                 "items":[{"slot":0,"label":"Coin","material":"minecraft:gold_nugget","count":1,
+                           "details":[],"actions":["left"],"chance":0.5}]}
+                """)).message().orElseThrow());
+        assertEquals(0.5, open.items().getFirst().chance().orElseThrow(), 1e-12);
+    }
+
+    @Test
+    void aWinChanceOutsideZeroToOneRejectsTheMenu() {
+        for (String chance : new String[] {"1.2", "-0.1", "\"0.5\"", "true", "null"}) {
+            assertEquals("menu item 0 chance must be between 0 and 1", decodeError("""
+                {"type":"menu_open","proto":1,"id":"casino","revision":1,"title":"Casino","rows":1,
+                 "items":[{"slot":0,"label":"Coin","material":"minecraft:gold_nugget","count":1,
+                           "details":[],"actions":["left"],"chance":%s}]}
+                """.formatted(chance)), chance);
+        }
     }
 
     @Test

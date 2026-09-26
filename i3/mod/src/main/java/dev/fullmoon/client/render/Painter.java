@@ -51,6 +51,19 @@ public final class Painter {
         shape(x, y, w, h, radius, 0.0f, color);
     }
 
+    /**
+     * Fills a rect whose colour runs from {@code top} to {@code bottom}. Moonlight falls from
+     * above, so a raised surface is lit along its top edge and settles into its ground.
+     */
+    public void fillGradient(float x, float y, float w, float h, int top, int bottom) {
+        if (w <= 0.0f || h <= 0.0f) {
+            return;
+        }
+        float hx = w * 0.5f;
+        float hy = h * 0.5f;
+        submit(x + hx, y + hy, hx, hy, 0.0f, 0.0f, top, bottom);
+    }
+
     /** Strokes the inside edge of a rect. A 1px stroke on integer coords lands on one row. */
     public void border(float x, float y, float w, float h, float radius, float thickness, int color) {
         if (thickness > 0.0f) {
@@ -78,19 +91,51 @@ public final class Painter {
         submit(cx, cy, r, r, r, thickness, color);
     }
 
+    /**
+     * A square turned a quarter-turn onto its point, {@code half} from centre to each vertex.
+     * {@code thickness <= 0} fills it.
+     */
+    public void diamond(float cx, float cy, float half, float thickness, int color) {
+        float side = half * (float) Math.sqrt(0.5);
+        gfx.pose().pushMatrix();
+        gfx.pose().translate(cx, cy);
+        gfx.pose().rotate((float) (Math.PI / 4.0));
+        submit(0.0f, 0.0f, side, side, 0.0f, thickness, color, color);
+        gfx.pose().popMatrix();
+    }
+
+    /**
+     * A moon of radius {@code r} with {@code lit} of its disc lit: the unlit face as a dot, the
+     * lit face on top of it through the moon pipeline.
+     */
+    public void moon(float cx, float cy, float r, float lit, boolean waxing, int litColor, int shadowColor) {
+        dot(cx, cy, r, shadowColor);
+        if (lit <= 0.0f) {
+            return;
+        }
+        gfx.guiRenderState.addGuiElement(new MoonRenderState(
+            new Matrix3x2f(gfx.pose()), cx, cy, r, lit, waxing, litColor, clips.peekLast()));
+    }
+
     private void shape(float x, float y, float w, float h, float radius, float thickness, int color) {
         if (w <= 0.0f || h <= 0.0f) {
             return;
         }
         float hx = w * 0.5f;
         float hy = h * 0.5f;
-        submit(x + hx, y + hy, hx, hy, Math.min(radius, Math.min(hx, hy)), thickness, color);
+        submit(x + hx, y + hy, hx, hy, Math.min(radius, Math.min(hx, hy)), thickness, color, color);
     }
 
     private void submit(float cx, float cy, float hx, float hy, float radius, float thickness, int color) {
+        submit(cx, cy, hx, hy, radius, thickness, color, color);
+    }
+
+    private void submit(
+        float cx, float cy, float hx, float hy, float radius, float thickness, int top, int bottom
+    ) {
         // The pose is a live stack; a render state outlives this call, so it gets a copy.
         gfx.guiRenderState.addGuiElement(new ShapeRenderState(
-            new Matrix3x2f(gfx.pose()), cx, cy, hx, hy, radius, thickness, color, clips.peekLast()));
+            new Matrix3x2f(gfx.pose()), cx, cy, hx, hy, radius, thickness, top, bottom, clips.peekLast()));
     }
 
     /** Clips subsequent draws — this painter's and the game's text — to a rect. */

@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -60,13 +61,15 @@ public final class MenuProtocol {
             int count,
             List<String> details,
             List<Click> actions,
-            String icon) {
+            String icon,
+            OptionalDouble chance) {
         public Item {
             Objects.requireNonNull(label, "label");
             Objects.requireNonNull(material, "material");
             details = List.copyOf(Objects.requireNonNull(details, "details"));
             actions = List.copyOf(Objects.requireNonNull(actions, "actions"));
             Objects.requireNonNull(icon, "icon");
+            Objects.requireNonNull(chance, "chance");
         }
     }
 
@@ -232,8 +235,16 @@ public final class MenuProtocol {
         if (!icon.isEmpty() && !ICON_ID.matcher(icon).matches()) {
             return ItemEntry.failure("menu item " + index + " icon is invalid");
         }
+        OptionalDouble chance = OptionalDouble.empty();
+        if (json.has("chance")) {
+            Double value = fraction(json, "chance");
+            if (value == null) {
+                return ItemEntry.failure("menu item " + index + " chance must be between 0 and 1");
+            }
+            chance = OptionalDouble.of(value);
+        }
         return ItemEntry.success(new Item(
-            slot, label, material, count, details.values(), actions.values(), icon));
+            slot, label, material, count, details.values(), actions.values(), icon, chance));
     }
 
     private static TextList decodeTextList(JsonObject json, int index) {
@@ -314,6 +325,20 @@ public final class MenuProtocol {
             return null;
         }
         return value.intValue();
+    }
+
+    /** A finite number in {@code [0, 1]}, or null when the field is anything else. */
+    private static Double fraction(JsonObject json, String key) {
+        if (!json.get(key).isJsonPrimitive() || !json.getAsJsonPrimitive(key).isNumber()) {
+            return null;
+        }
+        double value;
+        try {
+            value = new BigDecimal(json.getAsJsonPrimitive(key).getAsString()).doubleValue();
+        } catch (NumberFormatException error) {
+            return null;
+        }
+        return Double.isFinite(value) && value >= 0.0 && value <= 1.0 ? value : null;
     }
 
     private static Long longInteger(JsonObject json, String key) {

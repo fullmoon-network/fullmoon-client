@@ -16,6 +16,7 @@ import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.text.Typeset;
 import dev.fullmoon.client.ui.Button;
 import dev.fullmoon.client.ui.Chord;
+import dev.fullmoon.client.ui.Palace;
 import dev.fullmoon.client.ui.Surface;
 import dev.fullmoon.client.ui.Tooltip;
 import dev.fullmoon.client.ui.Voice;
@@ -235,18 +236,13 @@ public final class MapScreen extends Screen {
 
     private void header(Painter painter) {
         Box content = layout.content();
-        int brandY = content.y();
-        painter.fill(content.x(), Typeset.capTop(Tokens.Type.DISPLAY, brandY),
-            Tokens.Stroke.FOCUS, Typeset.capHeight(Tokens.Type.DISPLAY), Tokens.Color.ACCENT);
-        int textX = content.x() + Tokens.Stroke.FOCUS + Tokens.Space.COZY;
-        Typeset.draw(painter, Tokens.Type.DISPLAY, "Fullmoon", textX, brandY,
-            Tokens.Color.INK_PRIMARY);
+        int brandY = content.y() + Palace.brandRise(Tokens.Type.DISPLAY);
+        int textX = Palace.brand(painter, Tokens.Type.DISPLAY, content.x(), brandY);
         Typeset.draw(painter, Tokens.Type.LABEL, tr("subtitle"), textX,
-            brandY + Tokens.Type.DISPLAY.leading(), Tokens.Color.INK_TERTIARY);
-        Typeset.drawRight(painter, Tokens.Type.LABEL, tr("authority"), content.right(),
-            brandY + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
-        painter.hRule(content.x(), layout.headerBottom() - Tokens.Space.COZY,
-            content.w(), Tokens.Color.LINE_STRONG);
+            brandY + Tokens.Type.LABEL.leading() + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
+        Typeset.drawRight(painter, Tokens.Type.LABEL, tr("authority"), content.right(), brandY,
+            Tokens.Color.INK_TERTIARY);
+        Palace.dancheong(painter, content.x(), layout.headerBottom() - Tokens.Space.COZY, content.w());
     }
 
     private void rail(Painter painter) {

@@ -96,6 +96,12 @@ screen.
 client that does not know the name — renders the `material` item instead. Presentation only:
 the icon never carries authority, exactly like `label` and `details`.
 
+`chance` is optional: the item's win probability as a finite number in `[0, 1]` (the casino sends
+it for coinflip, dice and roulette at the advertised bet, and for slots from its weights; pachinko
+and the jackpot have no single probability and omit it). The client draws it as a moon filled that
+far beside the figure. A `chance` that is present but not such a number rejects the whole menu, like
+any other malformed field. Presentation only: the server settles every bet itself.
+
 The client sends only the opaque session ID, revision, selected slot, and an advertised click:
 
 ```text
@@ -152,8 +158,10 @@ Rules:
 
 ## Vanilla fallback
 
-- `/warp` lists and executes the same registered waypoint IDs through the same permission and
-  cooldown path as `tp_request`.
+- `/항로` (alias `/route`) lists and executes the same registered waypoint IDs through the same
+  permission and cooldown path as `tp_request`. `/워프` and `/warp` belong to coin-bridge's
+  `/텔레포트` on the server, so the bridge does not claim them. A server with no reviewed waypoints
+  publishes an empty list, and the route screen says so instead of failing.
 - Every server-owned menu retains its ChestGUI inventory. The server opens it when the player has no
   completed handshake, the bridge is unavailable, or a menu snapshot exceeds the channel limit.
 - Native and fallback surfaces expose the same actions. Client detection never changes the feature

@@ -5,12 +5,14 @@ import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.text.Typeset;
+import dev.fullmoon.client.ui.Palace;
 
 /** Base class for HUD elements providing common anchor state and chip styling. */
 public abstract class BaseHudElement implements HudElement {
     protected static final int PADDING_H = Tokens.Space.COZY;
     protected static final int PADDING_V = Tokens.Space.SNUG;
     protected static final int CHIP_HEIGHT = 20;
+    private static final int TICK = 4;
 
     private final String id;
     private final String label;
@@ -97,12 +99,21 @@ public abstract class BaseHudElement implements HudElement {
         this.scale = scale;
     }
 
-    /** Draws a standard dark glass chip container. */
+    /** Draws a chip: night glass inside a gilt hairline, with the frame's ticks on two corners. */
     protected void drawContainer(Painter painter, Box bounds) {
         painter.fill(bounds.x(), bounds.y(), bounds.w(), bounds.h(),
-            Tokens.Radius.SM, Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.78f));
+            Tokens.Radius.NONE, Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.82f));
         painter.border(bounds.x(), bounds.y(), bounds.w(), bounds.h(),
-            Tokens.Radius.SM, Tokens.Stroke.HAIR, Tokens.Color.LINE_HAIRLINE);
+            Tokens.Radius.NONE, Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT_FAINT);
+        Palace.ticks(painter, bounds.x() - 1, bounds.y() - 1, bounds.w() + 2, bounds.h() + 2, TICK);
+    }
+
+    /**
+     * Something drawn before the key, such as the clock's moon. Returns the width it took; the
+     * element's {@link #measureWidth} has to count the same width.
+     */
+    protected int drawLeadingMark(Painter painter, int x, float cy) {
+        return 0;
     }
 
     /** Draws a standard single-line key-value chip with shared baseline centering. */
@@ -117,9 +128,10 @@ public abstract class BaseHudElement implements HudElement {
             painter.dot(currentX + Tokens.Space.TIGHT, dotCenterY, Tokens.Space.TIGHT, dotColor);
             currentX += Tokens.Space.COZY;
         }
+        currentX += drawLeadingMark(painter, currentX, bounds.y() + bounds.h() / 2.0f);
 
         if (key != null && !key.isEmpty()) {
-            Typeset.draw(painter, Tokens.Type.LABEL, key, currentX, textY, Tokens.Color.INK_TERTIARY);
+            Typeset.draw(painter, Tokens.Type.LABEL, key, currentX, textY, Tokens.Color.ACCENT);
             currentX += Typeset.width(Tokens.Type.LABEL, key) + Tokens.Space.SNUG;
         }
 

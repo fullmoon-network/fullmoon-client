@@ -11,16 +11,21 @@ import dev.fullmoon.client.text.Typeset;
 
 import net.minecraft.client.Minecraft;
 
-/** Premier PvP Keystrokes with tactile keycaps, dual-line LMB/RMB CPS meters, and spacebar. */
+/**
+ * The movement keys, both mouse buttons with their clicks per second, and jump, as keycaps in the
+ * palace frame: night glass in a faint gilt outline standing on a gilt lip. A held key sinks onto
+ * its lip and fills with the accent, so a glance tells which keys are down.
+ */
 public final class KeystrokesHud extends BaseHudElement {
-    private static final int KEY_W = 24;
-    private static final int KEY_H = 24;
+    private static final int KEY = 24;
     private static final int GAP = 2;
-    private static final int TOTAL_W = KEY_W * 3 + GAP * 2; // 76px
-    private static final int MOUSE_W = (TOTAL_W - GAP) / 2; // 37px
+    private static final int WIDTH = KEY * 3 + GAP * 2;
+    private static final int MOUSE_W = (WIDTH - GAP) / 2;
     private static final int MOUSE_H = 26;
     private static final int SPACE_H = 12;
-    private static final int TOTAL_H = KEY_H * 2 + MOUSE_H + SPACE_H + GAP * 3; // 24+24+26+12+6 = 92px
+    private static final int HEIGHT = KEY * 2 + MOUSE_H + SPACE_H + GAP * 3;
+    private static final int LIP = 1;
+    private static final int SPACE_INSET = 12;
 
     private static final Deque<Long> LMB_CLICKS = new ArrayDeque<>();
     private static final Deque<Long> RMB_CLICKS = new ArrayDeque<>();
@@ -52,12 +57,12 @@ public final class KeystrokesHud extends BaseHudElement {
 
     @Override
     public int measureWidth(Minecraft client) {
-        return TOTAL_W;
+        return WIDTH;
     }
 
     @Override
     public int measureHeight(Minecraft client) {
-        return TOTAL_H;
+        return HEIGHT;
     }
 
     @Override
@@ -80,74 +85,55 @@ public final class KeystrokesHud extends BaseHudElement {
 
         int x = bounds.x();
         int y = bounds.y();
-
-        // 1. Row 1: [ W ] (centered above S)
-        drawKeycap(painter, x + KEY_W + GAP, y, KEY_W, KEY_H, "W", wDown);
-
-        // 2. Row 2: [ A ] [ S ] [ D ]
-        int row2Y = y + KEY_H + GAP;
-        drawKeycap(painter, x, row2Y, KEY_W, KEY_H, "A", aDown);
-        drawKeycap(painter, x + KEY_W + GAP, row2Y, KEY_W, KEY_H, "S", sDown);
-        drawKeycap(painter, x + (KEY_W + GAP) * 2, row2Y, KEY_W, KEY_H, "D", dDown);
-
-        // 3. Row 3: [ LMB ] [ RMB ] with dual-line CPS readouts
-        int row3Y = row2Y + KEY_H + GAP;
-        drawMouseKeycap(painter, x, row3Y, MOUSE_W, MOUSE_H, "LMB", lmbCps + " CPS", lmbDown);
-        drawMouseKeycap(painter, x + MOUSE_W + GAP, row3Y, MOUSE_W, MOUSE_H, "RMB", rmbCps + " CPS", rmbDown);
-
-        // 4. Row 4: [ ──────── ] Spacebar
-        int row4Y = row3Y + MOUSE_H + GAP;
-        drawSpacebar(painter, x, row4Y, TOTAL_W, SPACE_H, spaceDown);
+        key(painter, x + KEY + GAP, y, "W", wDown);
+        int row = y + KEY + GAP;
+        key(painter, x, row, "A", aDown);
+        key(painter, x + KEY + GAP, row, "S", sDown);
+        key(painter, x + (KEY + GAP) * 2, row, "D", dDown);
+        row += KEY + GAP;
+        mouse(painter, x, row, "LMB", lmbCps, lmbDown);
+        mouse(painter, x + MOUSE_W + GAP, row, "RMB", rmbCps, rmbDown);
+        row += MOUSE_H + GAP;
+        space(painter, x, row, spaceDown);
     }
 
-    private void drawKeycap(Painter painter, int kx, int ky, int kw, int kh, String text, boolean down) {
-        int bg = down ? Tokens.Color.ACCENT : Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.78f);
-        int border = down ? Tokens.Color.ACCENT_PRESSED : Tokens.Color.LINE_HAIRLINE;
-        int ink = down ? Tokens.Color.INK_ON_ACCENT : Tokens.Color.INK_PRIMARY;
-
-        painter.fill(kx, ky, kw, kh, Tokens.Radius.SM, bg);
-        painter.border(kx, ky, kw, kh, Tokens.Radius.SM, Tokens.Stroke.HAIR, border);
-
-        int textW = Typeset.width(Tokens.Type.BODY_STRONG, text);
-        int textX = kx + (kw - textW) / 2;
-        int textY = Typeset.centred(Tokens.Type.BODY_STRONG, ky, kh);
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG, text, textX, textY, ink);
+    /** A keycap's body. Returns the top of its face, which is one lip lower while it is held. */
+    private static int cap(Painter painter, int x, int y, int w, int h, boolean down) {
+        int top = down ? y + LIP : y;
+        int face = h - LIP;
+        painter.fill(x, top, w, face, Tokens.Radius.NONE,
+            down ? Tokens.Color.ACCENT : Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.82f));
+        painter.border(x, top, w, face, Tokens.Radius.NONE, Tokens.Stroke.HAIR,
+            down ? Tokens.Color.ACCENT_PRESSED : Tokens.Color.LINE_GILT_FAINT);
+        if (!down) {
+            painter.hRule(x, y + face, w, Tokens.Color.LINE_GILT);
+        }
+        return top;
     }
 
-    private void drawMouseKeycap(Painter painter, int kx, int ky, int kw, int kh, String label, String sub, boolean down) {
-        int bg = down ? Tokens.Color.ACCENT : Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.78f);
-        int border = down ? Tokens.Color.ACCENT_PRESSED : Tokens.Color.LINE_HAIRLINE;
-        int labelInk = down ? Tokens.Color.INK_ON_ACCENT : Tokens.Color.INK_TERTIARY;
-        int subInk = down ? Tokens.Color.INK_ON_ACCENT : Tokens.Color.INK_PRIMARY;
-
-        painter.fill(kx, ky, kw, kh, Tokens.Radius.SM, bg);
-        painter.border(kx, ky, kw, kh, Tokens.Radius.SM, Tokens.Stroke.HAIR, border);
-
-        // Top line: LMB / RMB
-        int labelW = Typeset.width(Tokens.Type.LABEL, label);
-        int labelX = kx + (kw - labelW) / 2;
-        int labelY = ky + 3;
-        Typeset.draw(painter, Tokens.Type.LABEL, label, labelX, labelY, labelInk);
-
-        // Bottom line: XX CPS
-        int subW = Typeset.width(Tokens.Type.LABEL, sub);
-        int subX = kx + (kw - subW) / 2;
-        int subY = ky + 13;
-        Typeset.draw(painter, Tokens.Type.LABEL, sub, subX, subY, subInk);
+    private static void key(Painter painter, int x, int y, String name, boolean down) {
+        int top = cap(painter, x, y, KEY, KEY, down);
+        Typeset.drawCentered(painter, Tokens.Type.BODY_STRONG, name, x + KEY / 2,
+            Typeset.centred(Tokens.Type.BODY_STRONG, top, KEY - LIP),
+            down ? Tokens.Color.INK_ON_ACCENT : Tokens.Color.INK_PRIMARY);
     }
 
-    private void drawSpacebar(Painter painter, int kx, int ky, int kw, int kh, boolean down) {
-        int bg = down ? Tokens.Color.ACCENT : Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.78f);
-        int border = down ? Tokens.Color.ACCENT_PRESSED : Tokens.Color.LINE_HAIRLINE;
-        int barColor = down ? Tokens.Color.INK_ON_ACCENT : Tokens.Color.LINE_STRONG;
+    private static void mouse(Painter painter, int x, int y, String name, int cps, boolean down) {
+        int top = cap(painter, x, y, MOUSE_W, MOUSE_H, down);
+        int leading = Tokens.Type.LABEL.leading();
+        int first = top + (MOUSE_H - LIP - leading * 2) / 2;
+        Typeset.drawCentered(painter, Tokens.Type.LABEL, name, x + MOUSE_W / 2, first,
+            down ? Tokens.Color.INK_ON_ACCENT : Tokens.Color.INK_TERTIARY);
+        String rate = cps + " CPS";
+        Typeset.tabular(painter, Tokens.Type.LABEL, rate,
+            x + (MOUSE_W - Typeset.tabularWidth(Tokens.Type.LABEL, rate)) / 2, first + leading,
+            down ? Tokens.Color.INK_ON_ACCENT : Tokens.Color.INK_PRIMARY);
+    }
 
-        painter.fill(kx, ky, kw, kh, Tokens.Radius.SM, bg);
-        painter.border(kx, ky, kw, kh, Tokens.Radius.SM, Tokens.Stroke.HAIR, border);
-
-        // Centered space indicator bar
-        int barW = kw - 24;
-        int barX = kx + (kw - barW) / 2;
-        int barY = ky + (kh - 2) / 2;
-        painter.fill(barX, barY, barW, 2, 1, barColor);
+    private static void space(Painter painter, int x, int y, boolean down) {
+        int top = cap(painter, x, y, WIDTH, SPACE_H, down);
+        painter.fill(x + SPACE_INSET, top + (SPACE_H - LIP) / 2 - 1, WIDTH - SPACE_INSET * 2,
+            Tokens.Stroke.FOCUS, Tokens.Radius.NONE,
+            down ? Tokens.Color.INK_ON_ACCENT : Tokens.Color.LINE_GILT);
     }
 }

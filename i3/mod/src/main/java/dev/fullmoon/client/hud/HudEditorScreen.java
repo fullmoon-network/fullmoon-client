@@ -9,6 +9,7 @@ import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.text.Typeset;
 import dev.fullmoon.client.ui.Button;
 import dev.fullmoon.client.ui.Chord;
+import dev.fullmoon.client.ui.Palace;
 import dev.fullmoon.client.ui.Surface;
 import dev.fullmoon.client.ui.Toggle;
 import dev.fullmoon.client.ui.Voice;
@@ -411,10 +412,11 @@ public final class HudEditorScreen extends Screen {
     private void drawTopHeader(Painter painter) {
         int barY = 12;
 
-        // 1. Left Title & Accent Bar
+        // 1. Left Title & Seal
         int capH = Typeset.capHeight(Tokens.Type.BODY_STRONG);
-        painter.fill(24, barY + (INSPECTOR_H - capH) / 2, Tokens.Stroke.FOCUS, capH, Tokens.Color.ACCENT);
-        int titleX = 24 + Tokens.Stroke.FOCUS + Tokens.Space.COZY;
+        int seal = capH + Tokens.Space.SNUG;
+        Palace.seal(painter, 24, barY + (INSPECTOR_H - seal) / 2.0f, seal);
+        int titleX = 24 + seal + Tokens.Space.COZY;
         int titleY = barY + (INSPECTOR_H - 9) / 2;
         Typeset.draw(painter, Tokens.Type.BODY_STRONG, "Fullmoon HUD Studio", titleX, titleY, Tokens.Color.INK_PRIMARY);
 
@@ -422,21 +424,15 @@ public final class HudEditorScreen extends Screen {
         int snapY = barY + (INSPECTOR_H - 9) / 2;
         Typeset.draw(painter, Tokens.Type.LABEL, "· 4px 스냅", snapX, snapY, Tokens.Color.INK_TERTIARY);
 
-        // 2. Center Inspector Pill
         HudElement elem = selectedElement();
         if (elem != null) {
             int inspX = (width - INSPECTOR_W) / 2;
-            painter.fill(inspX, barY, INSPECTOR_W, INSPECTOR_H, Tokens.Radius.ROUND,
-                Rgb.alpha(Tokens.Color.SURFACE_BASE, 0.92f));
-            painter.border(inspX, barY, INSPECTOR_W, INSPECTOR_H, Tokens.Radius.ROUND, Tokens.Stroke.HAIR,
-                Tokens.Color.LINE_HAIRLINE);
+            glass(painter, inspX, barY, INSPECTOR_W, INSPECTOR_H);
 
-            // Selected module name on left
             int modNameX = inspX + Tokens.Space.LOOSE;
             int modNameY = barY + (INSPECTOR_H - 9) / 2;
             Typeset.draw(painter, Tokens.Type.BODY_STRONG, elem.label(), modNameX, modNameY, Tokens.Color.INK_PRIMARY);
 
-            // 3x3 Anchor Picker in center of inspector
             int anchorBoxX = inspX + 135;
             int totalGridH = ANCHOR_CELL_SIZE * 3 + ANCHOR_CELL_GAP * 2;
             int anchorBoxY = barY + (INSPECTOR_H - totalGridH) / 2;
@@ -450,8 +446,9 @@ public final class HudEditorScreen extends Screen {
                     int bg = active ? Tokens.Color.ACCENT : Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.8f);
                     int border = active ? Tokens.Color.ACCENT_PRESSED : Tokens.Color.LINE_HAIRLINE;
 
-                    painter.fill(cx, cy, ANCHOR_CELL_SIZE, ANCHOR_CELL_SIZE, 2, bg);
-                    painter.border(cx, cy, ANCHOR_CELL_SIZE, ANCHOR_CELL_SIZE, 2, Tokens.Stroke.HAIR, border);
+                    painter.fill(cx, cy, ANCHOR_CELL_SIZE, ANCHOR_CELL_SIZE, Tokens.Radius.NONE, bg);
+                    painter.border(cx, cy, ANCHOR_CELL_SIZE, ANCHOR_CELL_SIZE, Tokens.Radius.NONE,
+                        Tokens.Stroke.HAIR, border);
                 }
             }
 
@@ -461,16 +458,19 @@ public final class HudEditorScreen extends Screen {
         }
     }
 
+    /** The editor's own bars: the HUD chips' night glass and gilt hairline, ticked on two corners. */
+    private static void glass(Painter painter, int x, int y, int w, int h) {
+        painter.fill(x, y, w, h, Tokens.Radius.NONE, Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.90f));
+        painter.border(x, y, w, h, Tokens.Radius.NONE, Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT_FAINT);
+        Palace.ticks(painter, x - 1, y - 1, w + 2, h + 2, Tokens.Space.COZY);
+    }
+
     private void drawModuleDock(Painter painter, int mx, int my) {
         int dockW = computeDockWidth();
         int dockX = (width - dockW) / 2;
         int dockY = height - DOCK_H - Tokens.Space.COZY;
 
-        // Dock background container
-        painter.fill(dockX, dockY, dockW, DOCK_H, Tokens.Radius.ROUND,
-            Rgb.alpha(Tokens.Color.SURFACE_BASE, 0.90f));
-        painter.border(dockX, dockY, dockW, DOCK_H, Tokens.Radius.ROUND, Tokens.Stroke.HAIR,
-            Tokens.Color.LINE_HAIRLINE);
+        glass(painter, dockX, dockY, dockW, DOCK_H);
 
         int currX = dockX + Tokens.Space.LOOSE;
         int pillY = dockY + (DOCK_H - DOCK_PILL_H) / 2;

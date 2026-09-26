@@ -15,6 +15,7 @@ import dev.fullmoon.client.ui.Button;
 import dev.fullmoon.client.ui.DevChrome;
 import dev.fullmoon.client.ui.ListPanel;
 import dev.fullmoon.client.ui.ListRow;
+import dev.fullmoon.client.ui.Palace;
 import dev.fullmoon.client.ui.SurfaceScreen;
 import dev.fullmoon.client.ui.Voice;
 
@@ -123,18 +124,14 @@ public final class WarpScreen extends SurfaceScreen {
     }
 
     private void header(Painter painter) {
-        int brandY = content.y();
-        painter.fill(content.x(), Typeset.capTop(Tokens.Type.DISPLAY, brandY),
-            Tokens.Stroke.FOCUS, Typeset.capHeight(Tokens.Type.DISPLAY), Tokens.Color.ACCENT);
-        int textX = content.x() + Tokens.Stroke.FOCUS + Tokens.Space.COZY;
-        Typeset.draw(painter, Tokens.Type.DISPLAY, "Fullmoon", textX, brandY,
-            Tokens.Color.INK_PRIMARY);
+        int brandY = content.y() + Palace.brandRise(Tokens.Type.DISPLAY);
+        int textX = Palace.brand(painter, Tokens.Type.DISPLAY, content.x(), brandY);
         Typeset.draw(painter, Tokens.Type.LABEL, tr("subtitle"), textX,
-            brandY + Tokens.Type.DISPLAY.leading(), Tokens.Color.INK_TERTIARY);
-        Typeset.drawRight(painter, Tokens.Type.LABEL, tr("authority"), content.right(),
-            brandY + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
-        painter.hRule(content.x(), content.y() + headerHeight() - Tokens.Space.SNUG,
-            content.w(), Tokens.Color.LINE_STRONG);
+            brandY + Tokens.Type.LABEL.leading() + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
+        Typeset.drawRight(painter, Tokens.Type.LABEL, tr("authority"), content.right(), brandY,
+            Tokens.Color.INK_TERTIARY);
+        Palace.dancheong(painter, content.x(), content.y() + headerHeight() - Tokens.Space.SNUG,
+            content.w());
     }
 
     private void details(Painter painter) {

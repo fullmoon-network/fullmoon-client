@@ -39,6 +39,13 @@ loom {
         providers.gradleProperty("quick_play_server").orNull?.let { server ->
             programArgs("--quickPlayMultiplayer", server)
         }
+        providers.gradleProperty("lobby").orNull?.let { lobby ->
+            vmArg("-Dfullmoon.lobby=$lobby")
+        }
+        // A screen that is normally server-driven can only be photographed from a fixture.
+        providers.gradleProperty("dev_screen").orNull?.let { screen ->
+            vmArg("-Dfullmoon.devScreen=$screen")
+        }
     }
 }
 

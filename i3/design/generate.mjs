@@ -186,6 +186,13 @@ const checks = [
   ['status.warn on surface.base', 'status.warn', 'surface.base', 3.0],
   ['status.danger on surface.base', 'status.danger', 'surface.base', 3.0],
   ['line.hairline on surface.base', 'line.hairline', 'surface.base', 1.15],
+  ['ink.primary on surface.raised', 'ink.primary', 'surface.raised', 4.5],
+  ['ink.primary on accent.wash', 'ink.primary', 'accent.wash', 4.5],
+  ['line.gilt on surface.base', 'line.gilt', 'surface.base', 1.8],
+  ['line.lattice on surface.base', 'line.lattice', 'surface.base', 1.1],
+  ['accent (corner bracket) on surface.void', 'accent', 'surface.void', 3.0],
+  ['ink.primary on ornament.cinnabar (seal)', 'ink.primary', 'ornament.cinnabar', 3.0],
+  ['moon.lit on moon.shadow', 'moon.lit', 'moon.shadow', 7.0],
 ];
 let failed = 0;
 console.log(`wrote ${javaOut.replace(/.*\/i3\//, 'i3/')}`);

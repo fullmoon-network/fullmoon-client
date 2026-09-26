@@ -3,9 +3,12 @@ package dev.fullmoon.client;
 import java.util.List;
 
 import dev.fullmoon.client.map.MapScreen;
+import dev.fullmoon.client.menu.ServerMenuSample;
+import dev.fullmoon.client.menu.ServerMenuScreen;
 import dev.fullmoon.client.network.FullmoonChannel;
 import dev.fullmoon.client.settings.SettingsScreen;
 import dev.fullmoon.client.text.Typeset;
+import dev.fullmoon.client.title.FullmoonTitleScreen;
 import dev.fullmoon.client.ui.DevScreen;
 
 import net.fabricmc.api.ClientModInitializer;
@@ -17,6 +20,7 @@ import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
 import net.fabricmc.fabric.api.resource.v1.reloader.ResourceReloaderKeys;
 
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackType;
@@ -49,6 +53,8 @@ public final class FullmoonClient implements ClientModInitializer {
     private static final KeyMapping SETTINGS = key("settings", InputConstants.KEY_F9);
     private static final KeyMapping HUD_EDITOR = key("hud", InputConstants.KEY_F10);
     private static final KeyMapping MAP = key("map", InputConstants.KEY_M);
+
+    private static boolean fixtureShown;
 
     @Override
     public void onInitializeClient() {
@@ -88,7 +94,9 @@ public final class FullmoonClient implements ClientModInitializer {
         ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) ->
             ScreenKeyboardEvents.afterKeyPress(screen).register((current, key) -> {
                 if (bound(SETTINGS, key)) {
-                    if (current instanceof dev.fullmoon.client.ui.SurfaceScreen surfaceScreen && !(current instanceof dev.fullmoon.client.hud.HudEditorScreen)) {
+                    if (current instanceof dev.fullmoon.client.ui.SurfaceScreen surfaceScreen
+                            && !(current instanceof dev.fullmoon.client.hud.HudEditorScreen)
+                            && !(current instanceof FullmoonTitleScreen)) {
                         surfaceScreen.onClose();
                     } else {
                         client.setScreen(new SettingsScreen(current));
@@ -113,6 +121,29 @@ public final class FullmoonClient implements ClientModInitializer {
                     }
                 }
             }));
+
+        // Every route to the menu — boot, a disconnect, closing a screen with no world — builds a
+        // vanilla TitleScreen, so swapping it here catches all of them without a mixin. The swap
+        // waits a task so it does not replace a screen from inside that screen's own init.
+        ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
+            if (screen instanceof TitleScreen) {
+                client.execute(() -> {
+                    if (client.screen == screen) {
+                        client.setScreen(new FullmoonTitleScreen());
+                    }
+                });
+            }
+        });
+
+        // The game builds its title screen once more when the loading overlay lifts, so a fixture
+        // opened on the first one would be replaced; wait until nothing is loading.
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (!fixtureShown && client.getOverlay() == null
+                    && client.screen instanceof FullmoonTitleScreen title) {
+                fixtureShown = true;
+                ServerMenuSample.requested().ifPresent(menu -> client.setScreen(new ServerMenuScreen(title, menu)));
+            }
+        });
 
         // Font metrics are memoised, and a resource pack can replace a provider under us. The
         // ordering against FONTS is what makes this run after the atlases are rebuilt, not

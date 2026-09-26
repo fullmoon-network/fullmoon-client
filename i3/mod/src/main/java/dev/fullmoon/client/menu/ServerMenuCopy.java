@@ -1,5 +1,7 @@
 package dev.fullmoon.client.menu;
 
+import java.util.Locale;
+
 final class ServerMenuCopy {
     private static final String DECORATION = "»«✔✖■□★┃";
 
@@ -17,6 +19,19 @@ final class ServerMenuCopy {
         }
         String cleaned = value.substring(start, end).trim();
         return cleaned.isEmpty() ? value : cleaned;
+    }
+
+    /**
+     * A win chance as players read one: whole percent when it is one, a tenth where the tenth
+     * matters (48.6% roulette, 0.4% jackpot).
+     */
+    static String percent(double chance) {
+        double value = chance * 100.0;
+        double whole = Math.rint(value);
+        if (value >= 1.0 && Math.abs(value - whole) < 0.05) {
+            return (long) whole + "%";
+        }
+        return String.format(Locale.ROOT, "%.1f%%", value);
     }
 
     private static boolean decorative(char value) {

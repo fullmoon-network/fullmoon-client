@@ -74,8 +74,12 @@ public final class ListRow extends Widget {
 
         int textY = Typeset.centred(Tokens.Type.BODY, b.y(), b.h());
         if (look.tickWidth() > 0) {
-            painter.fill(b.x() + Tokens.Space.SNUG, Typeset.capTop(Tokens.Type.BODY, textY),
-                look.tickWidth(), Typeset.capHeight(Tokens.Type.BODY), look.tick());
+            // The palace marks a row with a diamond: filled for the chosen row, outlined for the
+            // keyboard's own stop, so the two widths still read apart.
+            boolean chosen = look.tickWidth() >= Tokens.Stroke.FOCUS;
+            painter.diamond(b.x() + Tokens.Space.SNUG + Tokens.Space.TIGHT,
+                Typeset.capTop(Tokens.Type.BODY, textY) + Typeset.capHeight(Tokens.Type.BODY) / 2.0f,
+                chosen ? 3.5f : 3.0f, chosen ? 0.0f : Tokens.Stroke.HAIR, look.tick());
         }
 
         int left = b.x() + GUTTER;
