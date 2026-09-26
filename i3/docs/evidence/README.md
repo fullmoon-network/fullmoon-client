@@ -63,8 +63,6 @@ redrawn in P2. Its footer carries P1-D's key line. The specimen matches `p1d-spe
 everywhere but its geometry readout and its frame counter, and three Studio runs of the kit are
 identical to each other to the pixel.
 
-<<<<<<< HEAD
-=======
 ## The title panorama
 
 `mod/src/main/resources/assets/minecraft/textures/gui/title/background/panorama_0.png` to `_5.png`
@@ -108,7 +106,6 @@ The grab writes RGBA with an opaque alpha; the wrapper rewrites the faces as RGB
 strongest setting, pixel for pixel the same: 3.5 MB for the six against 5.8 MB as grabbed and
 6.2 MB for vanilla's. The run took 177 s in the Studio at render distance 16.
 
->>>>>>> RedHatOnTop/fmc-panorama
 ## P0 — render layer and design specimen
 
 | file | what it settles |
