@@ -13,14 +13,14 @@ import dev.fullmoon.client.render.Painter;
  * <p>They do not move. Motion arrives in P2, with the reduced-motion setting that has to be able
  * to collapse it.
  */
-final class Dots {
+public final class Dots {
     private static final int RADIUS = Tokens.Space.TIGHT;
     private static final int PITCH = Tokens.Space.BASE;
 
     private Dots() {}
 
     /** Centred on {@code (cx, cy)}. */
-    static void draw(Painter painter, float cx, float cy, int color) {
+    public static void draw(Painter painter, float cx, float cy, int color) {
         for (int i = -1; i <= 1; i++) {
             painter.dot(cx + i * PITCH, cy, RADIUS, color);
         }
