@@ -27,4 +27,14 @@ final class ServerMenuSampleTest {
         assertEquals(10, menu.items().size());
         assertEquals(5, menu.items().stream().filter(item -> item.chance().isPresent()).count());
     }
+
+    @Test
+    void everyCasinoResultFixtureDecodes() {
+        for (String game : new String[] {"slots", "dice", "roulette", "coinflip"}) {
+            System.setProperty(ServerMenuSample.PROPERTY, "casino-result:" + game);
+            assertTrue(ServerMenuSample.casinoReveal(12_345).isPresent(), game);
+        }
+        System.setProperty(ServerMenuSample.PROPERTY, "casino-result:all");
+        assertEquals(12_000, ServerMenuSample.casinoReveal(12_345).orElseThrow().receivedAt());
+    }
 }

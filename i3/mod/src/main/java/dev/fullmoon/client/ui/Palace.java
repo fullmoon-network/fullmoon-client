@@ -101,11 +101,15 @@ public final class Palace {
      * of a HUD chip, where four would crowd the text.
      */
     public static void ticks(Painter painter, float x, float y, float w, float h, float arm) {
+        ticks(painter, x, y, w, h, arm, Tokens.Color.ACCENT);
+    }
+
+    public static void ticks(Painter painter, float x, float y, float w, float h, float arm, int color) {
         float s = Tokens.Stroke.HAIR;
-        painter.fill(x, y, arm, s, Tokens.Color.ACCENT);
-        painter.fill(x, y, s, arm, Tokens.Color.ACCENT);
-        painter.fill(x + w - arm, y + h - s, arm, s, Tokens.Color.ACCENT);
-        painter.fill(x + w - s, y + h - arm, s, arm, Tokens.Color.ACCENT);
+        painter.fill(x, y, arm, s, color);
+        painter.fill(x, y, s, arm, color);
+        painter.fill(x + w - arm, y + h - s, arm, s, color);
+        painter.fill(x + w - s, y + h - arm, s, arm, color);
     }
 
     /** Window lattice over a header band. The band's own ground is drawn by the caller. */

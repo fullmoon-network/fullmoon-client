@@ -1,9 +1,13 @@
 package dev.fullmoon.client.menu;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import dev.fullmoon.client.network.BridgeProtocol;
+import dev.fullmoon.client.network.BridgeState;
+import dev.fullmoon.client.network.CasinoProtocol;
 import dev.fullmoon.client.network.MenuProtocol;
 
 /**
@@ -43,7 +47,43 @@ public final class ServerMenuSample {
         ]}
         """;
 
+    /** One settled bet per game, the payloads BRIDGE.md documents. */
+    private static final Map<String, String> RESULTS = Map.of(
+        "slots", "{\"type\":\"casino_result\",\"game\":\"slots\",\"won\":true,\"payout_multiplier\":12,"
+            + "\"detail\":{\"reels\":[\"moon\",\"moon\",\"moon\"],\"matched\":3}}",
+        "dice", "{\"type\":\"casino_result\",\"game\":\"dice\",\"won\":false,\"payout_multiplier\":0,"
+            + "\"detail\":{\"roll\":73,\"target\":50}}",
+        "roulette", "{\"type\":\"casino_result\",\"game\":\"roulette\",\"won\":true,\"payout_multiplier\":2,"
+            + "\"detail\":{\"pocket\":17,\"bet_type\":\"black\"}}",
+        "coinflip", "{\"type\":\"casino_result\",\"game\":\"coinflip\",\"won\":true,\"payout_multiplier\":1.98}");
+    /** The fixture card replays on this period, so a capture at any moment finds it mid-life. */
+    private static final long RESULT_LOOP = 6_000;
+
     private ServerMenuSample() {}
+
+    private static final List<String> GAMES = List.of("slots", "dice", "roulette", "coinflip");
+
+    /**
+     * A replaying casino result for {@code casino-result:<game>}, decoded like a live one;
+     * {@code casino-result:all} steps through the four games, one per period.
+     */
+    public static Optional<BridgeState.CasinoReveal> casinoReveal(long now) {
+        String name = System.getProperty(PROPERTY, "");
+        if (!name.startsWith("casino-result:")) {
+            return Optional.empty();
+        }
+        String game = name.substring("casino-result:".length());
+        if (game.equals("all")) {
+            game = GAMES.get((int) (now / RESULT_LOOP % GAMES.size()));
+        }
+        String json = RESULTS.get(game);
+        if (json == null) {
+            return Optional.empty();
+        }
+        return BridgeProtocol.decode(json.getBytes(StandardCharsets.UTF_8)).message()
+            .filter(CasinoProtocol.Result.class::isInstance)
+            .map(result -> new BridgeState.CasinoReveal((CasinoProtocol.Result) result, now - now % RESULT_LOOP));
+    }
 
     /** The fixture the {@value #PROPERTY} system property names, if it names one. */
     public static Optional<MenuProtocol.Open> requested() {

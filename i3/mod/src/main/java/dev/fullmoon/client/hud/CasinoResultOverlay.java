@@ -7,6 +7,7 @@ import java.util.Set;
 
 import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.menu.MenuIcons;
+import dev.fullmoon.client.menu.ServerMenuSample;
 import dev.fullmoon.client.network.BridgeState;
 import dev.fullmoon.client.network.CasinoProtocol;
 import dev.fullmoon.client.network.FullmoonChannel;
@@ -14,6 +15,7 @@ import dev.fullmoon.client.render.Motion;
 import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.text.Typeset;
+import dev.fullmoon.client.ui.Palace;
 
 /**
  * The settled-bet card: rises above the hotbar, plays the game's reveal, then states the result.
@@ -52,7 +54,7 @@ public final class CasinoResultOverlay {
     private CasinoResultOverlay() {}
 
     public static void draw(Painter painter, long now) {
-        FullmoonChannel.casino(now).ifPresent(reveal ->
+        FullmoonChannel.casino(now).or(() -> ServerMenuSample.casinoReveal(now)).ifPresent(reveal ->
             draw(painter, reveal.result(), now - reveal.receivedAt()));
     }
 
@@ -64,18 +66,18 @@ public final class CasinoResultOverlay {
         boolean settled = age >= SETTLE;
 
         painter.pushClip(x, y, width, HEIGHT);
-        painter.fill(x, top, width, HEIGHT, Tokens.Radius.SM,
+        painter.fill(x, top, width, HEIGHT, Tokens.Radius.NONE,
             Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.90f));
-        painter.border(x, top, width, HEIGHT, Tokens.Radius.SM,
-            Tokens.Stroke.HAIR, Tokens.Color.LINE_HAIRLINE);
-        painter.fill(x, top, Tokens.Stroke.FOCUS, HEIGHT, Tokens.Radius.NONE,
-            !settled ? Tokens.Color.LINE_STRONG
-                : result.won() ? Tokens.Color.ACCENT : Tokens.Color.STATUS_IDLE);
+        painter.border(x, top, width, HEIGHT, Tokens.Radius.NONE,
+            Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT_FAINT);
+        // The frame's brackets carry the verdict: gilt for a win, the plain gilt line otherwise.
+        Palace.ticks(painter, x - 1, top - 1, width + 2, HEIGHT + 2, Tokens.Space.COZY,
+            settled && result.won() ? Tokens.Color.ACCENT : Tokens.Color.LINE_GILT);
 
         int chipX = x + Tokens.Space.LOOSE + CHIP / 2;
         int chipY = top + Tokens.Space.COZY + CHIP / 2;
         painter.dot(chipX, chipY, CHIP / 2f, Tokens.Color.SURFACE_SUNKEN);
-        painter.ring(chipX, chipY, CHIP / 2f, Tokens.Stroke.HAIR, Tokens.Color.LINE_HAIRLINE);
+        painter.ring(chipX, chipY, CHIP / 2f, Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT);
         MenuIcons.draw(painter, "fullmoon.casino." + result.game().wireName(),
             chipX, chipY, CHIP - Tokens.Space.SNUG);
 
