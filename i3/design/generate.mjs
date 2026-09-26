@@ -131,20 +131,36 @@ mkdirSync(dirname(javaOut), { recursive: true });
 writeFileSync(javaOut, javaLines.join('\n') + '\n');
 
 /* ---------- tokens.css ---------- */
+// The launcher reads the same colours by the same names. It also carries a daylight palace
+// (colorDay) and the accent metals, which the game has no use for and so never sees.
+const density = tokens.cssDensity;
+const px = (gui, factor) => `${Math.round(gui * factor)}px`;
+const oklchCss = (e) => `oklch(${e.oklch[0]} ${e.oklch[1]} ${e.oklch[2]})`;
+const dayColors = Object.entries(tokens.colorDay).filter(([k]) => !k.startsWith('$'));
+const missingDay = colors.map(([k]) => k).filter((k) => !tokens.colorDay[k]);
+if (missingDay.length) throw new Error(`colorDay lacks ${missingDay.join(', ')}`);
+const metals = Object.entries(tokens.accentMetal).filter(([k]) => !k.startsWith('$'));
+
 const css = [];
 const c = (s = '') => css.push(s);
+const colorBlock = (selector, scheme, entries) => {
+  c(`${selector} {`);
+  c(`  color-scheme: ${scheme};`);
+  for (const [name, entry] of entries) {
+    c(`  --color-${CSSVAR(name)}: ${oklchCss(entry)}; /* ${hex(entry)} · ${entry.use} */`);
+  }
+  c('}');
+  c('');
+};
 c('/* Generated from i3/design/tokens.json by i3/design/generate.mjs. Do not edit by hand. */');
 c(':root {');
-c('  color-scheme: dark;');
-c('');
-for (const { name, entry, hex: h } of resolved)
-  c(`  --color-${CSSVAR(name)}: oklch(${entry.oklch[0]} ${entry.oklch[1]} ${entry.oklch[2]}); /* ${h} · ${entry.use} */`);
-c('');
 for (const [k, v] of Object.entries(tokens.space).filter(([k]) => !k.startsWith('$')))
-  c(`  --space-${CSSVAR(k)}: ${v * 2}px;`);
+  c(`  --space-${CSSVAR(k)}: ${px(v, density.space)};`);
 c('');
 for (const [k, v] of Object.entries(tokens.radius).filter(([k]) => !k.startsWith('$')))
-  c(`  --radius-${CSSVAR(k)}: ${k === 'round' ? '999px' : v * 2 + 'px'};`);
+  c(`  --radius-${CSSVAR(k)}: ${k === 'round' ? '999px' : px(v, density.space)};`);
+c('');
+for (const [k, v] of Object.entries(tokens.stroke)) c(`  --stroke-${CSSVAR(k)}: ${v}px;`);
 c('');
 for (const [k, v] of Object.entries(tokens.motion.duration)) c(`  --dur-${CSSVAR(k)}: ${v}ms;`);
 for (const [k, v] of Object.entries(tokens.motion.easing))
@@ -153,15 +169,34 @@ c('');
 for (const [k, v] of Object.entries(tokens.layer).filter(([k]) => !k.startsWith('$')))
   c(`  --layer-${CSSVAR(k)}: ${v};`);
 c('');
-for (const [k, v] of Object.entries(tokens.type).filter(([k]) => !k.startsWith('$'))) {
-  c(`  --type-${CSSVAR(k)}-size: ${v.px * 2}px;`);
-  c(`  --type-${CSSVAR(k)}-leading: ${v.leading * 2}px;`);
-}
-c('');
 c("  --font-display: 'Fullmoon Serif', 'Noto Serif KR', serif;");
 c("  --font-body: 'Pretendard', system-ui, sans-serif;");
+for (const [k, v] of Object.entries(tokens.type).filter(([k]) => !k.startsWith('$'))) {
+  const serif = v.face.startsWith('Fullmoon Serif');
+  const weight = serif || v.face.endsWith('SemiBold') ? 600 : 400;
+  const size = px(v.px, density.type);
+  const leading = px(v.leading, density.type);
+  c(`  --type-${CSSVAR(k)}-size: ${size};`);
+  c(`  --type-${CSSVAR(k)}-leading: ${leading};`);
+  c(`  --type-${CSSVAR(k)}: ${weight} ${size}/${leading} var(${serif ? '--font-display' : '--font-body'});`);
+}
 c('}');
 c('');
+colorBlock(':root,\n[data-theme="dark"]', 'dark', resolved.map(({ name, entry }) => [name, entry]));
+colorBlock('[data-theme="light"]', 'light', dayColors);
+for (const [metal, { night, day }] of metals) {
+  const withUse = (set) => Object.entries(set).map(([k, e]) => [k, { ...e, use: `${metal} ${k}` }]);
+  c(`[data-accent="${metal}"],`);
+  c(`[data-accent="${metal}"] [data-theme="dark"] {`);
+  for (const [k, e] of withUse(night)) c(`  --color-${CSSVAR(k)}: ${oklchCss(e)}; /* ${hex(e)} */`);
+  c('}');
+  c('');
+  c(`[data-theme="light"][data-accent="${metal}"],`);
+  c(`[data-accent="${metal}"] [data-theme="light"] {`);
+  for (const [k, e] of withUse(day)) c(`  --color-${CSSVAR(k)}: ${oklchCss(e)}; /* ${hex(e)} */`);
+  c('}');
+  c('');
+}
 c('@media (prefers-reduced-motion: reduce) {');
 c('  :root {');
 for (const k of Object.keys(tokens.motion.duration))
@@ -169,12 +204,13 @@ for (const k of Object.keys(tokens.motion.duration))
 c('  }');
 c('}');
 
-const cssOut = resolve(HERE, '../launcher/src/design/tokens.css');
+const cssOut = resolve(HERE, '../../launcher/src/design/tokens.css');
 mkdirSync(dirname(cssOut), { recursive: true });
 writeFileSync(cssOut, css.join('\n') + '\n');
 
 /* ---------- contrast evidence ---------- */
 const pick = (n) => resolved.find((r) => r.name === n).hex;
+const pickDay = (n) => hex(tokens.colorDay[n]);
 const checks = [
   ['ink.primary on surface.base', 'ink.primary', 'surface.base', 4.5],
   ['ink.secondary on surface.base', 'ink.secondary', 'surface.base', 4.5],
@@ -193,13 +229,46 @@ const checks = [
   ['accent (corner bracket) on surface.void', 'accent', 'surface.void', 3.0],
   ['ink.primary on ornament.cinnabar (seal)', 'ink.primary', 'ornament.cinnabar', 3.0],
   ['moon.lit on moon.shadow', 'moon.lit', 'moon.shadow', 7.0],
+].map(([label, a, b, floor]) => [label, pick(a), pick(b), floor]);
+
+// The launcher sets meta text small and puts the accent in small labels, so its floors are
+// the small-text ones, in both palaces and under every metal.
+const launcherPairs = [
+  ['ink.tertiary', 'surface.base', 4.5],
+  ['ink.tertiary', 'surface.sunken', 4.5],
+  ['ink.tertiary', 'surface.void', 4.5],
+  ['ink.secondary', 'surface.raised', 4.5],
+  ['ink.primary', 'surface.overlay', 4.5],
+  ['status.live', 'surface.base', 3.0],
+  ['status.danger', 'surface.base', 3.0],
+  ['line.gilt', 'surface.base', 1.8],
 ];
+for (const [a, b, floor] of launcherPairs) {
+  checks.push([`launcher night · ${a} on ${b}`, pick(a), pick(b), floor]);
+  checks.push([`launcher day · ${a} on ${b}`, pickDay(a), pickDay(b), floor]);
+}
+const accentSets = [
+  ['gilt', 'night', (n) => pick(n), (n) => pick(n)],
+  ['gilt', 'day', (n) => pickDay(n), (n) => pickDay(n)],
+  ...metals.flatMap(([metal, set]) => [
+    [metal, 'night', (n) => hex(set.night[n]), (n) => pick(n)],
+    [metal, 'day', (n) => hex(set.day[n]), (n) => pickDay(n)],
+  ]),
+];
+for (const [metal, hour, own, base] of accentSets) {
+  checks.push([`${metal} ${hour} · ink.onAccent on accent`, base('ink.onAccent'), own('accent'), 4.5]);
+  checks.push([`${metal} ${hour} · ink.onAccent on accent.pressed`, base('ink.onAccent'), own('accent.pressed'), 4.5]);
+  checks.push([`${metal} ${hour} · accent on surface.base`, own('accent'), base('surface.base'), 4.5]);
+  checks.push([`${metal} ${hour} · accent on surface.void`, own('accent'), base('surface.void'), 3.0]);
+  checks.push([`${metal} ${hour} · ink.primary on accent.wash`, base('ink.primary'), own('accent.wash'), 4.5]);
+}
+
 let failed = 0;
 console.log(`wrote ${javaOut.replace(/.*\/i3\//, 'i3/')}`);
-console.log(`wrote ${cssOut.replace(/.*\/i3\//, 'i3/')}`);
+console.log(`wrote ${cssOut.replace(/.*\/(launcher\/)/, '$1')}`);
 console.log('\ncontrast (WCAG 2.x ratio · floor · verdict)');
 for (const [label, a, b, floor] of checks) {
-  const ratio = contrast(pick(a), pick(b));
+  const ratio = contrast(a, b);
   const ok = ratio >= floor;
   if (!ok) failed++;
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${ratio.toFixed(2)} : 1  (>= ${floor})  ${label}`);
