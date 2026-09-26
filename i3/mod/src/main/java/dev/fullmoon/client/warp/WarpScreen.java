@@ -124,12 +124,12 @@ public final class WarpScreen extends SurfaceScreen {
     }
 
     private void header(Painter painter) {
-        int brandY = content.y();
+        int brandY = content.y() + Palace.brandRise(Tokens.Type.DISPLAY);
         int textX = Palace.brand(painter, Tokens.Type.DISPLAY, content.x(), brandY);
         Typeset.draw(painter, Tokens.Type.LABEL, tr("subtitle"), textX,
-            brandY + Tokens.Type.DISPLAY.leading(), Tokens.Color.INK_TERTIARY);
-        Typeset.drawRight(painter, Tokens.Type.LABEL, tr("authority"), content.right(),
-            brandY + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
+            brandY + Tokens.Type.LABEL.leading() + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
+        Typeset.drawRight(painter, Tokens.Type.LABEL, tr("authority"), content.right(), brandY,
+            Tokens.Color.INK_TERTIARY);
         Palace.dancheong(painter, content.x(), content.y() + headerHeight() - Tokens.Space.SNUG,
             content.w());
     }

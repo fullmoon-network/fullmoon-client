@@ -22,9 +22,9 @@ public final class HubChrome {
 
     public static void masthead(Painter painter, Box content, boolean compact) {
         Tokens.Type.Role brand = compact ? Tokens.Type.TITLE : Tokens.Type.DISPLAY;
-        int y = content.y();
+        int y = content.y() + Palace.brandRise(brand);
         Palace.brand(painter, brand, content.x(), y);
-        connection(painter, content, y + Tokens.Space.TIGHT);
+        connection(painter, content, y);
     }
 
     public static void connection(Painter painter, Box content, int y) {

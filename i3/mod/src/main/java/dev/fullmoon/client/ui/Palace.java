@@ -68,6 +68,15 @@ public final class Palace {
         return textX;
     }
 
+    /**
+     * How far the brand's seal rises above the y it is drawn at. A display face hangs its capitals
+     * above its origin, so a masthead drawn at a box's top edge overruns the box: draw it at
+     * {@code top + brandRise(role)} and the seal starts on {@code top}.
+     */
+    public static int brandRise(Tokens.Type.Role role) {
+        return Tokens.Space.TIGHT - Typeset.capTop(role, 0);
+    }
+
     /** A panel: plain ground inside the gilt frame. */
     public static void panel(Painter painter, int x, int y, int w, int h) {
         painter.fill(x, y, w, h, Tokens.Color.SURFACE_BASE);

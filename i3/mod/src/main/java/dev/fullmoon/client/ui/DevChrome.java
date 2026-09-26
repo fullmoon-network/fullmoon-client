@@ -29,12 +29,13 @@ public final class DevChrome {
 
     /** The masthead. Returns the y its content starts at. */
     public static int header(Painter painter, int x, int y, int w, String subtitle) {
-        int textX = Palace.brand(painter, Tokens.Type.DISPLAY, x, y);
+        int brandY = y + Palace.brandRise(Tokens.Type.DISPLAY);
+        int textX = Palace.brand(painter, Tokens.Type.DISPLAY, x, brandY);
         Typeset.draw(painter, Tokens.Type.LABEL, subtitle, textX,
-            y + Tokens.Type.DISPLAY.leading(), Tokens.Color.INK_TERTIARY);
+            brandY + Tokens.Type.LABEL.leading() + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
         Typeset.tabularRight(painter, Tokens.Type.LABEL,
             painter.width() + " × " + painter.height() + " gui px",
-            x + w, y + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
+            x + w, brandY, Tokens.Color.INK_TERTIARY);
 
         Palace.dancheong(painter, x, y + Tokens.Type.DISPLAY.leading() + Tokens.Type.LABEL.leading(), w);
         return y + headerHeight();

@@ -236,12 +236,12 @@ public final class MapScreen extends Screen {
 
     private void header(Painter painter) {
         Box content = layout.content();
-        int brandY = content.y();
+        int brandY = content.y() + Palace.brandRise(Tokens.Type.DISPLAY);
         int textX = Palace.brand(painter, Tokens.Type.DISPLAY, content.x(), brandY);
         Typeset.draw(painter, Tokens.Type.LABEL, tr("subtitle"), textX,
-            brandY + Tokens.Type.DISPLAY.leading(), Tokens.Color.INK_TERTIARY);
-        Typeset.drawRight(painter, Tokens.Type.LABEL, tr("authority"), content.right(),
-            brandY + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
+            brandY + Tokens.Type.LABEL.leading() + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
+        Typeset.drawRight(painter, Tokens.Type.LABEL, tr("authority"), content.right(), brandY,
+            Tokens.Color.INK_TERTIARY);
         Palace.dancheong(painter, content.x(), layout.headerBottom() - Tokens.Space.COZY, content.w());
     }
 
