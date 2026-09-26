@@ -97,7 +97,7 @@
     "fullmoon.account.footer.info": "Fullmoon network authenticated",
     "fullmoon.warp.title": "Fullmoon routes",
     "fullmoon.warp.subtitle": "Moon route ledger",
-    "fullmoon.warp.authority": "SERVER ROUTES · FULLMOON:V1",
+    "fullmoon.warp.authority": "ROUTES THE SERVER APPROVES",
     "fullmoon.warp.destinations.label": "Destinations",
     "fullmoon.warp.destinations.count": "%s destinations",
     "fullmoon.warp.destinations.empty": "No routes available",
