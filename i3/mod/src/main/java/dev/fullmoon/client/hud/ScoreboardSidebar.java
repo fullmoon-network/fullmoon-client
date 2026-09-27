@@ -151,7 +151,9 @@ public final class ScoreboardSidebar {
             c == '-' || c == '_' || c == '=' || c == '—' || c == '―' || (c >= 0x2500 && c <= 0x257F));
     }
 
-    private static void draw(Painter painter, Component title, List<Line> lines, List<Box> occupied) {
+    private static void draw(Painter painter, Component title, List<Line> all, List<Box> occupied) {
+        // The frame already rules the title off, so a server's own rule straight under it would double it.
+        List<Line> lines = !all.isEmpty() && isRule(all.getFirst().name().getString()) ? all.subList(1, all.size()) : all;
         int titleW = Typeset.width(Tokens.Type.HEADING, title);
         int rowsW = 0;
         for (Line line : lines) {
