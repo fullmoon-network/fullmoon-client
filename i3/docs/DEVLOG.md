@@ -1151,3 +1151,41 @@ silhouette gained a dark outline and a lit/shaded side, and the square wells bec
 the deck reads as a table rather than a list of buttons. A slot-machine sprite was drawn and
 discarded when the frames showed it reading as a face; triple seven says the game without the
 lever. The committed frames are the fourth capture of the surface.
+
+## 2026-09-27 · The launcher moves into the palace
+
+P10 left the launcher on its own palette — the website's `--sky-*` and `--moon-*` carried to
+desktop — sharing one gold with the game by value, with `generate.mjs` writing its CSS into
+`i3/launcher/src/design/tokens.css`, a tree nothing imported, and `verify-tokens.mjs` scanning `i3/`
+only. Both are answered here. The generated CSS now lands in `launcher/src/design/tokens.css`, which
+`index.html` links before anything paints, and the gate walks `launcher/src` and `launcher/index.html`
+too: on the launcher as it stood it reported 305 literals, and it is clean on the tree that follows.
+
+What the launcher needs and the game does not stays CSS-only in `tokens.json`: a daylight palace
+(`colorDay`) for the launcher's theme setting, three accent metals for its accent setting (gilt,
+silver, bronze — no choice is a hue the status family owns), and the launcher's density, space at 2
+CSS px per GUI px and type at 1.5. `Tokens.java` is byte-identical after the change. The contrast gate
+adds the small-text floors the launcher sets meta text at, for both palaces and every metal.
+
+The front end is redrawn in the B + C system the title screen introduced. `styles/palace.css` and
+`components/Palace.tsx` are the launcher's copy of `ui/Palace.java`: the double gilt frame with
+accent brackets, the lattice header band with the dancheong under it, gilt-edged tiles whose chosen
+state is a second line and the cinnabar diamond, the row marker, keycaps, the dashed gilt rule and the
+月 seal cut from the same 12×12 grid. The play screen is the title screen brought to the launcher: the
+lobby-at-night panorama the title screen turns behind itself, tonight's moon on its dial, and the
+plaque with one loud way into the lobby whose state machine the dock shares. Tonight's moon is
+`core/moonPhase.ts`, a port of `title/MoonPhase.java` pinned to the Java constants and the same
+fixtures by `scripts/moon-phase.test.ts`. The launch surface stops being a raw console: it counts the
+boot steps the log has printed — matchers pinned to a real client boot log — and draws them as a
+waxing moon with one tick per step, the log folded under it.
+
+Player-facing Korean moves to 해요체 in the dictionary, the mock core's fixtures and the catalogue the
+real core ships, and 생야생 becomes 야생 in the three places it survived. `scripts/copy-tone.test.ts`
+holds the line and keeps Korean out of the views; on the base tree it fails all five of its checks.
+
+Evidence: `npm run build` and the launcher's test suite, `verify-tokens.mjs`, the generator's drift
+check and `cargo check` for the core, run in the Studio; captures over Vite's mock core in Playwright's
+Chromium at 1280×820 (the Tauri default), 1040×680 (the minimum) and 1920×1080, with the launch
+surface, menus, dialogs, empty states, the daylight palace, the metals, English and reduced motion.
+The mock core does not prove Tauri IPC; a live-server lobby status is only what the code says, since
+the browser build reports every server unreachable.

@@ -1,29 +1,51 @@
 import { useMemo } from "react";
 import { Icon } from "../components/Icon";
+import { Dancheong, Marker, MoonDial, MoonDisc, Wordmark } from "../components/Palace";
+import { PlayLabel } from "../components/PlayDock";
 import { useStore } from "../state/store";
+import { usePlayAction } from "../state/playAction";
+import { isRealCore } from "../core/client";
+import { daysToFull, daysToNextFull, isFull, moonAt, moonName } from "../core/moonPhase";
 import { useT } from "../i18n";
 import BRAND from "../brand";
-import Skin3D from "../widgets/Skin3D";
+import panorama from "../../../i3/mod/src/main/resources/assets/minecraft/textures/gui/title/background/panorama_0.png";
 import { HomeScreen } from "./Home";
 
+declare const __APP_VERSION__: string;
+const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev";
+
+/* The play screen is the game's title screen brought to the launcher: the Fullmoon lobby at night
+   (the panorama the title screen turns behind itself), tonight's real moon on its dial, and the
+   palace plaque with one loud way into the lobby. The dashboard reads on below it. */
 export function PlayScreen() {
-  const {
-    servers, serverStatus, versions, cosmetics, loadout,
-    activeAccount, instances, selectedInstance, launch, toast, setScreen, news,
-  } = useStore();
+  const { servers, serverStatus, versions, news, instances, selectedInstance, launch, toast, setScreen } = useStore();
   const { t } = useT();
 
-  const target = useMemo(() => versions.find((v) => v.isTarget), [versions]);
-  const installedAny = instances.some((i) => i.installed);
+  const lobby = servers[0] ?? null;
+  const { state, act, busy } = usePlayAction(lobby?.address ?? null);
+  const launchOnly = usePlayAction(null);
+  const moon = useMemo(() => moonAt(Date.now()), []);
+  const full = isFull(moon);
+  const headline = t(`moon.${moonName(moon)}`);
+  const detail = full ? t("moon.next", { n: daysToNextFull(moon) }) : t("moon.until", { n: daysToFull(moon) });
+  const target = versions.find((v) => v.isTarget)?.id ?? selectedInstance?.versionId ?? "26.1.2";
+  const featured = useMemo(() => news.find((n) => n.featured) ?? news[0] ?? null, [news]);
 
-  const cape = useMemo(() => {
-    const id = loadout?.cape;
-    return id ? cosmetics.find((c) => c.id === id) ?? null : null;
-  }, [loadout, cosmetics]);
+  const lobbyStatus = lobby ? serverStatus[lobby.address] : undefined;
+  const reachable = lobbyStatus?.online === true;
+  const status = !lobby
+    ? null
+    : !isRealCore && lobbyStatus && !lobbyStatus.online
+      ? t("home.lobbyBrowser")
+      : !lobbyStatus
+        ? t("home.lobbyChecking")
+        : lobbyStatus.online
+          ? lobbyStatus.maxPlayers > 0 || lobbyStatus.players > 0
+            ? t("home.lobbyLive", { n: lobbyStatus.players, ms: lobbyStatus.pingMs })
+            : t("home.lobbyOpen", { ms: lobbyStatus.pingMs })
+          : t("home.lobbyDown");
 
-  const featuredNews = useMemo(() => news.find((n) => n.featured) ?? news[0] ?? null, [news]);
-
-  const quickPlay = (address?: string) => {
+  const quickPlay = (address: string) => {
     const inst =
       (selectedInstance?.installed ? selectedInstance : null) ?? instances.find((i) => i.installed);
     if (!inst) {
@@ -33,136 +55,131 @@ export function PlayScreen() {
     void launch(inst.id, address);
   };
 
+  const others = servers.slice(1, 3);
+
   return (
-    <div className="play-screen-wrapper stagger">
-      {/* ── 1. Focus Hero Stage (Play Now) ── */}
-      <div className="play-screen">
-        {/* Upper Character Stage */}
-        <div className="play-character-stage">
-          {/* Floating Player Nametag */}
-          <div className="play-player-nametag">
-            <span className="player-name-text">{activeAccount?.username ?? "BlackCow"}</span>
-          </div>
+    <div className="home">
+      <section className="hero" data-theme="dark" aria-label={t("nav.play")}>
+        <div className="hero-sky" style={{ backgroundImage: `url(${panorama})` }} aria-hidden />
+        <div className="hero-veil" aria-hidden />
 
-          {/* 3D Character Avatar Centerpiece */}
-          <div className="play-avatar-stage">
-            <Skin3D
-              skin={activeAccount?.skinUrl ?? "/skins/blackcow.png"}
-              cape={cape?.capeUrl ?? null}
-              width={320}
-              height={360}
-              zoom={1.08}
-            />
-          </div>
-        </div>
+        <MoonDial className="hero-moon" r={46} lit={moon.lit} waxing={moon.waxing} complete={full} label={`${headline} · ${detail}`} />
 
-        {/* Lower Launch Action Group */}
-        <div className="play-action-cluster">
-          <button
-            className="massive-play-button"
-            disabled={!installedAny}
-            onClick={() => quickPlay()}
-          >
-            <div className="play-btn-glow" />
-            <div className="play-btn-content">
-              <Icon name="play" size={24} strokeWidth={2.4} />
-              <div className="play-btn-text">
-                <span className="main-word">게임 시작</span>
-                <span className="sub-instance-tag">
-                  {selectedInstance ? selectedInstance.name : `${BRAND.name} 26.1.2`}
-                </span>
+        <div className="hero-plaque pf-frame">
+          <div className="plaque-band pf-band">
+            <span className="plaque-tagline">{t("settings.aboutDesc")}</span>
+            <Wordmark size="lg" name={BRAND.name} />
+          </div>
+          <Dancheong />
+          <div className="plaque-body">
+            <div className="plaque-today">
+              <svg width="26" height="26" viewBox="-13 -13 26 26" aria-hidden className={full ? "is-full" : ""}>
+                <MoonDisc r={8.5} lit={moon.lit} waxing={moon.waxing} />
+                <circle className="plaque-today-ring" r={11.5} fill="none" />
+              </svg>
+              <div>
+                <strong>{headline}</strong>
+                <span className="num">{detail}</span>
               </div>
             </div>
-          </button>
+            <div className="pf-rule-dashed" />
 
-          <button
-            className="play-quick-config-btn"
-            title="설정 및 인스턴스 옵션"
-            onClick={() => setScreen("settings")}
-          >
-            <Icon name="gear" size={20} />
-          </button>
-        </div>
+            <button
+              className={`lobby-btn lobby-btn-${state.kind}`}
+              onClick={act}
+              aria-busy={busy}
+              disabled={state.kind === "preparing"}
+            >
+              {state.kind === "ready" ? (
+                <>
+                  <span className="lobby-btn-label">{t("home.joinLobby")}</span>
+                  {status && (
+                    <span className="lobby-btn-status num" title={status}>
+                      <i className={reachable ? "is-live" : ""} aria-hidden />
+                      <span>{status}</span>
+                    </span>
+                  )}
+                </>
+              ) : (
+                <PlayLabel state={state} idleLabel={t("home.joinLobby")} />
+              )}
+            </button>
 
-        {/* Bottom Deck: Quick Servers & Featured News */}
-        <div className="play-bottom-deck">
-          {/* Left: Server List Strip */}
-          <div className="play-servers-section">
-            <div className="section-head-bar">
-              <span className="section-title-label">네트워크 월드 · play.fullmoon.ink</span>
-              <button className="view-more-link" onClick={() => setScreen("dashboard")}>
-                <span>대시보드에서 관리</span>
-                <Icon name="arrowRight" size={12} />
-              </button>
-            </div>
-
-            <div className="play-servers-grid">
-              {servers.slice(0, 3).map((s) => {
-                const st = serverStatus[s.address];
-                const online = st?.online === true;
-                const cap = st?.maxPlayers ?? s.maxPlayers;
-                const curPlayers = st ? st.players : s.players;
-
-                return (
-                  <div key={s.id} className="play-server-card card-hover" onClick={() => quickPlay(s.address)}>
-                    <div className="server-icon-box" style={{ "--h": s.hue }}>
-                      <Icon name="server" size={16} />
-                    </div>
-                    <div className="server-info-col">
-                      <strong className="server-name">{s.name}</strong>
-                      <span className="server-motd">{st?.motd || s.motd || s.address}</span>
-                    </div>
-                    <div className="server-right-col">
-                      <span className="server-players num">
-                        {online ? `${curPlayers}/${cap}` : "접속 가능"}
-                      </span>
-                      <button
-                        className="server-fast-join-btn"
-                        disabled={!installedAny}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          quickPlay(s.address);
-                        }}
-                      >
-                        <Icon name="zap" size={12} />
-                        <span>입장</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <ul className="plaque-menu">
+              {others.map((s) => (
+                <li key={s.id}>
+                  <button
+                    className="title-row"
+                    onClick={() => quickPlay(s.address)}
+                    disabled={launchOnly.state.kind !== "ready"}
+                  >
+                    <Marker />
+                    <span>{t("home.joinServer", { name: s.name })}</span>
+                    <em className="mono">{s.address}</em>
+                  </button>
+                </li>
+              ))}
+              <li>
+                <button
+                  className="title-row"
+                  onClick={launchOnly.act}
+                  disabled={launchOnly.state.kind !== "ready"}
+                >
+                  <Marker />
+                  <span>{t("home.launchOnly")}</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  className="title-row"
+                  onClick={() =>
+                    document.getElementById("dash")?.scrollIntoView({
+                      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+                      block: "start",
+                    })
+                  }
+                >
+                  <Marker />
+                  <span>{t("home.serverList")}</span>
+                  <em className="num">{servers.length}</em>
+                </button>
+              </li>
+              <li>
+                <button className="title-row" onClick={() => setScreen("settings", "hud")}>
+                  <Marker />
+                  <span>{t("home.hudLayout")}</span>
+                </button>
+              </li>
+              <li>
+                <button className="title-row" onClick={() => setScreen("cosmetics")}>
+                  <Marker />
+                  <span>{t("home.cosmetics")}</span>
+                </button>
+              </li>
+            </ul>
           </div>
-
-          {/* Right: Featured Banner Card */}
-          {featuredNews && (
-            <div className="play-featured-card card-hover" onClick={() => setScreen("dashboard")}>
-              <div className="featured-card-top">
-                <span className="featured-badge">주요 소식</span>
-                <span className="featured-date num">{featuredNews.date}</span>
-              </div>
-              <h4 className="featured-title">{featuredNews.title}</h4>
-              <p className="featured-summary">{featuredNews.summary}</p>
-              <div className="featured-card-footer">
-                <span>상세 보기 및 패치노트</span>
-                <Icon name="arrowRight" size={14} />
-              </div>
-            </div>
-          )}
         </div>
-      </div>
 
-      {/* ── 2. Natural Scroll Down: Full Dashboard ── */}
-      <div className="play-scroll-divider">
-        <div className="divider-line" />
-        <div className="scroll-indicator-pill">
-          <Icon name="chevronDown" size={14} />
-          <span>대시보드 및 상세 내역</span>
-        </div>
-        <div className="divider-line" />
-      </div>
+        {featured && (
+          <aside className="hero-news">
+            <div className="hero-news-kicker pf-band">{t("home.newsKicker", { date: featured.date })}</div>
+            <h2>{featured.title}</h2>
+            <p>{featured.summary}</p>
+            <button className="hero-news-more" onClick={() => setScreen("dashboard")}>
+              {t("home.newsMore")}
+              <Icon name="arrowRight" size={13} />
+            </button>
+          </aside>
+        )}
 
-      <div className="play-dashboard-section">
+        <footer className="hero-bar">
+          <span className="hero-meta num">
+            {t("home.footMeta", { version: APP_VERSION, mc: target })}
+          </span>
+        </footer>
+      </section>
+
+      <div className="screen-pad" id="dash">
         <HomeScreen />
       </div>
     </div>

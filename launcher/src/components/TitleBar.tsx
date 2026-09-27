@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
-import { Logo } from "./Logo";
+import { Seal } from "./Palace";
 import { useStore } from "../state/store";
 import { isRealCore } from "../core/client";
+import { useT } from "../i18n";
+import BRAND from "../brand";
+
+declare const __APP_VERSION__: string;
+const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev";
 
 /* In the shell the buttons drive the real window; in the browser they fall
    back to fullscreen so the same chrome stays usable in vite dev. */
@@ -13,6 +18,7 @@ async function win() {
 
 export function TitleBar() {
   const { toast } = useStore();
+  const { t } = useT();
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {
@@ -27,7 +33,7 @@ export function TitleBar() {
   }, []);
 
   const minimize = () => {
-    if (!isRealCore) return toast("info", "데스크톱(Tauri) 빌드에서 동작합니다");
+    if (!isRealCore) return toast("info", t("titlebar.desktopOnly"));
     void win().then((w) => w.minimize());
   };
 
@@ -41,24 +47,27 @@ export function TitleBar() {
   };
 
   const close = () => {
-    if (!isRealCore) return toast("info", "데스크톱(Tauri) 빌드에서 동작합니다");
+    if (!isRealCore) return toast("info", t("titlebar.desktopOnly"));
     void win().then((w) => w.close());
   };
 
   return (
     <header className="titlebar" data-tauri-drag-region>
       <div className="titlebar-left" data-tauri-drag-region>
-        <Logo size={26} />
-        <span className="titlebar-tag">v1.0.0 · {isRealCore ? "core" : "mock core"}</span>
+        <Seal size={16} />
+        <span className="titlebar-name" data-tauri-drag-region>{BRAND.name}</span>
+        <span className="titlebar-tag num" data-tauri-drag-region>
+          {APP_VERSION} · {isRealCore ? "core" : "mock core"}
+        </span>
       </div>
       <div className="titlebar-controls">
-        <button className="winbtn" aria-label="minimize" onClick={minimize}>
+        <button className="winbtn" aria-label={t("titlebar.minimize")} onClick={minimize}>
           <Icon name="minus" size={14} strokeWidth={1.5} />
         </button>
-        <button className="winbtn" aria-label="maximize" onClick={toggleMax}>
+        <button className="winbtn" aria-label={t(maximized ? "titlebar.restore" : "titlebar.maximize")} onClick={toggleMax}>
           <Icon name={maximized ? "restore" : "maximize"} size={13} strokeWidth={1.5} />
         </button>
-        <button className="winbtn winbtn-close" aria-label="close" onClick={close}>
+        <button className="winbtn winbtn-close" aria-label={t("titlebar.close")} onClick={close}>
           <Icon name="x" size={14} strokeWidth={1.5} />
         </button>
       </div>

@@ -1,1 +1,9 @@
-export { HomeScreen as DashboardScreen } from "./Home";
+import { HomeScreen } from "./Home";
+
+export function DashboardScreen() {
+  return (
+    <div className="screen-pad">
+      <HomeScreen />
+    </div>
+  );
+}

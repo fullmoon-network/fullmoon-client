@@ -1,18 +1,22 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
+import { Marker } from "./Palace";
 import { SkinFace } from "./ui";
 import { useStore } from "../state/store";
+import { usePlayAction, type PlayState } from "../state/playAction";
 import { useT } from "../i18n";
 
 /* upward-opening dock menu with outside-click dismissal */
 function DockMenu({
   trigger,
+  label,
   children,
   open,
   setOpen,
   align = "left",
 }: {
   trigger: ReactNode;
+  label: string;
   children: (close: () => void) => ReactNode;
   open: boolean;
   setOpen: (v: boolean) => void;
@@ -24,15 +28,33 @@ function DockMenu({
     const onDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open, setOpen]);
 
   return (
     <div className="dockmenu" ref={ref}>
-      <div onClick={() => setOpen(!open)}>{trigger}</div>
+      <button
+        className="dock-chip"
+        title={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        {trigger}
+      </button>
       {open && (
-        <div className={`dockmenu-panel dockmenu-${align}`} onClick={() => setOpen(false)}>
+        <div
+          className={`dockmenu-panel dockmenu-${align} pf-frame pf-frame-sm`}
+          role="menu"
+          aria-label={label}
+          onClick={() => setOpen(false)}
+        >
           {children(() => setOpen(false))}
         </div>
       )}
@@ -40,60 +62,94 @@ function DockMenu({
   );
 }
 
-export function PlayDock() {
-  const {
-    screen,
-    accounts, activeAccount, selectAccount,
-    selectedInstance,
-    installInstance, launch, game, setScreen, setOverlayHidden,
-  } = useStore();
+/** What the play plaque says for each state; the dock and the home plaque share it. */
+export function PlayLabel({ state, idleLabel }: { state: PlayState; idleLabel: string }) {
   const { t } = useT();
+  switch (state.kind) {
+    case "needsAccount":
+      return (
+        <>
+          <Icon name="user" size={16} />
+          <span>{t("dock.needsAccount")}</span>
+        </>
+      );
+    case "preparing":
+      return (
+        <>
+          <span className="spinner spinner-light" />
+          <span>{t("dock.preparing")}</span>
+        </>
+      );
+    case "installing":
+      return (
+        <>
+          <span className="playbtn-progress">
+            <span>{t(`dock.stage.${state.stage}`)}</span>
+            <span className="playbtn-pct num">{Math.floor(state.pct)}%</span>
+          </span>
+          <span className="playbtn-bar" style={{ width: `${state.pct}%` }} />
+        </>
+      );
+    case "install":
+      return (
+        <>
+          <Icon name="download" size={16} />
+          <span>{t("dock.install")}</span>
+        </>
+      );
+    case "starting":
+      return (
+        <>
+          <span className="spinner spinner-light" />
+          <span>{t("dock.launching")}</span>
+        </>
+      );
+    case "running":
+      return (
+        <>
+          <span>{t("dock.running")}</span>
+          <Icon name="terminal" size={15} />
+        </>
+      );
+    default:
+      return (
+        <>
+          <Icon name="play" size={13} strokeWidth={2.6} />
+          <span className="playbtn-word">{idleLabel}</span>
+        </>
+      );
+  }
+}
+
+export function PlayDock() {
+  const { screen, accounts, activeAccount, selectAccount, selectedInstance, setScreen } = useStore();
+  const { t } = useT();
+  const { state, act, busy } = usePlayAction();
   const [accOpen, setAccOpen] = useState(false);
 
-  // Hidden on Play screen by default, visible on other screens
-  const [visible, setVisible] = useState(() => screen !== "play");
+  // The play screen carries its own play plaque, so the dock waits until the plaque has
+  // scrolled out of view; everywhere else it stands by, out of the way while reading down.
+  const [visible, setVisible] = useState(() => screen !== "play" && screen !== "home");
   const lastScrollTopRef = useRef(0);
 
   useEffect(() => {
-    if (screen === "play") {
-      setVisible(false);
-    } else {
-      setVisible(true);
-    }
+    const onPlay = screen === "play" || screen === "home";
+    setVisible(!onPlay);
 
     const contentEl = document.querySelector(".content");
     if (!contentEl) return;
-
     lastScrollTopRef.current = contentEl.scrollTop;
 
     const onScroll = () => {
       const st = contentEl.scrollTop;
-      const prev = lastScrollTopRef.current;
-      const diff = st - prev;
-
-      if (screen === "play") {
-        if (st < 100) {
-          // At top hero stage of Play screen -> always hide
-          setVisible(false);
-        } else if (diff > 6) {
-          // Scrolling down into dashboard -> show
-          setVisible(true);
-        } else if (diff < -6) {
-          // Scrolling up -> hide
-          setVisible(false);
-        }
-      } else {
-        if (st <= 10) {
-          setVisible(true);
-        } else if (diff > 6) {
-          // Scrolling down -> show
-          setVisible(true);
-        } else if (diff < -6) {
-          // Scrolling up -> hide
-          setVisible(false);
-        }
-      }
-
+      const diff = st - lastScrollTopRef.current;
+      if (onPlay) {
+        const hero = contentEl.querySelector(".hero");
+        const heroGone = hero ? st > (hero as HTMLElement).offsetHeight - 80 : st > 100;
+        setVisible(heroGone);
+      } else if (st <= 10) setVisible(true);
+      else if (diff > 6) setVisible(true);
+      else if (diff < -6) setVisible(false);
       lastScrollTopRef.current = st;
     };
 
@@ -101,107 +157,29 @@ export function PlayDock() {
     return () => contentEl.removeEventListener("scroll", onScroll);
   }, [screen]);
 
-  const installing = selectedInstance?.installing ?? null;
-  const sessionIsMine = game.sessionId && game.instanceId === selectedInstance?.id;
-  const starting = game.state === "starting" && sessionIsMine;
-  const running = game.state === "running" && sessionIsMine;
-
-  /* decide the big button */
-  let playContent: ReactNode;
-  let playClass = "playbtn";
-  let playAction: () => void = () => {};
-
-  if (!activeAccount) {
-    playContent = (
-      <>
-        <Icon name="user" size={18} />
-        <span>{t("dock.needsAccount")}</span>
-      </>
-    );
-    playClass += " playbtn-warn";
-    playAction = () => setScreen("accounts");
-  } else if (!selectedInstance) {
-    /* the core provisions the managed instance itself; until then there is
-       nothing to choose and nothing to click */
-    playContent = (
-      <>
-        <span className="spinner spinner-light" />
-        <span>{t("dock.preparing")}</span>
-      </>
-    );
-    playClass += " playbtn-busy";
-  } else if (installing) {
-    playContent = (
-      <>
-        <div className="playbtn-progress">
-          <span className="playbtn-stage">{t(`dock.stage.${installing.stage}`)}</span>
-          <span className="playbtn-pct num">{Math.floor(installing.pct)}%</span>
-        </div>
-        <span className="playbtn-bar" style={{ width: `${installing.pct}%` }} />
-      </>
-    );
-    playClass += " playbtn-busy";
-  } else if (!selectedInstance.installed) {
-    playContent = (
-      <>
-        <Icon name="download" size={18} />
-        <span>{t("dock.install")}</span>
-      </>
-    );
-    playAction = () => void installInstance(selectedInstance.id);
-  } else if (starting) {
-    playContent = (
-      <>
-        <span className="spinner spinner-light" />
-        <span>{t("dock.launching")}</span>
-      </>
-    );
-    playClass += " playbtn-busy";
-    playAction = () => setOverlayHidden(null);
-  } else if (running) {
-    playContent = (
-      <>
-        <span>{t("dock.running")}</span>
-        <Icon name="terminal" size={16} />
-      </>
-    );
-    playClass += " playbtn-running";
-    /* re-show the live surface — the console screen is gone, the overlay is it */
-    playAction = () => setOverlayHidden(null);
-  } else {
-    playContent = (
-      <>
-        <span className="playbtn-orb">
-          <Icon name="play" size={13} strokeWidth={2.6} />
-        </span>
-        <span className="playbtn-word">{t("dock.play")}</span>
-      </>
-    );
-    playClass += " playbtn-go";
-    playAction = () => void launch(selectedInstance.id);
-  }
+  const plaqueClass = `playbtn playbtn-${state.kind}`;
 
   return (
-    <footer className={`dock ${visible ? "" : "hidden"}`}>
+    <footer className={`dock pf-frame pf-frame-sm ${visible ? "" : "hidden"}`}>
       <div className="dock-left">
         <DockMenu
           open={accOpen}
           setOpen={setAccOpen}
+          label={t("dock.selectAccount")}
           trigger={
-            <button className="dock-chip" title={t("dock.selectAccount")}>
-              {activeAccount ? (
-                <>
-                  <SkinFace hue={activeAccount.skinHue} size={26} />
-                  <span className="dock-chip-label">{activeAccount.username}</span>
-                </>
-              ) : (
-                <>
-                  <span className="dock-chip-none"><Icon name="user" size={14} /></span>
-                  <span className="dock-chip-label dim">{t("dock.needsAccount")}</span>
-                </>
-              )}
-              <Icon name="chevronDown" size={13} className="dock-chip-caret" />
-            </button>
+            activeAccount ? (
+              <>
+                <SkinFace hue={activeAccount.skinHue} skin={activeAccount.skinUrl} size={24} />
+                <span className="dock-chip-label">{activeAccount.username}</span>
+                <Icon name="chevronDown" size={13} className="dock-chip-caret" />
+              </>
+            ) : (
+              <>
+                <span className="dock-chip-none"><Icon name="user" size={14} /></span>
+                <span className="dock-chip-label dim">{t("dock.needsAccount")}</span>
+                <Icon name="chevronDown" size={13} className="dock-chip-caret" />
+              </>
+            )
           }
         >
           {() => (
@@ -209,19 +187,21 @@ export function PlayDock() {
               {accounts.map((a) => (
                 <button
                   key={a.uuid}
-                  className={`dockmenu-item ${a.uuid === activeAccount?.uuid ? "active" : ""}`}
+                  role="menuitemradio"
+                  aria-checked={a.uuid === activeAccount?.uuid}
+                  className={`dockmenu-item ${a.uuid === activeAccount?.uuid ? "is-current" : ""}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     void selectAccount(a.uuid);
                     setAccOpen(false);
                   }}
                 >
-                  <SkinFace hue={a.skinHue} size={22} />
+                  <SkinFace hue={a.skinHue} skin={a.skinUrl} size={22} />
                   <span>{a.username}</span>
-                  {a.uuid === activeAccount?.uuid && <Icon name="check" size={14} />}
+                  <Marker on={a.uuid === activeAccount?.uuid} />
                 </button>
               ))}
-              <button className="dockmenu-item dockmenu-add" onClick={() => setScreen("accounts")}>
+              <button role="menuitem" className="dockmenu-item dockmenu-add" onClick={() => setScreen("accounts")}>
                 <Icon name="plus" size={14} />
                 <span>{t("accounts.add")}</span>
               </button>
@@ -234,9 +214,7 @@ export function PlayDock() {
         <div className="dock-chip dock-chip-static" title={t("dock.selectInstance")}>
           {selectedInstance ? (
             <>
-              <span className="dock-chip-cube" style={{ "--h": selectedInstance.iconHue }}>
-                <Icon name="layers" size={13} />
-              </span>
+              <span className="dock-chip-cube"><Icon name="layers" size={13} /></span>
               <span className="dock-chip-label">
                 {selectedInstance.name}
                 <em className="num">{selectedInstance.versionId}</em>
@@ -253,8 +231,8 @@ export function PlayDock() {
 
       <span className="dock-divider" aria-hidden />
 
-      <button className={playClass} onClick={playAction}>
-        {playContent}
+      <button className={plaqueClass} onClick={act} aria-busy={busy} disabled={state.kind === "preparing"}>
+        <PlayLabel state={state} idleLabel={t("dock.play")} />
       </button>
     </footer>
   );

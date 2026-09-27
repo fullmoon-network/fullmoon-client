@@ -258,7 +258,7 @@ public final class FullmoonBridge {
         list.add(new Waypoint("palace_keep", "만월궁 대천수", "moon", 500, 86, -140, "lobby", "palace"));
         list.add(new Waypoint("spawn_fountain", "스폰 분수", "drop", 0, 65, 0, "lobby", "plaza"));
         list.add(new Waypoint("moon_pond", "달샘 연못", "drop", 0, 64, 60, "lobby", "plaza"));
-        list.add(new Waypoint("west_gate", "서쪽 달문 (생야생)", "gate", 431, 65, 0, "lobby", "gates"));
+        list.add(new Waypoint("west_gate", "서쪽 달문 (야생)", "gate", 431, 65, 0, "lobby", "gates"));
         list.add(new Waypoint("east_gate", "동쪽 달문", "gate", 569, 65, 0, "lobby", "gates"));
         list.add(new Waypoint("garden_teal", "청자 정원", "leaf", -80, 65, 40, "lobby", "gardens"));
         list.add(new Waypoint("rear_garden", "후원", "leaf", 500, 66, -40, "lobby", "gardens"));

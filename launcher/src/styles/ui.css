@@ -1,282 +1,285 @@
-/* ── ui kit: buttons, controls, badges, modal, toast ──────── */
+/* ── ui kit: buttons, controls, badges, modal, fields ─────── */
 
-/* ── Button ── */
+/* ── Button — square, one weight; the accent fill is spent once per surface ── */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  height: var(--control-h);
-  padding: 0 14px;
-  border-radius: var(--radius-1);
-  font-size: var(--text-small);
-  font-weight: 600;
-  letter-spacing: var(--ls-wide);
+  gap: var(--space-snug);
+  height: 32px;
+  padding: 0 var(--space-cozy);
+  font: var(--type-body-strong);
+  white-space: nowrap;
   border: 1px solid transparent;
-  transition: background var(--dur-fast) var(--ease-standard),
-    border-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
 }
-.btn:active { transform: translateY(1px); }
-.btn:disabled { opacity: 0.45; pointer-events: none; }
+.btn:disabled { color: var(--color-ink-disabled); cursor: default; }
 
-.btn-primary { background: var(--accent-fill); color: var(--on-accent); }
-.btn-primary:hover { background: var(--accent-hover); }
-[data-theme="dark"] .btn-primary:hover { background: var(--accent-fill-hover); }
+/* the gilt plaque: at rest a flat gilt field, under the pointer it takes the cut inner line */
+.btn-primary { background: var(--color-accent); color: var(--color-ink-on-accent); }
+.btn-primary:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 2px var(--color-accent), inset 0 0 0 3px var(--color-ink-on-accent);
+}
+.btn-primary:active:not(:disabled) { background: var(--color-accent-pressed); }
+.btn-primary:disabled { background: var(--color-surface-raised); color: var(--color-ink-disabled); }
 
-.btn-soft { background: var(--surface); border-color: var(--line-strong); color: var(--text); }
-.btn-soft:hover { border-color: var(--line-ink); }
+.btn-soft {
+  background: var(--color-surface-base);
+  border-color: var(--color-line-gilt-faint);
+  color: var(--color-ink-primary);
+}
+.btn-soft:hover:not(:disabled) { border-color: var(--color-line-gilt); background: var(--color-surface-raised); }
 
-.btn-outline { background: none; border-color: var(--line-strong); color: var(--text); }
-.btn-outline:hover { border-color: var(--line-ink); }
+.btn-outline { border-color: var(--color-line-strong); color: var(--color-ink-primary); }
+.btn-outline:hover:not(:disabled) { border-color: var(--color-line-gilt); }
 
-.btn-ghost { background: none; color: var(--text-2); }
-.btn-ghost:hover { background: var(--sunken); color: var(--text); }
+.btn-ghost { color: var(--color-ink-secondary); }
+.btn-ghost:hover:not(:disabled) { background: var(--color-surface-raised); color: var(--color-ink-primary); }
 
-.btn-danger { background: var(--danger-fill); color: #fff; }
-.btn-danger:hover { background: var(--danger-fill-hover); }
+/* destructive is an outline in danger ink, never a filled call to action */
+.btn-danger { border-color: var(--color-status-danger); color: var(--color-status-danger); }
+.btn-danger:hover:not(:disabled) { background: var(--color-surface-raised); }
 
-.btn-success { background: var(--surface); border-color: var(--success-line); color: var(--success); }
-.btn-success:hover { border-color: var(--success); }
-
-.btn-sm { height: 26px; padding: 0 10px; font-size: var(--text-caption); }
-.btn-lg { height: var(--control-h-lg); padding: 0 20px; font-size: var(--text-body); }
+.btn-sm { height: 26px; padding: 0 var(--space-base); font: var(--type-label); }
+.btn-lg { height: 40px; padding: 0 var(--space-loose); }
 
 /* ── IconButton ── */
 .iconbtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-grid;
+  place-items: center;
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-1);
-  color: var(--text-3);
-  transition: background var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
+  flex: none;
+  color: var(--color-ink-tertiary);
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
-.iconbtn:hover { background: var(--sunken); color: var(--text); }
-.iconbtn-danger:hover { background: var(--danger-soft); color: var(--danger); }
+.iconbtn:hover { background: var(--color-surface-raised); color: var(--color-ink-primary); }
+.iconbtn-danger:hover { color: var(--color-status-danger); }
 
-/* ── Toggle — the one rounded control: a mechanism, not a surface ── */
+/* ── Toggle — round, because a switch is a mechanism, as it is in game ── */
 .toggle {
+  position: relative;
   width: 36px;
   height: 20px;
   flex: none;
   border-radius: var(--radius-round);
-  background: var(--line-strong);
-  position: relative;
-  transition: background var(--dur-base) var(--ease-standard);
+  background: var(--color-surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--color-line-strong);
+  transition: background-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
 }
-.toggle.on { background: var(--accent-fill); }
-.toggle:disabled { opacity: 0.45; }
+.toggle.on { background: var(--color-accent); box-shadow: none; }
+.toggle:disabled { opacity: 0.45; cursor: default; }
 .toggle-knob {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
+  top: 4px;
+  left: 4px;
+  width: 12px;
+  height: 12px;
   border-radius: var(--radius-round);
-  background: #fff;
-  box-shadow: var(--shadow-1);
-  transition: transform var(--dur-base) var(--ease-out);
+  background: var(--color-ink-tertiary);
+  transition: transform var(--dur-base) var(--ease-out), background-color var(--dur-base) var(--ease-out);
 }
-.toggle.on .toggle-knob { transform: translateX(16px); }
+.toggle.on .toggle-knob { transform: translateX(16px); background: var(--color-ink-on-accent); }
 
-/* ── Segmented — pagination idiom: current block is solid ink ── */
+/* ── Segmented — words on a rule, the chosen one underlined, as the game's TabRail ── */
 .segmented {
   display: inline-flex;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-1);
-  background: var(--surface);
-  padding: 2px;
-  gap: 2px;
+  border: 1px solid var(--color-line-gilt-faint);
+  background: var(--color-surface-sunken);
 }
 .segmented-item {
-  height: 24px;
-  padding: 0 12px;
-  border-radius: 3px;
-  font-size: var(--text-caption);
-  font-weight: 600;
-  color: var(--text-2);
-  transition: background var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
+  position: relative;
+  height: 28px;
+  padding: 0 var(--space-base);
+  font: var(--type-label);
+  color: var(--color-ink-tertiary);
+  transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
-.segmented-item:hover { color: var(--text); }
-.segmented-item.active { background: var(--line-ink); color: var(--text-invert); }
+.segmented-item + .segmented-item { border-left: 1px solid var(--color-line-hairline); }
+.segmented-item:hover { color: var(--color-ink-primary); }
+.segmented-item.active { color: var(--color-ink-primary); background: var(--color-accent-wash); }
+.segmented-item.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--color-accent);
+}
 
-/* ── Slider ── */
-.slider { position: relative; padding-bottom: 18px; }
+/* ── Slider — a gilt rail with the palace diamond for a thumb ── */
+.slider { position: relative; padding-bottom: 20px; }
 .slider input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
+  display: block;
   width: 100%;
-  height: 4px;
-  border-radius: var(--radius-round);
-  background: linear-gradient(to right, var(--accent-fill) var(--pct), var(--line) var(--pct));
-  outline-offset: 4px;
+  height: 18px;
+  margin: 0;
+  background: transparent;
+}
+.slider input[type="range"]::-webkit-slider-runnable-track {
+  height: 2px;
+  background: linear-gradient(to right, var(--color-accent) var(--pct), var(--color-line-strong) var(--pct));
 }
 .slider input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: var(--radius-1);
-  background: var(--surface);
-  border: 1px solid var(--line-ink);
-  box-shadow: var(--shadow-1);
+  width: 12px;
+  height: 12px;
+  margin-top: -5px;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-surface-base);
+  transform: rotate(45deg);
   cursor: grab;
 }
-.slider-marks { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; }
+.slider input[type="range"]::-moz-range-track { height: 2px; background: var(--color-line-strong); }
+.slider input[type="range"]::-moz-range-progress { height: 2px; background: var(--color-accent); }
+.slider input[type="range"]::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border: 0;
+  border-radius: 0;
+  background: var(--color-accent);
+  transform: rotate(45deg);
+}
+.slider-marks { position: absolute; left: 0; right: 0; bottom: 0; height: 16px; }
 .slider-marks .mark {
   position: absolute;
-  font-size: var(--text-caption);
-  font-family: var(--font-mono);
-  color: var(--text-3);
+  font: var(--type-label);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-tertiary);
 }
-.slider-marks .mark.hit { color: var(--text-2); }
+.slider-marks .mark.hit { color: var(--color-ink-secondary); }
 
-/* ── Badge — overline style, tonal bg + border + square dot ── */
+/* ── Badge — a square label with a square pip; tones follow the status family ── */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   height: 22px;
-  padding: 0 8px;
-  border-radius: var(--radius-1);
-  border: 1px solid var(--line);
-  background: var(--sunken);
-  color: var(--text-2);
-  font-size: var(--text-overline);
-  font-weight: 600;
-  letter-spacing: var(--ls-overline);
-  text-transform: uppercase;
+  padding: 0 var(--space-snug);
+  font: var(--type-label);
+  letter-spacing: 0.04em;
   white-space: nowrap;
+  color: var(--color-ink-secondary);
+  border: 1px solid var(--color-line-hairline);
+  background: var(--color-surface-sunken);
 }
-.badge::before {
-  content: "";
-  width: 5px;
-  height: 5px;
-  flex: none;
-  background: currentColor;
-}
-.badge-accent { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
-.badge-ok { background: var(--success-soft); border-color: var(--success-line); color: var(--success); }
-.badge-warn { background: var(--warning-soft); border-color: var(--warning-line); color: var(--warning); }
-.badge-err { background: var(--danger-soft); border-color: var(--danger-line); color: var(--danger); }
-.badge-info { background: var(--info-soft); border-color: var(--info-line); color: var(--info); }
+.badge::before { content: ""; width: 5px; height: 5px; flex: none; background: currentColor; }
+.badge-accent { color: var(--color-accent); border-color: var(--color-line-gilt-faint); }
+.badge-ok { color: var(--color-status-live); }
+.badge-warn { color: var(--color-status-warn); }
+.badge-err { color: var(--color-status-danger); }
+.badge-info { color: var(--color-ink-primary); }
+.badge-dim { color: var(--color-ink-tertiary); }
 
 /* ── ProgressBar ── */
 .pbar {
   position: relative;
-  height: 4px;
-  border-radius: var(--radius-round);
-  background: var(--line);
+  height: 3px;
+  background: var(--color-line-hairline);
   overflow: hidden;
 }
 .pbar-fill {
   display: block;
   height: 100%;
-  border-radius: inherit;
-  background: var(--accent-fill);
-  transition: width var(--dur-base) var(--ease-standard);
+  background: var(--color-accent);
+  transition: width var(--dur-base) var(--ease-out);
 }
 .pbar-ind {
   position: absolute;
   top: 0;
   bottom: 0;
   width: 35%;
-  border-radius: inherit;
-  background: var(--accent-fill);
-  animation: sweep 1.6s var(--ease-standard) infinite;
+  background: var(--color-accent);
+  animation: sweep 1.6s var(--ease-in-out) infinite;
 }
-.pbar-sm { height: 3px; }
+.pbar-sm { height: 2px; }
 
-/* ── Spinner ── */
+/* ── Spinner — a ring, which is round because it turns ── */
 .spinner {
   width: 14px;
   height: 14px;
   flex: none;
   border-radius: var(--radius-round);
-  border: 1.5px solid var(--line-strong);
-  border-top-color: var(--text);
-  animation: spin 0.8s linear infinite;
+  border: 1.5px solid var(--color-line-strong);
+  border-top-color: var(--color-accent);
+  animation: spin 0.9s linear infinite;
 }
-.spinner-light { border-color: rgb(255 255 255 / 0.35); border-top-color: #fff; }
+.spinner-light { border-color: var(--color-line-gilt-faint); border-top-color: var(--color-ink-primary); }
 
-/* ── Modal — E3 over scrim ── */
+/* ── Modal — a framed panel over the scrim, header in the lattice band ── */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 90;
-  background: var(--scrim);
+  z-index: var(--layer-overlay);
   display: grid;
   place-items: center;
-  animation: fade-in var(--dur-fast) var(--ease-standard);
+  background: var(--pf-scrim);
+  animation: fade-in var(--dur-fast) var(--ease-out);
 }
 .modal {
-  max-width: calc(100vw - 48px);
-  background: var(--overlay);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-3);
-  box-shadow: var(--shadow-3);
-  animation: scale-in var(--dur-base) var(--ease-out);
+  max-width: calc(100vw - 64px);
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  animation: rise-in var(--dur-base) var(--ease-out);
 }
 .modal-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px 0;
+  gap: var(--space-base);
+  min-height: 56px;
+  padding: 0 var(--space-snug) 0 var(--space-loose);
 }
 .modal-head h3 {
-  font-family: var(--font-display);
-  font-size: var(--text-title);
-  font-weight: 500;
-  letter-spacing: var(--ls-snug);
-  line-height: var(--leading-title);
+  font: var(--type-heading);
+  color: var(--color-ink-primary);
 }
-.modal-body { padding: 14px 20px 20px; }
+.modal-body { padding: var(--space-loose); overflow-y: auto; }
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 20px;
+  gap: var(--space-snug);
+  margin-top: var(--space-loose);
 }
-.confirm-body { color: var(--text-2); font-size: var(--text-small); }
+.confirm-body { color: var(--color-ink-secondary); }
 
-/* ── Empty state — dashed boundary, serif heading ── */
+/* ── Empty state — a sunken well with a new moon in it: nothing lit yet ── */
 .empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 48px 24px;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius-2);
+  gap: var(--space-snug);
+  padding: var(--space-section) var(--space-loose);
+  background: var(--color-surface-sunken);
+  border: 1px dashed var(--color-line-gilt-faint);
   text-align: center;
 }
-.empty-icon { color: var(--text-3); margin-bottom: 6px; }
-.empty-title {
-  font-family: var(--font-display);
-  font-size: var(--text-heading);
-  font-weight: 500;
-  color: var(--text);
-}
-.empty-hint { font-size: var(--text-small); color: var(--text-2); max-width: 340px; }
-.empty-action { margin-top: 10px; }
+.empty-icon { color: var(--color-ink-tertiary); margin-bottom: var(--space-tight); }
+.empty-title { font: var(--type-heading); color: var(--color-ink-primary); }
+.empty-hint { max-width: 380px; color: var(--color-ink-secondary); }
+.empty-action { margin-top: var(--space-base); }
 
-/* ── field (forms) ── */
-.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
-.field-label {
-  font-size: var(--text-small);
-  font-weight: 600;
-  color: var(--text);
-}
+/* ── fields ── */
+.field { display: flex; flex-direction: column; gap: var(--space-snug); margin-bottom: var(--space-loose); }
+.field-label { font: var(--type-body-strong); color: var(--color-ink-primary); }
+.field-label b { color: var(--color-accent); font-weight: 600; }
 .input {
-  height: var(--control-h);
-  padding: 0 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-1);
-  background: var(--surface);
-  color: var(--text);
-  transition: border-color var(--dur-fast) var(--ease-standard);
+  height: 34px;
+  padding: 0 var(--space-base);
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-line-strong);
+  color: var(--color-ink-primary);
+  transition: border-color var(--dur-fast) var(--ease-out);
 }
-.input:hover { border-color: var(--text-3); }
-.input:focus { outline: none; border-color: var(--line-ink); box-shadow: 0 0 0 2px var(--accent-soft); }
-.input::placeholder { color: var(--text-3); }
+.input:hover { border-color: var(--color-line-gilt); }
+.input:focus { outline: none; border-color: var(--color-accent); }
+.input:focus-visible { outline: var(--stroke-focus) solid var(--color-accent); outline-offset: 0; }
+.input::placeholder { color: var(--color-ink-tertiary); }

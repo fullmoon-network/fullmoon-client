@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, type IconName } from "./Icon";
+import { Key, Marker } from "./Palace";
 import { useStore, type Screen } from "../state/store";
 import { useT } from "../i18n";
 
@@ -13,7 +14,8 @@ type Action = {
 };
 
 const NAV: Array<{ id: Screen; icon: IconName }> = [
-  { id: "home", icon: "home" },
+  { id: "play", icon: "play" },
+  { id: "dashboard", icon: "home" },
   { id: "mods", icon: "puzzle" },
   { id: "cosmetics", icon: "feather" },
   { id: "accounts", icon: "users" },
@@ -117,13 +119,14 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="cmdk" role="dialog" aria-modal>
+      <div className="cmdk pf-frame" role="dialog" aria-modal aria-label={t("palette.placeholder")}>
         <div className="cmdk-search">
           <Icon name="search" size={16} />
           <input
             ref={inputRef}
             value={q}
             placeholder={t("palette.placeholder")}
+            aria-label={t("palette.placeholder")}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Escape") onClose();
@@ -138,7 +141,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               if (e.key === "Enter" && shown[cursor]) pick(shown[cursor]);
             }}
           />
-          <kbd>ESC</kbd>
+          <Key>Esc</Key>
         </div>
 
         <div className="cmdk-list" ref={listRef}>
@@ -147,8 +150,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             const items = shown.filter((a) => a.group === key);
             if (items.length === 0) return null;
             return (
-              <div key={key}>
-                <div className="cmdk-group">{label}</div>
+              <div key={key} className="cmdk-section">
+                <div className="cmdk-group pf-section-head">{label}</div>
                 {items.map((a) => {
                   const idx = shown.indexOf(a);
                   return (
@@ -158,6 +161,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                       onMouseEnter={() => setCursor(idx)}
                       onClick={() => pick(a)}
                     >
+                      <Marker on={idx === cursor} tone="cinnabar" />
                       <span className="cmdk-ic">
                         <Icon name={a.icon} size={15} />
                       </span>
@@ -165,7 +169,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                         <strong>{a.title}</strong>
                         <em>{a.sub}</em>
                       </span>
-                      {idx === cursor && <kbd>↵</kbd>}
+                      {idx === cursor && <Key>↵</Key>}
                     </button>
                   );
                 })}
@@ -176,11 +180,14 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
         <footer className="cmdk-foot">
           <span>
-            <kbd>↑</kbd>
-            <kbd>↓</kbd> {t("palette.navigate")}
+            <Key>↑</Key>
+            <Key>↓</Key> {t("palette.navigate")}
           </span>
           <span>
-            <kbd>↵</kbd> {t("palette.select")}
+            <Key>↵</Key> {t("palette.select")}
+          </span>
+          <span>
+            <Key>Esc</Key> {t("palette.close")}
           </span>
         </footer>
       </div>

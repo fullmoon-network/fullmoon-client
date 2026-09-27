@@ -1,52 +1,38 @@
 import { useMemo } from "react";
 
-interface Star {
-  id: number;
-  top: string;
-  left: string;
-  size: number;
-  opacity: number;
-  duration: string;
-  delay: string;
-}
-
+/* The night behind every surface: the void ground and a sparse, still field of stars — dots,
+   never sparkles, and no coloured halo, which on a dark ground is only a shadow in disguise.
+   A fixed seed, so the sky does not rearrange itself between screens. */
 export function AtmosphericBackdrop() {
-  const stars: Star[] = useMemo(() => {
-    return Array.from({ length: 42 }, (_, i) => ({
+  const stars = useMemo(() => {
+    let seed = 11;
+    const rnd = () => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    };
+    return Array.from({ length: 70 }, (_, i) => ({
       id: i,
-      top: `${(i * 19.7) % 94}%`,
-      left: `${(i * 23.3) % 98}%`,
-      size: (i % 3 === 0 ? 2.5 : (i % 2 === 0 ? 1.8 : 1.2)),
-      opacity: 0.25 + (i % 5) * 0.15,
-      duration: `${3 + (i % 4) * 1.5}s`,
-      delay: `${(i % 7) * 0.8}s`,
+      x: rnd() * 100,
+      // most of the sky is overhead; the lower half of the window holds a few
+      y: Math.pow(rnd(), 1.6) * 100,
+      r: rnd() < 0.12 ? 1.1 : 0.7,
+      bright: rnd() < 0.3,
     }));
   }, []);
 
   return (
     <div className="game-backdrop" aria-hidden="true">
-      <div className="nebula-layer nebula-gold" />
-
-      <div className="starfield">
+      <svg className="starfield" width="100%" height="100%">
         {stars.map((s) => (
-          <span
+          <circle
             key={s.id}
-            className="twinkle-star"
-            style={{
-              top: s.top,
-              left: s.left,
-              width: `${s.size}px`,
-              height: `${s.size}px`,
-              opacity: s.opacity,
-              animationDuration: s.duration,
-              animationDelay: s.delay,
-            }}
+            className={s.bright ? "star star-bright" : "star"}
+            cx={`${s.x.toFixed(2)}%`}
+            cy={`${s.y.toFixed(2)}%`}
+            r={s.r}
           />
         ))}
-      </div>
-
-      <div className="backdrop-vignette" />
-      <div className="backdrop-grid" />
+      </svg>
     </div>
   );
 }

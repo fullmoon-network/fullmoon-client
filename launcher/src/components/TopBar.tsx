@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
+import { Dancheong, Key, Marker } from "./Palace";
 import { SkinFace } from "./ui";
 import { useStore } from "../state/store";
 import { useT } from "../i18n";
@@ -8,13 +9,17 @@ import { useT } from "../i18n";
 function TopMenu({
   open,
   setOpen,
+  label,
   trigger,
+  triggerClass,
   children,
 }: {
   open: boolean;
   setOpen: (v: boolean) => void;
-  trigger: React.ReactNode;
-  children: React.ReactNode;
+  label: string;
+  trigger: ReactNode;
+  triggerClass: string;
+  children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -34,8 +39,20 @@ function TopMenu({
   }, [open, setOpen]);
   return (
     <div className="topmenu" ref={ref}>
-      <div onClick={() => setOpen(!open)}>{trigger}</div>
-      {open && <div className="topmenu-panel">{children}</div>}
+      <button
+        className={triggerClass}
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        {trigger}
+      </button>
+      {open && (
+        <div className="topmenu-panel pf-frame pf-frame-sm" role="menu" aria-label={label}>
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -51,130 +68,144 @@ export function TopBar({ onPalette }: { onPalette: () => void }) {
   const latest = news.slice(0, 3);
 
   return (
-    <header className="topbar">
-      <div className="topbar-heading">
-        <h1>{t(`nav.${screen}`)}</h1>
-        <p>{t(`topbar.sub.${screen}`)}</p>
-      </div>
+    <div className="masthead">
+      <header className="topbar pf-band">
+        <div className="topbar-heading">
+          <h1>{t(`nav.${screen}`)}</h1>
+          <p>{t(`topbar.sub.${screen}`)}</p>
+        </div>
 
-      <div className="topbar-actions">
-        <button className="searchbtn" onClick={onPalette}>
-          <Icon name="search" size={15} />
-          <span>{t("topbar.search")}</span>
-          <kbd>Ctrl K</kbd>
-        </button>
-
-        <TopMenu
-          open={bellOpen}
-          setOpen={setBellOpen}
-          trigger={
-            <button className="bellbtn" aria-label={t("topbar.notifications")}>
-              <Icon name="bell" size={17} />
-              {!read && latest.length > 0 && <span className="bell-dot" />}
-            </button>
-          }
-        >
-          <div className="topmenu-title">{t("topbar.notifications")}</div>
-          {latest.length === 0 ? (
-            <div className="topmenu-empty">{t("topbar.noNotifications")}</div>
-          ) : (
-            latest.map((n) => (
-              <button
-                key={n.id}
-                className="topmenu-item"
-                onClick={() => {
-                  setBellOpen(false);
-                  setScreen("home");
-                }}
-              >
-                <span className="topmenu-swatch" style={{ "--h": n.hue }} />
-                <span className="topmenu-item-text">
-                  <strong>{n.title}</strong>
-                  <em>{n.date}</em>
-                </span>
-              </button>
-            ))
-          )}
-          <button
-            className="topmenu-item topmenu-foot"
-            onClick={() => {
-              setRead(true);
-              setBellOpen(false);
-            }}
-          >
-            <Icon name="check" size={13} />
-            <span>{t("topbar.markRead")}</span>
+        <div className="topbar-actions">
+          <button className="searchbtn" onClick={onPalette} aria-keyshortcuts="Control+K">
+            <Icon name="search" size={15} />
+            <span>{t("topbar.search")}</span>
+            <span className="searchbtn-keys" aria-hidden>
+              <Key>Ctrl</Key>
+              <Key>K</Key>
+            </span>
           </button>
-        </TopMenu>
 
-        <span className="topbar-divider" aria-hidden />
-
-        <TopMenu
-          open={accOpen}
-          setOpen={setAccOpen}
-          trigger={
-            <button className="acctchip">
-              {activeAccount ? (
-                <>
-                  <SkinFace hue={activeAccount.skinHue} size={26} />
-                  <span className="acctchip-meta">
-                    <strong>{activeAccount.username}</strong>
-                    <em>{t(`accounts.source.${activeAccount.source}`)}</em>
+          <TopMenu
+            open={bellOpen}
+            setOpen={setBellOpen}
+            label={t("topbar.notifications")}
+            triggerClass="bellbtn"
+            trigger={
+              <>
+                <Icon name="bell" size={17} />
+                {!read && latest.length > 0 && <span className="bell-dot" />}
+              </>
+            }
+          >
+            <div className="topmenu-title">{t("topbar.notifications")}</div>
+            {latest.length === 0 ? (
+              <div className="topmenu-empty">{t("topbar.noNotifications")}</div>
+            ) : (
+              latest.map((n) => (
+                <button
+                  key={n.id}
+                  role="menuitem"
+                  className="topmenu-item"
+                  onClick={() => {
+                    setBellOpen(false);
+                    setScreen("dashboard");
+                  }}
+                >
+                  <Marker />
+                  <span className="topmenu-item-text">
+                    <strong>{n.title}</strong>
+                    <em className="num">{t(`news.tag.${n.tag}`)} · {n.date}</em>
                   </span>
-                </>
-              ) : (
-                <>
-                  <span className="acctchip-none">
-                    <Icon name="user" size={14} />
-                  </span>
-                  <span className="acctchip-meta">
-                    <strong>{t("dock.needsAccount")}</strong>
-                  </span>
-                </>
-              )}
-              <Icon name="chevronDown" size={13} className="acctchip-caret" />
-            </button>
-          }
-        >
-          {accounts.map((a) => (
+                </button>
+              ))
+            )}
             <button
-              key={a.uuid}
-              className={`topmenu-item ${a.uuid === activeAccount?.uuid ? "active" : ""}`}
+              role="menuitem"
+              className="topmenu-item topmenu-foot"
               onClick={() => {
-                void selectAccount(a.uuid);
-                setAccOpen(false);
+                setRead(true);
+                setBellOpen(false);
               }}
             >
-              <SkinFace hue={a.skinHue} size={22} />
-              <span className="topmenu-item-text">
-                <strong>{a.username}</strong>
-                <em>{t(`accounts.source.${a.source}`)}</em>
-              </span>
-              {a.uuid === activeAccount?.uuid && <Icon name="check" size={14} />}
+              <Icon name="check" size={13} />
+              <span>{t("topbar.markRead")}</span>
             </button>
-          ))}
-          <button
-            className="topmenu-item topmenu-foot"
-            onClick={() => {
-              setAccOpen(false);
-              setScreen("accounts");
-            }}
+          </TopMenu>
+
+          <TopMenu
+            open={accOpen}
+            setOpen={setAccOpen}
+            label={t("topbar.account")}
+            triggerClass="acctchip"
+            trigger={
+              <>
+                {activeAccount ? (
+                  <>
+                    <SkinFace hue={activeAccount.skinHue} skin={activeAccount.skinUrl} size={24} />
+                    <span className="acctchip-meta">
+                      <strong>{activeAccount.username}</strong>
+                      <em>{t(`accounts.source.${activeAccount.source}`)}</em>
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="acctchip-none">
+                      <Icon name="user" size={14} />
+                    </span>
+                    <span className="acctchip-meta">
+                      <strong>{t("dock.needsAccount")}</strong>
+                    </span>
+                  </>
+                )}
+                <Icon name="chevronDown" size={13} className="acctchip-caret" />
+              </>
+            }
           >
-            <Icon name="plus" size={13} />
-            <span>{t("accounts.add")}</span>
-          </button>
-          <button
-            className="topmenu-item topmenu-foot"
-            onClick={() => {
-              setAccOpen(false);
-              void importOfficial();
-            }}
-          >
-            <Icon name="download" size={13} />
-            <span>{t("accounts.importOfficial")}</span>
-          </button>
-        </TopMenu>
-      </div>
-    </header>
+            {accounts.map((a) => (
+              <button
+                key={a.uuid}
+                role="menuitemradio"
+                aria-checked={a.uuid === activeAccount?.uuid}
+                className={`topmenu-item ${a.uuid === activeAccount?.uuid ? "is-current" : ""}`}
+                onClick={() => {
+                  void selectAccount(a.uuid);
+                  setAccOpen(false);
+                }}
+              >
+                <SkinFace hue={a.skinHue} skin={a.skinUrl} size={22} />
+                <span className="topmenu-item-text">
+                  <strong>{a.username}</strong>
+                  <em>{t(`accounts.source.${a.source}`)}</em>
+                </span>
+                <Marker on={a.uuid === activeAccount?.uuid} />
+              </button>
+            ))}
+            <button
+              role="menuitem"
+              className="topmenu-item topmenu-foot"
+              onClick={() => {
+                setAccOpen(false);
+                setScreen("accounts");
+              }}
+            >
+              <Icon name="plus" size={13} />
+              <span>{t("accounts.add")}</span>
+            </button>
+            <button
+              role="menuitem"
+              className="topmenu-item"
+              onClick={() => {
+                setAccOpen(false);
+                void importOfficial();
+              }}
+            >
+              <Icon name="download" size={13} />
+              <span>{t("accounts.importOfficial")}</span>
+            </button>
+          </TopMenu>
+        </div>
+      </header>
+      <Dancheong />
+    </div>
   );
 }

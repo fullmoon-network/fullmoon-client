@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- The moon seal, as ui/Palace.java draws it: ornament.cinnabar ground, a cut ink.primary line,
+       and 月. An image asset; the colours are the generated tokens' values at the time it was drawn. -->
+  <rect width="32" height="32" fill="#b75037"/>
+  <rect x="3" y="3" width="26" height="26" fill="none" stroke="#efe9dd" stroke-width="1"/>
+  <g transform="translate(5.76 5.76) scale(1.7067)" shape-rendering="crispEdges">
+    <path fill="#efe9dd" d="M3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM9 1h1v1h-1zM3 2h1v1h-1zM9 2h1v1h-1zM3 3h1v1h-1zM9 3h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM3 5h1v1h-1zM9 5h1v1h-1zM3 6h1v1h-1zM9 6h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM3 8h1v1h-1zM9 8h1v1h-1zM2 9h1v1h-1zM9 9h1v1h-1zM1 10h1v1h-1zM7 10h1v1h-1zM9 10h1v1h-1zM0 11h1v1h-1zM8 11h1v1h-1zM9 11h1v1h-1z"/>
+  </g>
+</svg>

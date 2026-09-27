@@ -1,0 +1,171 @@
+/* Generated from i3/design/tokens.json by i3/design/generate.mjs. Do not edit by hand. */
+:root {
+  --space-hair: 2px;
+  --space-tight: 4px;
+  --space-snug: 8px;
+  --space-base: 12px;
+  --space-cozy: 16px;
+  --space-loose: 24px;
+  --space-gutter: 32px;
+  --space-section: 48px;
+  --space-bay: 64px;
+  --space-field: 96px;
+
+  --radius-none: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-round: 999px;
+
+  --stroke-hair: 1px;
+  --stroke-focus: 2px;
+
+  --dur-instant: 0ms;
+  --dur-fast: 90ms;
+  --dur-base: 140ms;
+  --dur-slow: 220ms;
+  --dur-reveal: 1200ms;
+  --dur-reduced: 120ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.83, 0, 0.17, 1);
+
+  --layer-ground: 0;
+  --layer-content: 100;
+  --layer-rail: 200;
+  --layer-overlay: 300;
+  --layer-popover: 400;
+  --layer-toast: 500;
+
+  --font-display: 'Fullmoon Serif', 'Noto Serif KR', serif;
+  --font-body: 'Pretendard', system-ui, sans-serif;
+  --type-wordmark-size: 57px;
+  --type-wordmark-leading: 66px;
+  --type-wordmark: 600 57px/66px var(--font-display);
+  --type-display-size: 33px;
+  --type-display-leading: 42px;
+  --type-display: 600 33px/42px var(--font-display);
+  --type-heading-size: 20px;
+  --type-heading-leading: 27px;
+  --type-heading: 600 20px/27px var(--font-display);
+  --type-title-size: 20px;
+  --type-title-leading: 27px;
+  --type-title: 600 20px/27px var(--font-body);
+  --type-body-size: 14px;
+  --type-body-leading: 20px;
+  --type-body: 400 14px/20px var(--font-body);
+  --type-body-strong-size: 14px;
+  --type-body-strong-leading: 20px;
+  --type-body-strong: 600 14px/20px var(--font-body);
+  --type-label-size: 12px;
+  --type-label-leading: 17px;
+  --type-label: 600 12px/17px var(--font-body);
+}
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-surface-void: oklch(0.145 0.018 275); /* #080a12 · scrim behind a full-screen surface */
+  --color-surface-sunken: oklch(0.17 0.02 275); /* #0d0f18 · inset wells, scroll troughs, empty states */
+  --color-surface-base: oklch(0.195 0.022 275); /* #12141f · panel ground */
+  --color-surface-raised: oklch(0.235 0.026 275); /* #1a1d2a · hovered row, selected list item ground */
+  --color-surface-overlay: oklch(0.275 0.03 275); /* #232737 · popover, tooltip, dropdown */
+  --color-line-hairline: oklch(0.3 0.02 275); /* #2b2d38 · row separators inside a panel */
+  --color-line-strong: oklch(0.4 0.022 275); /* #444754 · section rule under a title */
+  --color-line-gilt: oklch(0.47 0.045 85); /* #66593d · the palace frame's outer line, a tile's edge */
+  --color-line-gilt-faint: oklch(0.31 0.022 80); /* #362f24 · the frame's second line, outside the first */
+  --color-line-lattice: oklch(0.24 0.02 80); /* #241e14 · window-lattice strokes in a header band */
+  --color-ink-primary: oklch(0.935 0.017 85); /* #efe9dd · titles, values, active labels */
+  --color-ink-secondary: oklch(0.765 0.02 88); /* #b8b2a5 · body copy, inactive labels */
+  --color-ink-tertiary: oklch(0.605 0.02 88); /* #878174 · meta text, units, hints */
+  --color-ink-disabled: oklch(0.42 0.012 275); /* #4b4d54 · disabled label */
+  --color-ink-on-accent: oklch(0.2 0.02 88); /* #1a160b · text on an accent fill */
+  --color-accent: oklch(0.835 0.115 88); /* #e8c56c · corner brackets, selection, one primary action per surface, live values */
+  --color-accent-pressed: oklch(0.72 0.105 86); /* #c2a052 · accent fill while held */
+  --color-accent-wash: oklch(0.285 0.035 80); /* #332815 · selected-row tint behind ink */
+  --color-status-live: oklch(0.78 0.105 168); /* #6dcdab · server reachable, module enabled */
+  --color-status-idle: oklch(0.545 0.015 275); /* #6d7079 · server unreachable, module off */
+  --color-status-warn: oklch(0.805 0.128 66); /* #f7ae5f · degraded, pending, unverified */
+  --color-status-danger: oklch(0.615 0.155 25); /* #d25853 · destructive only — never a primary action fill */
+  --color-ornament-jade: oklch(0.62 0.08 170); /* #50967f · dancheong band: the green panel */
+  --color-ornament-cinnabar: oklch(0.56 0.14 35); /* #b75037 · dancheong band, the moon seal's ground */
+  --color-ornament-lapis: oklch(0.36 0.09 268); /* #29396c · dancheong band: the blue panel */
+  --color-moon-lit: oklch(0.93 0.055 90); /* #f6e7bf · the lit face of a moon phase */
+  --color-moon-shadow: oklch(0.235 0.025 260); /* #171e2a · the unlit face of a moon phase */
+  --metal-gilt: oklch(0.835 0.115 88);
+  --metal-silver: oklch(0.85 0.03 250);
+  --metal-bronze: oklch(0.77 0.08 42);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --color-surface-void: oklch(0.905 0.014 85); /* #e4dfd5 · page ground under the shell */
+  --color-surface-sunken: oklch(0.93 0.013 85); /* #ece7de · rail, inset wells, empty states */
+  --color-surface-base: oklch(0.962 0.01 85); /* #f5f2eb · panel ground */
+  --color-surface-raised: oklch(0.912 0.016 85); /* #e7e1d6 · hovered row, header band ground */
+  --color-surface-overlay: oklch(0.982 0.008 85); /* #fcf9f3 · popover, tooltip, dropdown */
+  --color-line-hairline: oklch(0.86 0.014 85); /* #d5d0c7 · row separators inside a panel */
+  --color-line-strong: oklch(0.74 0.018 85); /* #b0aa9e · section rule under a title */
+  --color-line-gilt: oklch(0.64 0.075 82); /* #a38856 · the palace frame's outer line, a tile's edge */
+  --color-line-gilt-faint: oklch(0.82 0.04 84); /* #d0c3a7 · the frame's second line, outside the first */
+  --color-line-lattice: oklch(0.878 0.024 84); /* #ded6c5 · window-lattice strokes in a header band */
+  --color-ink-primary: oklch(0.235 0.03 275); /* #1a1d2c · titles, values, active labels */
+  --color-ink-secondary: oklch(0.38 0.028 275); /* #3e4152 · body copy, inactive labels */
+  --color-ink-tertiary: oklch(0.48 0.022 275); /* #5a5d6a · meta text, units, hints */
+  --color-ink-disabled: oklch(0.68 0.012 275); /* #9698a0 · disabled label */
+  --color-ink-on-accent: oklch(0.975 0.01 85); /* #faf6ef · text on an accent fill */
+  --color-accent: oklch(0.52 0.105 78); /* #8a600a · corner brackets, selection, one primary action per surface, live values */
+  --color-accent-pressed: oklch(0.46 0.1 76); /* #774f00 · accent fill while held */
+  --color-accent-wash: oklch(0.905 0.04 85); /* #ecdec2 · selected-row tint behind ink */
+  --color-status-live: oklch(0.52 0.1 168); /* #137b5e · server reachable, module enabled */
+  --color-status-idle: oklch(0.6 0.015 275); /* #7d8089 · server unreachable, module off */
+  --color-status-warn: oklch(0.56 0.12 62); /* #a56217 · degraded, pending, unverified */
+  --color-status-danger: oklch(0.53 0.17 25); /* #ba3535 · destructive only — never a primary action fill */
+  --color-ornament-jade: oklch(0.6 0.085 170); /* #459178 · dancheong band: the green panel */
+  --color-ornament-cinnabar: oklch(0.56 0.14 35); /* #b75037 · dancheong band, the moon seal's ground */
+  --color-ornament-lapis: oklch(0.42 0.09 268); /* #384a7e · dancheong band: the blue panel */
+  --color-moon-lit: oklch(0.93 0.055 90); /* #f6e7bf · the lit face of a moon phase */
+  --color-moon-shadow: oklch(0.26 0.028 260); /* #1c2432 · the unlit face of a moon phase */
+  --metal-gilt: oklch(0.52 0.105 78);
+  --metal-silver: oklch(0.5 0.04 255);
+  --metal-bronze: oklch(0.52 0.095 40);
+}
+
+[data-accent="silver"],
+[data-accent="silver"] [data-theme="dark"] {
+  --color-accent: oklch(0.85 0.03 250); /* #c0d0e1 */
+  --color-accent-pressed: oklch(0.735 0.03 250); /* #9babbc */
+  --color-accent-wash: oklch(0.28 0.024 255); /* #212a35 */
+}
+
+[data-theme="light"][data-accent="silver"],
+[data-accent="silver"] [data-theme="light"] {
+  --color-accent: oklch(0.5 0.04 255); /* #54657a */
+  --color-accent-pressed: oklch(0.44 0.04 255); /* #445469 */
+  --color-accent-wash: oklch(0.905 0.016 250); /* #d8e1ea */
+}
+
+[data-accent="bronze"],
+[data-accent="bronze"] [data-theme="dark"] {
+  --color-accent: oklch(0.77 0.08 42); /* #e1a48c */
+  --color-accent-pressed: oklch(0.665 0.08 40); /* #bf836e */
+  --color-accent-wash: oklch(0.285 0.032 40); /* #38251e */
+}
+
+[data-theme="light"][data-accent="bronze"],
+[data-accent="bronze"] [data-theme="light"] {
+  --color-accent: oklch(0.52 0.095 40); /* #97553d */
+  --color-accent-pressed: oklch(0.46 0.09 38); /* #824431 */
+  --color-accent-wash: oklch(0.905 0.03 45); /* #f2dad0 */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant: 0ms;
+    --dur-fast: 120ms;
+    --dur-base: 120ms;
+    --dur-slow: 120ms;
+    --dur-reveal: 120ms;
+    --dur-reduced: 120ms;
+  }
+}

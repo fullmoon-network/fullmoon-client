@@ -5,19 +5,14 @@ import { StoreProvider } from "./state/store";
 import { I18nProvider, type Language } from "./i18n";
 import BRAND from "./brand";
 
-import "./styles/tokens.css";
+// design/tokens.css is linked from index.html so it is in place before the first paint
 import "./styles/base.css";
+import "./styles/palace.css";
 import "./styles/ui.css";
 import "./styles/shell.css";
 import "./styles/screens.css";
 
-/* brand.json → CSS vars before first paint (PLAN §0/§6);
-   the store effect re-derives per-theme values after mount */
 document.title = BRAND.name;
-const root = document.documentElement;
-root.style.setProperty("--accent", BRAND.accent);
-root.style.setProperty("--accent-fill", BRAND.accent);
-root.style.setProperty("--accent-hover", BRAND.accentDim);
 
 /* peek the persisted language so there's no flash of the wrong locale */
 function initialLang(): Language {
