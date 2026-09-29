@@ -8,7 +8,7 @@ import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.network.FullmoonChannel;
 import dev.fullmoon.client.network.MenuProtocol;
-import dev.fullmoon.client.render.Motion;
+import dev.fullmoon.client.render.Fade;
 import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.sound.UiSounds;
@@ -46,12 +46,11 @@ public final class ServerMenuScreen extends SurfaceScreen {
     private final MenuBoard board;
     private final IconButton backButton;
     private final IconButton closeButton;
-    private final long openedAt;
+    private final Fade fade;
 
     private ServerMenuLayout layout;
     private long requestedAt;
     private int busySlot = -1;
-    private long closingAt;
     private boolean closingFromServer;
     private boolean keyboard;
 
@@ -94,7 +93,7 @@ public final class ServerMenuScreen extends SurfaceScreen {
         this.backButton = back == null ? null
             : surface.add(new IconButton(IconButton.Glyph.BACK, backLabel, () -> request(back.item())));
         this.closeButton = surface.add(new IconButton(IconButton.Glyph.CLOSE, "", this::onClose));
-        this.openedAt = opening ? System.nanoTime() : 0;
+        this.fade = opening ? Fade.opening() : Fade.settled();
         if (opening) {
             UiSounds.play(UiSounds.Cue.OPEN);
         }
@@ -135,18 +134,17 @@ public final class ServerMenuScreen extends SurfaceScreen {
 
     @Override
     public void onClose() {
-        if (closingAt != 0) {
+        if (fade.closing()) {
             return;
         }
         if (!closingFromServer) {
             FullmoonChannel.closeMenu(menu.id(), menu.revision());
             UiSounds.play(UiSounds.Cue.CLOSE);
         }
-        if (Motion.reduced()) {
+        fade.close();
+        if (fade.gone()) {
             Minecraft.getInstance().setScreen(parent);
-            return;
         }
-        closingAt = System.nanoTime();
     }
 
     @Override
@@ -168,14 +166,14 @@ public final class ServerMenuScreen extends SurfaceScreen {
             requestedAt = 0;
             board.busy(-1);
         }
-        if (closingAt != 0 && (System.nanoTime() - closingAt) / 1_000_000L >= Tokens.Duration.CLOSE) {
+        if (fade.gone()) {
             Minecraft.getInstance().setScreen(parent);
         }
     }
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (closingAt != 0) {
+        if (fade.closing()) {
             return true;
         }
         keyboard = true;
@@ -192,16 +190,16 @@ public final class ServerMenuScreen extends SurfaceScreen {
         Painter painter = new Painter(gfx);
         painter.blurredStratum();
         painter.fill(0, 0, painter.width(), painter.height(),
-            Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.52f * appearance()));
+            Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.52f * fade.appearance()));
     }
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
-        if (closingAt == 0) {
+        if (!fade.closing()) {
             surface.hover(mouseX, mouseY);
         }
         Painter painter = new Painter(gfx);
-        float t = appearance();
+        float t = fade.appearance();
         painter.opacity(t);
         float rise = (1.0f - t) * RISE;
         gfx.pose().pushMatrix();
@@ -214,19 +212,6 @@ public final class ServerMenuScreen extends SurfaceScreen {
         surface.draw(painter);
         gfx.pose().popMatrix();
         hints(painter);
-    }
-
-    /** 0 to 1: how far the pane has come in, or how much of it is left on the way out. */
-    private float appearance() {
-        if (closingAt != 0) {
-            long elapsed = (System.nanoTime() - closingAt) / 1_000_000L;
-            return 1.0f - Motion.eased(elapsed, Tokens.Duration.CLOSE, Tokens.Easing.IN);
-        }
-        if (openedAt == 0) {
-            return 1.0f;
-        }
-        long elapsed = (System.nanoTime() - openedAt) / 1_000_000L;
-        return Motion.eased(elapsed, Tokens.Duration.OPEN, Tokens.Easing.OUT);
     }
 
     private void header(Painter painter) {
@@ -353,7 +338,7 @@ public final class ServerMenuScreen extends SurfaceScreen {
     }
 
     private void request(MenuProtocol.Item item) {
-        if (requestedAt > 0 || item.actions().isEmpty() || closingAt != 0) {
+        if (requestedAt > 0 || item.actions().isEmpty() || fade.closing()) {
             return;
         }
         MenuProtocol.Click click = requestedClick(item);
