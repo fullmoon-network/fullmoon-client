@@ -365,11 +365,18 @@ public final class HudEditorScreen extends Screen {
         String badge = elem.anchor().label() + " · " + elem.offsetX() + ", " + elem.offsetY();
         int w = Typeset.tabularWidth(Tokens.Type.BODY, badge) + Tokens.Space.COZY * 2;
         int h = Tokens.Size.HUD_CHIP;
-        int y = b.y() - Tokens.Space.SNUG - h;
-        if (y < layout.header().bottom()) {
-            y = b.bottom() + Tokens.Space.SNUG;
-        }
+        // Above the element; beside it when the element sits at the top, because the chip under a
+        // top-corner element is usually another chip.
         int x = Math.clamp(b.x(), 0, Math.max(0, width - w));
+        int y = b.y() - Tokens.Space.SNUG - h;
+        if (y < 0) {
+            y = b.y();
+            x = b.right() + Tokens.Space.SNUG + w <= width ? b.right() + Tokens.Space.SNUG : b.x() - Tokens.Space.SNUG - w;
+            if (x < 0) {
+                x = Math.clamp(b.x(), 0, Math.max(0, width - w));
+                y = b.bottom() + Tokens.Space.SNUG;
+            }
+        }
         painter.fill(x, y, w, h, Tokens.Color.SURFACE_GLASS_HUD);
         Typeset.tabular(painter, Tokens.Type.BODY, badge, x + Tokens.Space.COZY, Typeset.centred(Tokens.Type.BODY, y, h),
             Tokens.Color.ACCENT);
