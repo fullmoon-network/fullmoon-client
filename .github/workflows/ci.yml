@@ -25,6 +25,8 @@ jobs:
           cache-dependency-path: launcher/package-lock.json
       - run: npm ci
         working-directory: launcher
+      - run: npm test
+        working-directory: launcher
       - run: npm run build
         working-directory: launcher
 
