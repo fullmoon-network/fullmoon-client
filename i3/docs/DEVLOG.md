@@ -1222,3 +1222,27 @@ the browser build reports every server unreachable.
 - 인게임 캡처: run 36593818752는 클라이언트가 `Player###`로 접속해(당시 `runClient`에 `client_username`이
   매핑되지 않았다) 계정 미연동·허공 낙사로 사망 화면만 찍혔다. 매핑을 넣은 뒤 다시 돌린 캡처는
   `~/.local/share/fullmoon-client-redesign/phaseB/captures/`에 쌓이고, 비교 이미지는 `phaseB/review/img/`.
+
+## 2026-09-30 · Phase B · M1 마감 + M2 결과 카드 · M3 HUD · M4 항로 (코드, 캡처 전)
+
+- M1 후속: 풀문 패널이 떠 있는 동안 바닐라 핫바·HUD 칩·사이드바를 그리지 않는다
+  (`HudOverlay.underGlass`) — 힌트 바 뒤로 핫바가 비치던 것의 답. 상세 열은 행의 설명을 반복하지
+  않고 다른 사실 항목이 이 선택지에 대해 말하는 줄(`하우스 몫 · 1.0%`)을 덧붙인다. ✕ 5.5px, 표본의
+  래스터 절을 위로, 카지노 테이블의 칩·지갑·오늘·확률·돌리기·팟·티켓·선택 마크.
+- M2 `hud/CasinoResultOverlay`: 핫바 위 220×44 배너. 연출 중 row, 판정은 display — 당첨은 금 +
+  워시 + 윗선 + 글로우 + 260ms 플래시, 낙첨은 재. 릴은 10×10 픽셀 심볼 7종이 14px 타일에서 220ms
+  간격으로 멈춘다. 소리 `ui.reel/win/lose`(원작, `make-ui-sounds.py`). 큐 타이밍은 순수 함수로 테스트.
+- M3: 16px 유리 칩(값 row + 단위 body), 정수 좌표 + 방향, fps·tps, 핑 점, 시계 + 달, 14px 키캡,
+  사이드바 132폭·위 100·라벨/값 분할·서버 색을 팔레트로 번역·도움말 줄.
+- M4 `warp/`: `WarpLayout`(640×360 = 목업 e 좌표, 테스트) · `RouteBoard`(그룹 캡션 + 24px 행,
+  글라이드, 소리) · `WarpScreen`(스크림 위, 상세 사실 4줄, 나침반, 상태 줄, 이동 [Enter], M = 지도) ·
+  `WarpRoutes`(방위·회전·16방위 이름). 서버가 남은 초를 보내지 않아 쿨다운 카운트다운은 없다.
+- 토큰: `wheel.*`, `chat.*`, `size.card/cardH/hotbar/hudChip/hudKey/sidebar/sidebarTop/routeRow/compass/
+  reel/pocket`, `duration.flash/verdict`. 프로토콜 불변.
+
+### 증거
+
+- 목업 재렌더(서버 진실, 태그 없음): `evidence/phaseB/mock-{c-result-win,c-result-lose,d-hud,e-route-rest}-x3.png`.
+- 실캡처는 아직 없다. 4차 캡처의 `casino-card`·`route`가 일시정지 메뉴였던 원인은 하네스(`/guild` 뒤의
+  Esc)였고 고쳤다. 다음 실행이 네 게임의 카드(연출 중·정착), HUD(휴식·키 눌림), 항로(선택·요청·응답)를
+  찍는다. 러너 빌드 이력과 다음 단계는 `~/.local/share/fullmoon-client-redesign/phaseB/HANDOFF.md`.
