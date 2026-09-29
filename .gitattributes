@@ -1,0 +1,4 @@
+# The mod jar and the installer are built on Windows runners. LF checkouts keep the resources in
+# the jar byte-identical to the Linux build, so one hash describes one jar.
+* text=auto eol=lf
+*.bat text eol=crlf
