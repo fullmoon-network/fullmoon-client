@@ -214,9 +214,9 @@ public final class ScoreboardSidebar {
     }
 
     /**
-     * {@code 소지금 2억원} is a label and a value, split at the last space. The value takes the
-     * colour of the run it ends in when the server gave it one; a line without a space, or with
-     * nothing after it, is all label.
+     * {@code 소지금 2억원} is a label and a value, split at the last space. The last word is a
+     * value when it carries a figure or a colour of its own; a sentence in one colour is all
+     * label, and so is a line with no space or nothing after it.
      */
     static Split split(List<Run> runs) {
         StringBuilder all = new StringBuilder();
@@ -229,14 +229,21 @@ public final class ScoreboardSidebar {
             return new Split(text, "", 0);
         }
         String value = text.substring(space + 1);
-        int color = 0;
-        int seen = 0;
         int valueStart = all.indexOf(value, space);
+        int color = 0;
+        int labelColor = 0;
+        int seen = 0;
         for (Run run : runs) {
             if (seen + run.text().length() > valueStart) {
                 color = run.color();
+            } else if (!run.text().isBlank()) {
+                labelColor = run.color();
             }
             seen += run.text().length();
+        }
+        boolean figure = value.chars().anyMatch(Character::isDigit);
+        if (!figure && color == labelColor) {
+            return new Split(text, "", 0);
         }
         return new Split(text.substring(0, space).strip(), value, color);
     }

@@ -51,8 +51,18 @@ final class ScoreboardSidebarTest {
         assertEquals(0xFF123456, split.valueColor());
 
         ScoreboardSidebar.Split whole = ScoreboardSidebar.split(List.of(new ScoreboardSidebar.Run("오늘도 즐겁게", 0)));
-        assertEquals("오늘도 즐겁게", whole.label());
+        assertEquals("오늘도 즐겁게", whole.label(), "a sentence in one colour is all label");
         assertEquals("", whole.value());
+
+        ScoreboardSidebar.Split figure = ScoreboardSidebar.split(List.of(new ScoreboardSidebar.Run("접속자 1명", 0)));
+        assertEquals("접속자", figure.label(), "a figure is a value even in the label's colour");
+        assertEquals("1명", figure.value());
+
+        ScoreboardSidebar.Split coloured = ScoreboardSidebar.split(List.of(
+            new ScoreboardSidebar.Run("위치 ", 0xFFAAAAAA), new ScoreboardSidebar.Run("로비", 0xFF7FD8E8)));
+        assertEquals("위치", coloured.label());
+        assertEquals("로비", coloured.value());
+        assertEquals(0xFF7FD8E8, coloured.valueColor());
 
         ScoreboardSidebar.Split trailing = ScoreboardSidebar.split(List.of(new ScoreboardSidebar.Run("위치 ", 0)));
         assertEquals("위치", trailing.label());
