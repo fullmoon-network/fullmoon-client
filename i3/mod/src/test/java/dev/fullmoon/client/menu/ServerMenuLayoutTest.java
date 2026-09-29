@@ -36,7 +36,7 @@ final class ServerMenuLayoutTest {
         assertEquals(new Box(64, 30, 512, 300), layout.panel());
         assertEquals(28, layout.header().h());
         assertEquals(312, layout.list().w(), "the list column");
-        assertEquals(316, layout.divider(), "the hairline between list and detail");
+        assertEquals(64 + 316, layout.divider(), "the hairline between list and detail, at 316 in the panel");
         assertEquals(64 + 324, layout.detail().x(), "the detail column starts at 324 in the panel");
         assertEquals(176, layout.detail().w());
         assertEquals(30 + 36, layout.detail().y());
