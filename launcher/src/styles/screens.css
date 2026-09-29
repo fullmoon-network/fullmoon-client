@@ -316,11 +316,12 @@
   white-space: nowrap;
 }
 .srv-card-nums { display: flex; gap: 22px; margin-top: 12px; }
+/* the mock sets the figures inside the tertiary label, so they read tertiary too; kept as rendered */
 .srv-card-nums b {
   display: block;
   font: 700 20px/24px var(--font-body);
   font-variant-numeric: tabular-nums;
-  color: var(--color-ink-primary);
+  color: var(--color-ink-tertiary);
 }
 .srv-card-nums span { font-size: 11px; color: var(--color-ink-tertiary); }
 .srv-card-go {

@@ -172,21 +172,34 @@ test("the default grid step is the client's own", () => {
   assert.equal(Number(step?.[1]), DEFAULT_GRID_SNAP);
 });
 
+/* A default offset is a literal or one of the design's spacing tokens (Tokens.Space.COZY is the
+   eight GUI px the glass HUD stands in from the edge); the token's value comes from tokens.json. */
+const SPACE: Record<string, number> = JSON.parse(
+  readFileSync(new URL("../../i3/design/tokens.json", import.meta.url), "utf8"),
+).space;
+const offset = (expr: string): number => {
+  const token = expr.match(/^Tokens\.Space\.([A-Z_]+)$/);
+  if (!token) return Number(expr);
+  const value = SPACE[token[1].toLowerCase()];
+  assert.ok(typeof value === "number", `${expr} is not a spacing token`);
+  return value;
+};
+
 /** id, enabled, anchor and offsets as each element's constructor states them. */
 function registryDefaults() {
   const registry = java("HudElementRegistry.java");
   const classes = [...registry.matchAll(/register\(new (\w+)\(\)\);/g)].map((m) => m[1]);
   return classes.map((cls) => {
     const ctor = java(`${cls}.java`).match(
-      /super\("(\w+)", "[^"]*", "[^"]*", (true|false), Anchor\.([A-Z_]+), (-?\d+), (-?\d+)\)/,
+      /super\("(\w+)", "[^"]*", "[^"]*", (true|false), Anchor\.([A-Z_]+), (-?\d+|Tokens\.Space\.[A-Z_]+), (-?\d+|Tokens\.Space\.[A-Z_]+)\)/,
     );
     assert.ok(ctor, `${cls} does not state its defaults where this test can read them`);
     return {
       id: ctor[1],
       enabled: ctor[2] === "true",
       anchor: ctor[3],
-      offsetX: Number(ctor[4]),
-      offsetY: Number(ctor[5]),
+      offsetX: offset(ctor[4]),
+      offsetY: offset(ctor[5]),
       scale: 1,
     };
   });

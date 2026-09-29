@@ -22,7 +22,9 @@ CHROME=$(command -v google-chrome || command -v google-chrome-stable || command 
 
 cd launcher
 npm ci --no-audit --no-fund
-npm test
+TEST_RC=0
+npm test || TEST_RC=$?
+echo "npm test rc=$TEST_RC"
 npm run build
 
 rm -rf shots/*.png shots/*.log
@@ -40,3 +42,4 @@ fi
 fc-list | grep -ciE 'pretendard|hahmlet' || true
 tar czf shots.tgz shots
 ls -la shots.tgz shots
+exit "$TEST_RC"
