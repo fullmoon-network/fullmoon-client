@@ -1259,3 +1259,20 @@ of keeping the server's order. The 매입소 strip keeps 전량 판매가 (the m
 The title screen (`8cca445`) now follows mock (f): veil, wordmark, one gliding list with the live
 lobby answer, tonight's moon, the foot with real versions; its captures come with the next run.
 Evidence: `i3/docs/evidence/phaseB/sheet-*.jpg`, `*-720p-pair.jpg`, `glide-route-720p.gif`.
+
+## 2026-09-30 — phase B round 4: the title measured, the text layer corrected, 1080p pairs
+
+Run 36611431734 photographed the title at both geometries; `harness/inkmeasure.py` measured the
+ink of every part against the mock render instead of eyeballing it. The wordmark, the gold bar
+and the moon were the mock's to the pixel; every line placed with `Typeset.centred()` sat 1.7 px
+above it, the more the larger the face, and the same offset was then found in run 5's menu header
+(2.5), 매입소 rows (1.5–2) and route rows (1). The cause was the text layer, not any screen:
+`centred()` dropped the baseline a quarter of the em under the band's middle where a CSS line box
+drops it (ascender − descender)/2 — 0.35 em for Pretendard, 0.41 em for Hahmlet. `115611a` makes
+that the rule, draws `tabular()` letter runs on fractional advances (one glyph per call had
+tracked the title's version line 18 px wide) and puts the route detail's lines in their line
+boxes (name 8 px, facts 3 px high). Run 36617844770 re-shot everything after it: the title within
+±0.67 px at both geometries, and the 1080p pairs for M1–M4 that run 5 had lost, with the
+`cb68209` checks (help line, 궁궐 order) passing. The server menu now rises and falls through
+`render/Fade` like the route screen; `CHANGELOG.md` carries the v0.3.0 notes. Evidence:
+`i3/docs/evidence/phaseB/title-*-pair.jpg`, `*-1080p-pair.jpg`, `glide-title-1080p.gif`.
