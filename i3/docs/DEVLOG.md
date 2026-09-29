@@ -1189,3 +1189,36 @@ Chromium at 1280×820 (the Tauri default), 1040×680 (the minimum) and 1920×108
 surface, menus, dialogs, empty states, the daylight palace, the metals, English and reduced motion.
 The mock core does not prove Tauri IPC; a live-server lobby status is only what the code says, since
 the browser build reports every server unreachable.
+
+## 2026-09-30 · Phase B · 달빛 유리 M0 + M1 (+ 모션·소리, 높은 행)
+
+컨셉(`~/.local/share/fullmoon-client-redesign/concept/`)의 승인 뒤, 인게임 궁궐 장식을 전부 걷어내고
+유리 한 장 위의 타입·색·간격 시스템과 서버 메뉴를 다시 세웠다. 운영자 추가 지시 두 가지 — PS식
+미끄러지는 선택 전환 + 효과음, 더 높은 행 — 를 M8에서 당겨 넣었다.
+
+- `design/tokens.json`: hex+alpha 색, `game:false` 스코프(장식 토큰은 런처 CSS에만), `size`·`spring`·
+  `sound` 그룹, 배율별 폰트 프로바이더 24개 생성. 인게임 색은 컨셉 값 그대로(유리 void@.86, 금 #E8C56C,
+  호버 white@.05, 선택 gold@.10). 대비 검사 전부 통과.
+- 타입 롤 8개(mark/display/title = 함렛 700/700/600, figure = Pretendard 700 tnum, row 11, body 9,
+  strong 9, micro 8 라틴 전용). `Typeset.roleFor`가 micro의 한글을 strong으로 올려 한글 9px 아래가
+  없다. **배율별 프로바이더**: `FontTexture`는 `FilterMode.NEAREST`로 샘플링하므로(26.1.2 jar를 javap로
+  확인) 오버샘플이 창 배율과 다르면 최근접 리샘플이 된다. 그래서 `<role>_x{2,3,4}.json`을 굽고
+  `Typeset.fontId`가 창 배율의 아틀라스를 고른다. 표본 화면의 "래스터" 절이 세 아틀라스를 한 줄씩 그려
+  두 배율 캡처로 증거를 남기게 했다.
+- `ui/Glass`(패널·키캡·힌트·행동 행·✖✔ 줄·명령 칩·바), `ui/IconButton`(‹ ✕), `Palace` 삭제. HUD·타이틀·
+  항로·지도·개발 크롬은 장식만 빠지고 레이아웃은 M3–M7 몫으로 남았다.
+- 모션: `render/Spring`(임계감쇠, 닫힌 해 → 프레임 독립), `Glide`, 위젯 상태 크로스페이드, 비활성 누름
+  넛지, 메뉴 열림 160ms 페이드+8px 상승 / 닫힘 90ms, "움직임 줄이기" 설정.
+- 소리: `design/make-ui-sounds.py`가 만든 원작 7종(`fullmoon:ui.*`), 포커스 틱 45ms 게이트 + ±4% 피치,
+  "메뉴 소리" 설정. main 엔트리포인트에서 등록(클라이언트 엔트리포인트는 레지스트리 동결 뒤라 예외).
+- 메뉴: `MenuLore`(#314 규약 파서) · `ServerMenuLayout`(LIST ≤8 / COLUMNS ≤18 / GRID >18, 밀도
+  SHIPPED|MOCK) · `GridCursor` · `MenuBoard` · `ServerMenuDetail` · `ServerMenuScreen`. 행 40/28,
+  패널 316(목업 36/24/300)을 채택했다 — 640×360에서 카지노 6줄이 스크롤 없이 들어가는 가장 높은 값.
+
+### 증거
+
+- `gradlew build`(러너, run 36593790424): 테스트 340개, 실패 0. jar `fullmoon-client-3.1.0.jar`.
+- 목업 재렌더(서버가 실제로 보내는 문자열, 채택 밀도/목업 밀도 × GUI 2/3): `evidence/phaseB/mock-*.png`.
+- 인게임 캡처: run 36593818752는 클라이언트가 `Player###`로 접속해(당시 `runClient`에 `client_username`이
+  매핑되지 않았다) 계정 미연동·허공 낙사로 사망 화면만 찍혔다. 매핑을 넣은 뒤 다시 돌린 캡처는
+  `~/.local/share/fullmoon-client-redesign/phaseB/captures/`에 쌓이고, 비교 이미지는 `phaseB/review/img/`.
