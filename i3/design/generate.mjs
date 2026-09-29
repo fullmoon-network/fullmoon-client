@@ -214,7 +214,7 @@ c('');
 for (const [k, v] of plain(tokens.layer)) c(`  --layer-${CSSVAR(k)}: ${v};`);
 c('');
 c("  --font-display: 'Hahmlet', serif;");
-c("  --font-body: 'Pretendard', system-ui, sans-serif;");
+c("  --font-body: 'Fullmoon Sans', 'Pretendard', system-ui, sans-serif;");
 const typeVars = (name, v) => {
   const size = px(v.px, density.type);
   const leading = px(v.leading, density.type);
@@ -303,9 +303,12 @@ const launcherPairs = [
   ['status.live', 'surface.base', 3.0],
   ['status.danger', 'surface.base', 3.0],
 ];
+// The launcher has no game blur under it: a translucent ground there sits on the void.
+const nightOnVoid = (n) => (alpha(entryOf(n)) === 1 ? hex(entryOf(n)) : over(entryOf(n), hex(entryOf('surface.void'))));
+const dayOnVoid = (n) => (alpha(dayEntryOf(n)) === 1 ? hex(dayEntryOf(n)) : over(dayEntryOf(n), hex(dayEntryOf('surface.void'))));
 for (const [a, b, floor] of launcherPairs) {
-  checks.push([`launcher night · ${a} on ${b}`, ink(a), nightGround(b), floor]);
-  checks.push([`launcher day · ${a} on ${b}`, dayInk(a), dayGround(b), floor]);
+  checks.push([`launcher night · ${a} on ${b}`, ink(a), nightOnVoid(b), floor]);
+  checks.push([`launcher day · ${a} on ${b}`, dayInk(a), dayOnVoid(b), floor]);
 }
 const accentSets = [
   ['gilt', 'night', (n) => entryOf(n), nightGlass, ink],

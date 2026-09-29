@@ -8,11 +8,16 @@ import BRAND from "../brand";
 declare const __APP_VERSION__: string;
 const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev";
 
-/** The seal: 月 on its square, the one mark the launcher keeps. */
+/** The seal: 月 on its square, the one mark the launcher keeps. The glyph is drawn, because no
+ *  face the launcher ships carries the Han character and a fallback font is not ours to rely on. */
 export function Seal() {
   return (
     <span className="seal" aria-hidden>
-      月
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="square">
+        <path d="M3 1.2v5.3c0 1.3-.5 2.3-1.6 3" />
+        <path d="M3 1.2h4.6v7.6c0 .5-.3.8-.9.7" />
+        <path d="M3 3.9h4.6M3 6.3h4.6" />
+      </svg>
     </span>
   );
 }

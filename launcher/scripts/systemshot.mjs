@@ -94,6 +94,15 @@ try {
   await page.mouse.move(1200, 850);
   await sleep(600);
   await shot("play-again");
+
+  // the live state: the browser build cannot open a socket, so the rig hands the mock core the
+  // answer a lobby would give (fixture, labelled as such wherever it is shown)
+  await page.evaluate(() => localStorage.setItem("fullmoon.rig.ping", JSON.stringify({ players: 12, maxPlayers: 60, pingMs: 24 })));
+  await page.reload({ waitUntil: "networkidle0" });
+  await page.evaluate(() => document.fonts.ready);
+  await page.mouse.move(1200, 850);
+  await sleep(1400);
+  await shot("play-live");
 } finally {
   writeFileSync(`${OUT}/systemshot.log`, log.join("\n") + "\n");
   console.log(log.join("\n"));

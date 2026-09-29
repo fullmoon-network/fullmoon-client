@@ -79,7 +79,7 @@
   --layer-toast: 500;
 
   --font-display: 'Hahmlet', serif;
-  --font-body: 'Pretendard', system-ui, sans-serif;
+  --font-body: 'Fullmoon Sans', 'Pretendard', system-ui, sans-serif;
   --type-mark-size: 42px;
   --type-mark-leading: 48px;
   --type-mark: 700 42px/48px var(--font-display);
@@ -189,7 +189,7 @@
   --color-line-strong: rgb(0 0 0 / 0.22); /* #000000 @ 0.22 · button edges */
   --color-ink-primary: oklch(0.235 0.03 275); /* oklch(0.235 0.03 275) · titles, values, active labels */
   --color-ink-secondary: oklch(0.38 0.028 275); /* oklch(0.38 0.028 275) · body copy, inactive labels */
-  --color-ink-tertiary: oklch(0.48 0.022 275); /* oklch(0.48 0.022 275) · meta text, units, hints */
+  --color-ink-tertiary: oklch(0.465 0.022 275); /* oklch(0.465 0.022 275) · meta text, units, hints */
   --color-ink-disabled: oklch(0.68 0.012 275); /* oklch(0.68 0.012 275) · disabled label */
   --color-ink-on-accent: oklch(0.975 0.01 85); /* oklch(0.975 0.01 85) · text on an accent fill */
   --color-accent: oklch(0.52 0.105 78); /* oklch(0.52 0.105 78) · selection, one primary action per surface, live values */

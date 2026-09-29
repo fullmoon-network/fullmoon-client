@@ -2,7 +2,28 @@
    Colours, space, motion and type come from design/tokens.css, generated from
    i3/design/tokens.json. Nothing below writes a colour of its own. */
 
-/* Pretendard carries body and UI, self-hosted like every asset we ship. */
+/* The body face is the game's own: the three Pretendard cuts the mod bakes (assets/fullmoon/font),
+   so a launcher label and an in-game label are the same outlines and rasterise the same way.
+   They are a Hangul-and-Latin subset; the full Pretendard below them answers everything else. */
+@font-face {
+  font-family: 'Fullmoon Sans';
+  src: url('../../../i3/mod/src/main/resources/assets/fullmoon/font/sans-regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Fullmoon Sans';
+  src: url('../../../i3/mod/src/main/resources/assets/fullmoon/font/sans-semibold.ttf') format('truetype');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Fullmoon Sans';
+  src: url('../../../i3/mod/src/main/resources/assets/fullmoon/font/sans-bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+/* Pretendard in full, self-hosted like every asset we ship. */
 @font-face {
   font-family: 'Pretendard';
   src: url('/fonts/Pretendard-Regular.otf') format('opentype');
@@ -27,19 +48,12 @@
   font-weight: 800;
   font-display: swap;
 }
-/* The display face is the one the game bakes: Hahmlet (OFL) at 600 and 700, the same two files
-   the mod ships under assets/fullmoon/font, so a launcher wordmark and a title-screen wordmark
-   are the same outlines. */
+/* The display face is Hahmlet (OFL), the variable file: the game bakes its 600 and 700 instances,
+   and the launcher, which can set any weight, reads the axis itself. */
 @font-face {
   font-family: 'Hahmlet';
-  src: url('../../../i3/mod/src/main/resources/assets/fullmoon/font/serif-semibold.ttf') format('truetype');
-  font-weight: 600;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Hahmlet';
-  src: url('../../../i3/mod/src/main/resources/assets/fullmoon/font/serif-bold.ttf') format('truetype');
-  font-weight: 700;
+  src: url('/fonts/Hahmlet[wght].ttf') format('truetype');
+  font-weight: 100 900;
   font-display: swap;
 }
 

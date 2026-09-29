@@ -41,7 +41,7 @@ const GROUPS: Array<{ labelKey: string | null; items: Screen[] }> = [
 ];
 
 export function Sidebar() {
-  const { screen, setScreen, accounts, activeAccount } = useStore();
+  const { screen, setScreen, activeAccount } = useStore();
   const { t } = useT();
   const here = screen === "home" ? "play" : screen;
 
@@ -84,9 +84,8 @@ export function Sidebar() {
             <SkinFace hue={activeAccount.skinHue} skin={activeAccount.skinUrl} size={32} />
             <span className="rail-account-meta">
               <strong>{activeAccount.username}</strong>
-              <span>{t(`accounts.source.${activeAccount.source}`)}</span>
+              <span>{t(`accounts.sourceLong.${activeAccount.source}`)}</span>
             </span>
-            {accounts.length > 1 && <span className="rail-account-count num">{accounts.length}</span>}
           </>
         ) : (
           <>

@@ -39,7 +39,7 @@ export function PlayScreen() {
   const launchOnly = usePlayAction(null);
   const moon = useMemo(() => moonAt(Date.now()), []);
   const full = isFull(moon);
-  const headline = t(`moon.${moonName(moon)}`);
+  const headline = t(`moon.short.${moonName(moon)}`);
   const detail = full ? t("moon.next", { n: daysToNextFull(moon) }) : t("moon.until", { n: daysToFull(moon) });
   const featured = useMemo(() => news.find((n) => n.featured) ?? news[0] ?? null, [news]);
 
