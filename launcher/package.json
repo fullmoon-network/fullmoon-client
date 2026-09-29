@@ -1,7 +1,7 @@
 {
   "name": "pinion-launcher",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "Pinion — custom Minecraft Java client launcher (UI build over the core contract)",
   "scripts": {

@@ -3,7 +3,7 @@
     {
       "id": "fullmoon-client",
       "name": "{brand} Client",
-      "version": "3.0.0",
+      "version": "3.1.0",
       "description": "우리 Fabric 클라이언트. 좌표·FPS·핑·시계·키스트로크·서버 틱·방어구·상태 효과 HUD와 드래그 편집기, 인게임 설정·키바인드 화면, 서버 경로 원장, 인게임 지도.",
       "kind": "hud",
       "ours": true,
