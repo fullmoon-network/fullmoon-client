@@ -49,7 +49,7 @@ public record ServerMenuLayout(
 
     public static final int LIST_CHOICES_MAX = 8;
     public static final int COLUMN_CHOICES_MAX = 18;
-    /** The detail column starts this far inside the list's right edge plus the hairline gap. */
+    /** The gap on each side of the detail column; the hairline stands a third of the way into the first. */
     private static final int DETAIL_GAP = Tokens.Space.LOOSE;
     private static final int STRIP_H = 92;
     private static final int HINT_GAP = 8;
@@ -95,8 +95,8 @@ public record ServerMenuLayout(
             case GRID -> {
                 int listW = panel.w() - Tokens.Size.DETAIL - DETAIL_GAP * 2;
                 list = Box.between(panel.x(), header.bottom(), panel.x() + listW, panel.bottom());
-                detail = Box.between(list.right() + DETAIL_GAP * 2, header.bottom() + Tokens.Space.COZY,
-                    panel.right(), panel.bottom());
+                detail = Box.between(list.right() + DETAIL_GAP, header.bottom() + Tokens.Space.COZY,
+                    panel.right() - DETAIL_GAP, panel.bottom() - DETAIL_GAP);
                 facts = Box.EMPTY;
                 columns = 9;
             }
@@ -104,8 +104,8 @@ public record ServerMenuLayout(
                 int factsH = hasFacts ? density.facts() : 0;
                 int listW = panel.w() - Tokens.Size.DETAIL - DETAIL_GAP * 2;
                 list = Box.between(panel.x(), header.bottom(), panel.x() + listW, panel.bottom() - factsH);
-                detail = Box.between(list.right() + DETAIL_GAP * 2, header.bottom() + Tokens.Space.COZY,
-                    panel.right(), panel.bottom() - factsH);
+                detail = Box.between(list.right() + DETAIL_GAP, header.bottom() + Tokens.Space.COZY,
+                    panel.right() - DETAIL_GAP, panel.bottom() - factsH);
                 facts = hasFacts
                     ? Box.between(panel.x(), panel.bottom() - factsH, panel.right(), panel.bottom())
                     : Box.EMPTY;
