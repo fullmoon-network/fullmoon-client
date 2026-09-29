@@ -30,6 +30,18 @@
   --size-hint: 28px;
   --size-cell: 40px;
   --size-cell-gap: 4px;
+  --size-card: 440px;
+  --size-card-h: 88px;
+  --size-hotbar: 44px;
+  --size-hud-chip: 32px;
+  --size-hud-key: 28px;
+  --size-sidebar: 264px;
+  --size-sidebar-top: 200px;
+  --size-route-row: 48px;
+  --size-route-row-mock: 40px;
+  --size-compass: 88px;
+  --size-reel: 28px;
+  --size-pocket: 28px;
 
   --radius-none: 0px;
   --radius-sm: 0px;
@@ -53,6 +65,8 @@
   --dur-nudge: 220ms;
   --dur-reveal: 1200ms;
   --dur-reduced: 120ms;
+  --dur-flash: 260ms;
+  --dur-verdict: 120ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
   --ease-in-out: cubic-bezier(0.83, 0, 0.17, 1);
@@ -146,6 +160,13 @@
   --color-ornament-lapis: oklch(0.36 0.09 268); /* oklch(0.36 0.09 268) · launcher only: dancheong blue */
   --color-moon-lit: #F6E7BF; /* #F6E7BF · the lit face of a moon phase */
   --color-moon-shadow: #262D3D; /* #262D3D · the unlit face of a moon phase */
+  --color-wheel-red: #B8443F; /* #B8443F · a red roulette pocket on the result card */
+  --color-wheel-black: #262A36; /* #262A36 · a black roulette pocket */
+  --color-wheel-green: #2F7D62; /* #2F7D62 · the zero pocket */
+  --color-chat-yellow: #F5C542; /* #F5C542 · a server's yellow or gold text, softened for the glass */
+  --color-chat-aqua: #7FD8E8; /* #7FD8E8 · a server's aqua text */
+  --color-chat-blue: #8EA6F2; /* #8EA6F2 · a server's blue text */
+  --color-chat-purple: #CFA0EA; /* #CFA0EA · a server's light purple text */
   --metal-gilt: #E8C56C;
   --metal-silver: oklch(0.85 0.03 250);
   --metal-bronze: oklch(0.77 0.08 42);
@@ -192,6 +213,13 @@
   --color-ornament-lapis: oklch(0.42 0.09 268); /* oklch(0.42 0.09 268) · dancheong band: the blue panel */
   --color-moon-lit: oklch(0.93 0.055 90); /* oklch(0.93 0.055 90) · the lit face of a moon phase */
   --color-moon-shadow: oklch(0.26 0.028 260); /* oklch(0.26 0.028 260) · the unlit face of a moon phase */
+  --color-wheel-red: #B8443F; /* #B8443F · a red roulette pocket */
+  --color-wheel-black: #262A36; /* #262A36 · a black roulette pocket */
+  --color-wheel-green: #2F7D62; /* #2F7D62 · the zero pocket */
+  --color-chat-yellow: #8A6A1E; /* #8A6A1E · a server's yellow text on paper */
+  --color-chat-aqua: #1F7C8C; /* #1F7C8C · a server's aqua text on paper */
+  --color-chat-blue: #3556B8; /* #3556B8 · a server's blue text on paper */
+  --color-chat-purple: #7A3F9E; /* #7A3F9E · a server's light purple text on paper */
   --metal-gilt: oklch(0.52 0.105 78);
   --metal-silver: oklch(0.5 0.04 255);
   --metal-bronze: oklch(0.52 0.095 40);
@@ -244,5 +272,7 @@
     --dur-6: 120ms;
     --dur-7: 120ms;
     --dur-8: 120ms;
+    --dur-9: 120ms;
+    --dur-10: 120ms;
   }
 }

@@ -54,12 +54,13 @@ public final class SpecimenScreen extends DevScreen {
         int rightX = body.x() + leftW + Tokens.Space.GUTTER;
         int rightW = body.w() - leftW - Tokens.Space.GUTTER;
 
-        int leftBottom = shapeRail(painter, body.x(),
+        // The raster comparison is what the capture rig photographs; it sits above the fold.
+        int leftBottom = raster(painter, body.x(),
             typeRoll(painter, body.x(), body.y(), leftW) + Tokens.Space.SECTION, leftW);
+        leftBottom = shapeRail(painter, body.x(), leftBottom + Tokens.Space.SECTION, leftW);
         int rightBottom = figures(painter, rightX,
             colorBands(painter, rightX, body.y(), rightW) + Tokens.Space.SECTION, rightW);
         rightBottom = glass(painter, rightX, rightBottom + Tokens.Space.SECTION, rightW);
-        leftBottom = raster(painter, body.x(), leftBottom + Tokens.Space.SECTION, leftW);
 
         painter.vRule(body.x() + leftW + Tokens.Space.GUTTER / 2, body.y(),
             Math.max(leftBottom, rightBottom) - body.y(), Tokens.Color.LINE_HAIRLINE);

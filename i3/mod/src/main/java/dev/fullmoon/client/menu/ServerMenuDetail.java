@@ -25,8 +25,13 @@ final class ServerMenuDetail {
 
     private ServerMenuDetail() {}
 
-    /** The column beside a list or a grid. */
-    static void column(Painter painter, Box d, ServerMenuEntry entry, boolean busy) {
+    /**
+     * The column beside a list or a grid. {@code extras} are lines about this item that other
+     * items of the menu carry — the house's share of this game, from the 하우스 몫 fact — so the
+     * column says something the row does not; the row's own description is repeated only when
+     * there is nothing else to say.
+     */
+    static void column(Painter painter, Box d, ServerMenuEntry entry, List<MenuLore.Fact> extras, boolean busy) {
         if (entry == null) {
             Typeset.drawWrapped(painter, Tokens.Type.BODY, NOTHING, d.x(), d.y(), d.w(), 2,
                 Tokens.Color.INK_TERTIARY);
@@ -49,7 +54,14 @@ final class ServerMenuDetail {
 
         int footTop = foot(painter, d, entry, busy);
         int budget = Math.max(0, (footTop - Tokens.Space.COZY - y) / Tokens.Type.BODY.leading());
-        for (String line : lore.prose()) {
+        List<String> prose = lore.prose();
+        List<MenuLore.Fact> others = new java.util.ArrayList<>(entry.otherFacts());
+        others.addAll(extras);
+        boolean saysMore = !figures.isEmpty() || prose.size() > 1 || !others.isEmpty();
+        if (saysMore && !prose.isEmpty() && prose.getFirst().equals(entry.description())) {
+            prose = prose.subList(1, prose.size());
+        }
+        for (String line : prose) {
             if (budget <= 0) {
                 break;
             }
@@ -61,7 +73,7 @@ final class ServerMenuDetail {
             budget -= lines.size();
             y += Tokens.Space.TIGHT + 1;
         }
-        for (MenuLore.Fact fact : entry.otherFacts()) {
+        for (MenuLore.Fact fact : others) {
             if (budget <= 0) {
                 break;
             }

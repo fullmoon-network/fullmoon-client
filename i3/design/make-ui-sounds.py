@@ -134,8 +134,28 @@ def error(rng):  # low dull double tap, second muted
             + note(n, 180.0, p, 24.0, start_ms=70.0, level=0.55) + touch(rng, n, 450.0, 5.0, 70.0, 0.3))
 
 
+def reel(rng):  # a reel landing: one short damped tick, brighter and drier than focus
+    n = ms(45)
+    return note(n, 1400.0, [(1, 1.0), (2, 0.10), (3, 0.04)], 7.0) + touch(rng, n, 5000.0, 4.0, level=0.35)
+
+
+def win(rng):  # three notes rising, 60 ms apart, the last one held: the card's flash
+    n = ms(260)
+    p = [(1, 1.0), (2, 0.10), (3, 0.05), (4, 0.02)]
+    return (note(n, 660.0, p, 60.0, level=0.8) + touch(rng, n, 3000.0, 3.0, level=0.10)
+            + note(n, 880.0, p, 70.0, start_ms=60.0, level=0.85)
+            + note(n, 1320.0, p, 110.0, start_ms=120.0, level=1.0) + touch(rng, n, 3500.0, 3.0, 120.0, 0.08))
+
+
+def lose(rng):  # one low note settling, no second tap: an ending, not a refusal
+    n = ms(220)
+    p = [(1, 1.0), (2, 0.14), (3, 0.04)]
+    return (note(n, glide(n, 262.0, 233.0), p, 70.0) + touch(rng, n, 900.0, 5.0, level=0.18)
+            + 0.5 * breath(rng, n, 30.0, False))
+
+
 CUES = {"focus": focus, "confirm": confirm, "back": back, "open": open_,
-        "close": close, "error": error, "tab": tab}
+        "close": close, "error": error, "tab": tab, "reel": reel, "win": win, "lose": lose}
 
 
 def finish(x: np.ndarray) -> np.ndarray:

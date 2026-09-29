@@ -23,9 +23,40 @@ final class ScoreboardSidebarTest {
     }
 
     @Test
-    void withNothingInTheWayItSitsWhereVanillaPutsIt() {
-        Box at = ScoreboardSidebar.place(640, 360, 120, 95, List.of());
-        assertEquals(180 - 95 / 3, at.y());
+    void withNothingInTheWayItSitsWhereTheMockupPutsIt() {
+        Box at = ScoreboardSidebar.place(640, 360, 132, 95, List.of());
+        assertEquals(100, at.y());
+        assertEquals(640 - 8 - 132, at.x());
+    }
+
+    @Test
+    void aShortScreenKeepsTheSidebarOnIt() {
+        Box at = ScoreboardSidebar.place(640, 120, 132, 95, List.of());
+        assertEquals(120 - 95 - 8, at.y());
+    }
+
+    @Test
+    void helpLinesAreCommands() {
+        assertTrue(ScoreboardSidebar.isHelp("/텔레포트 로비 곳곳으로 이동"));
+        assertTrue(ScoreboardSidebar.isHelp("§f/텔레포트 §7로비 곳곳으로 이동"));
+        assertFalse(ScoreboardSidebar.isHelp("소지금 2억원"));
+    }
+
+    @Test
+    void aLineSplitsIntoLabelAndValueAtItsLastSpace() {
+        ScoreboardSidebar.Split split = ScoreboardSidebar.split(List.of(
+            new ScoreboardSidebar.Run("소지금 ", 0), new ScoreboardSidebar.Run("2억원", 0xFF123456)));
+        assertEquals("소지금", split.label());
+        assertEquals("2억원", split.value());
+        assertEquals(0xFF123456, split.valueColor());
+
+        ScoreboardSidebar.Split whole = ScoreboardSidebar.split(List.of(new ScoreboardSidebar.Run("오늘도 즐겁게", 0)));
+        assertEquals("오늘도 즐겁게", whole.label());
+        assertEquals("", whole.value());
+
+        ScoreboardSidebar.Split trailing = ScoreboardSidebar.split(List.of(new ScoreboardSidebar.Run("위치 ", 0)));
+        assertEquals("위치", trailing.label());
+        assertEquals("", trailing.value());
     }
 
     @Test

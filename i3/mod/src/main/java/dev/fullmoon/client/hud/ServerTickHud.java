@@ -1,30 +1,27 @@
 package dev.fullmoon.client.hud;
 
-import java.util.Locale;
+import java.util.List;
 
 import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.network.FullmoonChannel;
 import dev.fullmoon.client.render.Painter;
-import dev.fullmoon.client.text.Typeset;
 
 import net.minecraft.client.Minecraft;
 
-/** Server tick rate (TPS) and frame millisecond time chip. */
+/**
+ * The server's tick rate and the time one tick takes, for players who want the second figure;
+ * the tick rate alone already rides on the FPS chip.
+ */
 public final class ServerTickHud extends BaseHudElement {
-    private static final String MAXIMUM_VALUE = "20.0 · 1000.0 ms";
-
     public ServerTickHud() {
-        super("tps", "서버 틱", "성능", false, Anchor.TOP_RIGHT, 16, 108);
+        super("tps", "서버 틱", "성능", false, Anchor.TOP_RIGHT, Tokens.Space.COZY,
+            Tokens.Space.COZY + (Tokens.Size.HUD_CHIP + Tokens.Space.SNUG) * 2);
     }
 
     @Override
     public int measureWidth(Minecraft client) {
-        String text = formatText(client, false);
-        return PADDING_H * 2 + Typeset.width(Tokens.Type.MICRO, "TPS") + Tokens.Space.SNUG
-            + Math.max(
-                Typeset.width(Tokens.Type.STRONG, text),
-                Typeset.width(Tokens.Type.STRONG, MAXIMUM_VALUE));
+        return chipWidth(0, parts(client, false));
     }
 
     @Override
@@ -34,17 +31,17 @@ public final class ServerTickHud extends BaseHudElement {
 
     @Override
     public void draw(Painter painter, Box bounds, Minecraft client, boolean isEditor) {
-        String text = formatText(client, isEditor);
-        drawChip(painter, bounds, "TPS", text, 0);
+        drawChip(painter, bounds, 0, parts(client, isEditor));
     }
 
-    private String formatText(Minecraft client, boolean isEditor) {
+    private static List<Part> parts(Minecraft client, boolean isEditor) {
         if (isEditor) {
-            return "20.0 · 14.2 ms";
+            return List.of(new Part("20", "tps"), new Part("14", "ms"));
         }
         return FullmoonChannel.metrics(System.currentTimeMillis())
-            .map(metrics -> String.format(Locale.ROOT, "%.1f · %.1f ms",
-                metrics.ticksPerSecond(), metrics.tickMilliseconds()))
-            .orElse("—");
+            .map(metrics -> List.of(
+                new Part(Long.toString(Math.round(metrics.ticksPerSecond())), "tps"),
+                new Part(Long.toString(Math.round(metrics.tickMilliseconds())), "ms")))
+            .orElse(List.of(new Part("—", "tps")));
     }
 }

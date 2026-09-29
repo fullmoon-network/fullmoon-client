@@ -26,5 +26,17 @@
   "ui.tab": {
     "subtitle": "fullmoon.subtitle.ui.tab",
     "sounds": [{"name": "fullmoon:ui/tab", "stream": false}]
+  },
+  "ui.reel": {
+    "subtitle": "fullmoon.subtitle.ui.reel",
+    "sounds": [{"name": "fullmoon:ui/reel", "stream": false}]
+  },
+  "ui.win": {
+    "subtitle": "fullmoon.subtitle.ui.win",
+    "sounds": [{"name": "fullmoon:ui/win", "stream": false}]
+  },
+  "ui.lose": {
+    "subtitle": "fullmoon.subtitle.ui.lose",
+    "sounds": [{"name": "fullmoon:ui/lose", "stream": false}]
   }
 }

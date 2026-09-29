@@ -52,7 +52,8 @@ public final class IconButton extends Widget {
         float cx = b.x() + SIZE / 2.0f + nudgeOffset();
         float cy = b.midY();
         if (glyph == Glyph.CLOSE) {
-            Glass.close(painter, cx, cy, GLYPH - 1, ink);
+            // The mockup's ✕ spans six of its eight-pixel box; the round caps add most of a stroke.
+            Glass.close(painter, cx, cy, GLYPH - 2.5f, ink);
         } else {
             Glass.back(painter, b.x() + 9 + nudgeOffset(), cy, GLYPH, ink);
             if (!label().isEmpty()) {

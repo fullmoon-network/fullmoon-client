@@ -2,6 +2,7 @@ package dev.fullmoon.client.hud;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -15,22 +16,38 @@ import dev.fullmoon.client.network.FullmoonChannel;
 import dev.fullmoon.client.render.Motion;
 import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.render.Rgb;
+import dev.fullmoon.client.sound.UiSounds;
 import dev.fullmoon.client.text.Typeset;
 
 /**
- * The settled-bet card: rises above the hotbar, plays the game's reveal, then states the result.
- * The money has already moved when the payload arrives, so nothing here waits on the player —
- * the reveal is presentation over a known outcome and the chat line stays the record.
+ * The settled-bet card: a 220×44 banner that rises above the hotbar, plays the game's reveal on
+ * its first line, then states the verdict there in the display face — gold with a glow for a win,
+ * ash for a loss — with the game and its detail under it. The money has already moved when the
+ * payload arrives, so nothing here waits on the player; the reveal is presentation over a known
+ * outcome and the chat line stays the record.
  */
 public final class CasinoResultOverlay {
-    private static final int WIDTH = 232;
-    private static final int HEIGHT = 84;
-    private static final int CHIP = 22;
-    private static final int STAGE = 20;
-    private static final int POCKET = 18;
-    private static final int COIN = 18;
-    private static final int REEL_MAX = 48;
-    private static final int BOTTOM_CLEARANCE = Tokens.Space.FIELD + Tokens.Space.LOOSE;
+    private static final int WIDTH = Tokens.Size.CARD;
+    private static final int HEIGHT = Tokens.Size.CARD_H;
+    private static final int PAD_X = Tokens.Space.COZY + Tokens.Space.TIGHT;
+    private static final int PAD_TOP = Tokens.Space.BASE;
+    private static final int LINE_ONE = 20;
+    private static final int REEL = Tokens.Size.REEL;
+    private static final int REEL_GAP = Tokens.Space.TIGHT;
+    private static final int SYMBOL = 10;
+    private static final int TRACK_W = 56;
+    private static final int TRACK_H = Tokens.Space.SNUG;
+    private static final int POCKET = Tokens.Size.POCKET;
+    private static final int WHEEL_W = 74;
+    private static final int COIN = 14;
+    private static final int COIN_EDGE = Tokens.Space.SNUG;
+    private static final int GLOW = 18;
+    private static final float WIN_WASH = 0.14f;
+    private static final float WIN_LINE = 0.75f;
+    private static final float WIN_GLOW = 0.18f;
+    private static final float FLASH_PEAK = 0.40f;
+    private static final float REEL_HIT = 0.12f;
+    private static final float ZONE = 0.35f;
     private static final int COIN_HALF_TURNS = 6;
     private static final int WHEEL_LAPS = 2;
 
@@ -51,178 +68,240 @@ public final class CasinoResultOverlay {
         "cherry", "체리", "lemon", "레몬", "bell", "종", "star", "별",
         "diamond", "다이아", "seven", "세븐", "moon", "만월");
 
+    /** The card whose cues have been played, and which of them. */
+    private static long cuedFor = Long.MIN_VALUE;
+    private static int cued;
+
     private CasinoResultOverlay() {}
 
     public static void draw(Painter painter, long now) {
         FullmoonChannel.casino(now).or(() -> ServerMenuSample.casinoReveal(now)).ifPresent(reveal ->
-            draw(painter, reveal.result(), now - reveal.receivedAt()));
+            draw(painter, reveal.result(), reveal.receivedAt(), now - reveal.receivedAt()));
     }
 
-    private static void draw(Painter painter, CasinoProtocol.Result result, long age) {
+    private static void draw(Painter painter, CasinoProtocol.Result result, long key, long age) {
+        long shown = Motion.reduced() ? Math.max(age, SETTLE) : age;
+        cue(result, key, shown);
         int width = Math.min(WIDTH, painter.width() - Tokens.Space.SECTION * 2);
         int x = (painter.width() - width) / 2;
-        int y = painter.height() - HEIGHT - BOTTOM_CLEARANCE;
-        int top = y + Math.round(HEIGHT * hidden(age));
-        boolean settled = age >= SETTLE;
-        if (top >= y + HEIGHT) {
+        int slot = painter.height() - Tokens.Size.HOTBAR - Tokens.Space.LOOSE - HEIGHT;
+        int top = slot + Math.round((HEIGHT + Tokens.Space.LOOSE) * hidden(shown));
+        if (top >= painter.height()) {
             return;
         }
+        boolean settled = shown >= SETTLE;
+        boolean won = settled && result.won();
 
-        // One pixel of slack all round: the verdict ticks sit just outside the card's edge.
-        painter.pushClip(x - 1, y - 1, width + 2, HEIGHT + 2);
-        painter.fill(x, top, width, HEIGHT, Tokens.Radius.NONE,
-            Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.90f));
+        ground(painter, x, top, width, won, shown);
 
-        int chipX = x + Tokens.Space.LOOSE + CHIP / 2;
-        int chipY = top + Tokens.Space.COZY + CHIP / 2;
-        painter.dot(chipX, chipY, CHIP / 2f, Tokens.Color.SURFACE_SUNKEN);
-        painter.ring(chipX, chipY, CHIP / 2f, Tokens.Stroke.HAIR, Tokens.Color.LINE_STRONG);
-        MenuIcons.draw(painter, "fullmoon.casino." + result.game().wireName(),
-            chipX, chipY, CHIP - Tokens.Space.SNUG);
+        int bandY = top + PAD_TOP;
+        int left = x + PAD_X;
+        int right = x + width - PAD_X;
+        int stageW = switch (result.detail()) {
+            case CasinoProtocol.Reels reels -> stage(painter, reels, result.won(), left, bandY, shown);
+            case CasinoProtocol.Roll roll -> stage(painter, roll, result.won(), settled, left, bandY, shown);
+            case CasinoProtocol.Spin spin -> stage(painter, spin, result.won(), settled, left, bandY, shown);
+            case CasinoProtocol.Coin ignored -> coin(painter, result.won(), settled, left, bandY, shown);
+        };
+        int textX = left + stageW + PAD_X;
 
-        int textX = x + Tokens.Space.LOOSE + CHIP + Tokens.Space.COZY;
-        int right = x + width - Tokens.Space.LOOSE;
-        int eyebrowY = top + Tokens.Space.COZY;
-        int titleY = eyebrowY + Tokens.Type.MICRO.leading();
-        Typeset.draw(painter, Tokens.Type.MICRO, "풀문 카지노 · " + gameName(result.game()),
-            textX, eyebrowY, Tokens.Color.INK_TERTIARY);
-        int pill = settled && result.won() ? drawPill(painter, multiplier(result.payoutMultiplier()), right, eyebrowY) : 0;
-        String title = Typeset.fittingPrefix(Tokens.Type.STRONG,
-            title(result, settled), right - textX - pill);
-        Typeset.draw(painter, Tokens.Type.STRONG, title, textX, titleY,
-            settled && result.won() ? Tokens.Color.ACCENT : Tokens.Color.INK_PRIMARY);
-
-        int stageX = x + Tokens.Space.LOOSE;
-        int stageY = top + Tokens.Space.COZY + CHIP + Tokens.Space.BASE;
-        int stageWidth = width - Tokens.Space.LOOSE * 2;
-        switch (result.detail()) {
-            case CasinoProtocol.Reels reels ->
-                drawReels(painter, reels, result.won() && settled, stageX, stageY, stageWidth, age);
-            case CasinoProtocol.Roll roll ->
-                drawRoll(painter, roll, result.won(), settled, stageX, stageY, stageWidth, age);
-            case CasinoProtocol.Spin spin ->
-                drawWheel(painter, spin, result.won(), settled, stageX, stageY, stageWidth, age);
-            case CasinoProtocol.Coin ignored ->
-                drawCoin(painter, result.won(), stageX + stageWidth / 2, stageY + STAGE / 2, age);
+        String figure = figure(result, settled);
+        int figureW = 0;
+        if (!figure.isEmpty()) {
+            figureW = Typeset.tabularRight(painter, Tokens.Type.FIGURE, figure, right,
+                Typeset.centred(Tokens.Type.FIGURE, bandY, LINE_ONE),
+                won ? Tokens.Color.STATUS_WIN : Tokens.Color.STATUS_ASH) + PAD_X;
         }
+        verdict(painter, result, settled, shown, textX, bandY, right - figureW - textX);
 
-        String detail = Typeset.fittingPrefix(Tokens.Type.BODY, detail(result, settled), stageWidth);
-        Typeset.draw(painter, Tokens.Type.BODY, detail, stageX,
-            stageY + STAGE + Tokens.Space.BASE, Tokens.Color.INK_SECONDARY);
-        painter.popClip();
+        int lineTwo = bandY + LINE_ONE + Tokens.Space.TIGHT;
+        int lineTwoY = Typeset.centred(Tokens.Type.BODY, lineTwo, Tokens.Type.BODY.leading());
+        String meta = meta(result, settled);
+        int metaW = meta.isEmpty() ? 0
+            : Typeset.drawRight(painter, Tokens.Type.BODY, meta, right, lineTwoY, Tokens.Color.INK_TERTIARY) + PAD_X;
+        Typeset.draw(painter, Tokens.Type.BODY,
+            Typeset.ellipsized(Tokens.Type.BODY, detail(result, settled), right - metaW - left),
+            left, lineTwoY, Tokens.Color.INK_SECONDARY);
+
+        float flash = flash(shown, result.won());
+        if (flash > 0.0f) {
+            painter.fill(x, top, width, HEIGHT, Rgb.alpha(Tokens.Color.STATUS_WIN, flash));
+        }
     }
 
-    private static int drawPill(Painter painter, String text, int right, int y) {
-        int width = Typeset.tabularWidth(Tokens.Type.MICRO, text) + Tokens.Space.BASE * 2;
-        int height = Tokens.Type.MICRO.leading() + Tokens.Space.TIGHT;
-        painter.fill(right - width, y - Tokens.Space.HAIR, width, height, Tokens.Radius.ROUND,
-            Tokens.Color.ACCENT);
-        Typeset.tabularRight(painter, Tokens.Type.MICRO, text, right - Tokens.Space.BASE,
-            Typeset.centred(Tokens.Type.MICRO, y - Tokens.Space.HAIR, height), Tokens.Color.INK_ON_ACCENT);
-        return width + Tokens.Space.COZY;
+    /** The glass, its edge and top light; a won card also wears its wash, its gold line and a glow. */
+    private static void ground(Painter painter, int x, int top, int width, boolean won, long age) {
+        if (won) {
+            float glow = WIN_GLOW * Motion.eased(age - SETTLE, Tokens.Duration.SLOW, Tokens.Easing.OUT);
+            painter.fillGradient(x - Tokens.Space.SNUG, top - GLOW, width + Tokens.Space.COZY, GLOW,
+                Rgb.alpha(Tokens.Color.STATUS_WIN, 0.0f), Rgb.alpha(Tokens.Color.STATUS_WIN, glow));
+            painter.fillGradient(x - Tokens.Space.SNUG, top + HEIGHT, width + Tokens.Space.COZY, GLOW,
+                Rgb.alpha(Tokens.Color.STATUS_WIN, glow), Rgb.alpha(Tokens.Color.STATUS_WIN, 0.0f));
+        }
+        painter.border(x - 1, top - 1, width + 2, HEIGHT + 2, Tokens.Radius.NONE, Tokens.Stroke.HAIR,
+            Tokens.Color.SURFACE_EDGE);
+        painter.fill(x, top, width, HEIGHT, Tokens.Color.SURFACE_GLASS);
+        if (won) {
+            painter.fillGradient(x, top, width, HEIGHT,
+                Rgb.alpha(Tokens.Color.STATUS_WIN, WIN_WASH), Rgb.alpha(Tokens.Color.STATUS_WIN, WIN_WASH / 3.5f));
+            painter.hRule(x, top, width, Rgb.alpha(Tokens.Color.STATUS_WIN, WIN_LINE));
+        } else {
+            painter.hRule(x, top, width, Tokens.Color.SURFACE_HIGHLIGHT);
+        }
     }
 
-    private static void drawReels(Painter painter, CasinoProtocol.Reels reels, boolean won,
-            int x, int y, int width, long age) {
+    /**
+     * The first line's words: the game in motion while the reveal runs, then the verdict in the
+     * display face, crossfaded over {@link Tokens.Duration#VERDICT}.
+     */
+    private static void verdict(Painter painter, CasinoProtocol.Result result, boolean settled, long age,
+            int x, int bandY, int room) {
+        float was = painter.opacity();
+        float t = settled ? Motion.eased(age - SETTLE, Tokens.Duration.VERDICT, Tokens.Easing.OUT) : 0.0f;
+        if (t < 1.0f) {
+            painter.opacity(was * (1.0f - t));
+            Typeset.draw(painter, Tokens.Type.ROW, Typeset.ellipsized(Tokens.Type.ROW, title(result, false), room),
+                x, Typeset.centred(Tokens.Type.ROW, bandY, LINE_ONE), Tokens.Color.INK_SECONDARY);
+        }
+        if (t > 0.0f) {
+            painter.opacity(was * t);
+            Typeset.draw(painter, Tokens.Type.DISPLAY,
+                Typeset.ellipsized(Tokens.Type.DISPLAY, title(result, true), room),
+                x, Typeset.centred(Tokens.Type.DISPLAY, bandY, LINE_ONE),
+                result.won() ? Tokens.Color.STATUS_WIN : Tokens.Color.STATUS_ASH);
+        }
+        painter.opacity(was);
+    }
+
+    /** Three reel tiles; a symbol scrolls through each until its reel lands, then drops two pixels home. */
+    private static int stage(Painter painter, CasinoProtocol.Reels reels, boolean won, int x, int bandY, long age) {
         int count = reels.symbols().size();
-        int cell = Math.min(REEL_MAX, (width - (count - 1) * Tokens.Space.SNUG) / count);
-        int left = x + (width - (cell * count + (count - 1) * Tokens.Space.SNUG)) / 2;
-        int leading = Tokens.Type.STRONG.leading();
+        int y = bandY + (LINE_ONE - REEL) / 2;
+        String winner = majority(reels);
         for (int i = 0; i < count; i++) {
-            int cellX = left + i * (cell + Tokens.Space.SNUG);
+            int tileX = x + i * (REEL + REEL_GAP);
             String symbol = reels.symbols().get(i);
             long stop = reelStop(i, count);
-            boolean hit = won && reels.matched() >= 2
-                && reels.symbols().stream().filter(symbol::equals).count() == reels.matched();
-            painter.fill(cellX, y, cell, STAGE, Tokens.Radius.SM,
-                hit ? Tokens.Color.ACCENT_WASH : Tokens.Color.SURFACE_SUNKEN);
-            painter.border(cellX, y, cell, STAGE, Tokens.Radius.SM, Tokens.Stroke.HAIR,
-                hit ? Tokens.Color.ACCENT : Tokens.Color.LINE_HAIRLINE);
-            painter.pushClip(cellX, y, cell, STAGE);
-            int centre = cellX + cell / 2;
-            int baseline = Typeset.centred(Tokens.Type.STRONG, y, STAGE);
+            boolean hit = won && age >= stop && reels.matched() >= 2 && symbol.equals(winner);
+            painter.fill(tileX, y, REEL, REEL, hit ? Rgb.alpha(Tokens.Color.STATUS_WIN, REEL_HIT) : Tokens.Color.SURFACE_RAISED);
+            painter.border(tileX, y, REEL, REEL, Tokens.Radius.NONE, Tokens.Stroke.HAIR,
+                hit ? Tokens.Color.STATUS_WIN : Tokens.Color.LINE_STRONG);
+            float cx = tileX + REEL / 2.0f;
+            float cy = y + REEL / 2.0f;
+            painter.pushClip(tileX, y, REEL, REEL);
             if (age < stop) {
                 long frame = Math.max(0, age) / Tokens.Duration.FAST + i * 3L;
-                int scroll = Math.round(leading * Motion.progress(
-                    Math.max(0, age) % Tokens.Duration.FAST, Tokens.Duration.FAST));
+                float scroll = REEL * Motion.progress(Math.max(0, age) % Tokens.Duration.FAST, Tokens.Duration.FAST);
                 String current = REEL_ORDER.get((int) (frame % REEL_ORDER.size()));
                 String next = REEL_ORDER.get((int) ((frame + 1) % REEL_ORDER.size()));
-                Typeset.drawCentered(painter, Tokens.Type.STRONG, symbolName(current),
-                    centre, baseline - scroll, Tokens.Color.INK_TERTIARY);
-                Typeset.drawCentered(painter, Tokens.Type.STRONG, symbolName(next),
-                    centre, baseline - scroll + leading, Tokens.Color.INK_TERTIARY);
+                MenuIcons.draw(painter, MenuIcons.REEL + current, cx, cy - scroll, SYMBOL);
+                MenuIcons.draw(painter, MenuIcons.REEL + next, cx, cy - scroll + REEL, SYMBOL);
             } else {
-                int drop = Math.round(Tokens.Space.SNUG * (1 - Motion.ease(Tokens.Easing.OUT,
-                    Motion.progress(age - stop, Tokens.Duration.BASE))));
-                Typeset.drawCentered(painter, Tokens.Type.STRONG, symbolName(symbol),
-                    centre, baseline - drop, hit ? Tokens.Color.ACCENT : Tokens.Color.INK_PRIMARY);
+                float drop = Tokens.Space.TIGHT * (1.0f - Motion.eased(age - stop, Tokens.Duration.BASE, Tokens.Easing.OUT));
+                MenuIcons.draw(painter, MenuIcons.REEL + symbol, cx, cy - drop, SYMBOL);
             }
             painter.popClip();
         }
+        return count * REEL + (count - 1) * REEL_GAP;
     }
 
-    private static void drawRoll(Painter painter, CasinoProtocol.Roll roll, boolean won,
-            boolean settled, int x, int y, int width, long age) {
-        int trackHeight = Tokens.Space.SNUG;
-        int trackY = y + STAGE - trackHeight - Tokens.Space.TIGHT;
-        painter.fill(x, trackY, width, trackHeight, Tokens.Radius.ROUND, Tokens.Color.SURFACE_SUNKEN);
-        float zone = width * roll.target() / 100f;
-        painter.fill(x, trackY, zone, trackHeight, Tokens.Radius.ROUND, Tokens.Color.ACCENT_WASH);
-        painter.vRule(x + zone, trackY - Tokens.Space.TIGHT, trackHeight + Tokens.Space.SNUG,
-            Tokens.Color.ACCENT_PRESSED);
-
-        float eased = Motion.ease(Tokens.Easing.OUT, Motion.progress(age - ENTER, Tokens.Duration.REVEAL));
+    /** The percentile track: the winning zone lit, the marker sliding down onto the roll. */
+    private static int stage(Painter painter, CasinoProtocol.Roll roll, boolean won, boolean settled,
+            int x, int bandY, long age) {
+        int trackY = bandY + (LINE_ONE - TRACK_H) / 2;
+        painter.fill(x, trackY, TRACK_W, TRACK_H, Tokens.Color.LINE_HAIRLINE);
+        painter.fill(x, trackY, TRACK_W * roll.target() / 100.0f, TRACK_H, Rgb.alpha(Tokens.Color.ACCENT, ZONE));
+        float eased = Motion.eased(age - ENTER, Tokens.Duration.REVEAL, Tokens.Easing.OUT);
         float value = 99 + (roll.roll() - 99) * eased;
-        float markerX = x + width * (value + 0.5f) / 100f;
-        int marker = !settled ? Tokens.Color.INK_PRIMARY
-            : won ? Tokens.Color.ACCENT : Tokens.Color.STATUS_DANGER;
-        painter.fill(markerX - Tokens.Stroke.FOCUS / 2f, trackY - Tokens.Space.TIGHT,
-            Tokens.Stroke.FOCUS, trackHeight + Tokens.Space.SNUG, Tokens.Radius.NONE, marker);
-        String number = Integer.toString(Math.round(value));
-        int half = Typeset.tabularWidth(Tokens.Type.MICRO, number) / 2;
-        int labelX = Math.clamp(Math.round(markerX) - half, x, x + width - half * 2);
-        Typeset.tabular(painter, Tokens.Type.MICRO, number, labelX, y, marker);
+        float markerX = x + (TRACK_W - Tokens.Stroke.FOCUS) * value / 99.0f;
+        int marker = !settled ? Tokens.Color.INK_PRIMARY : won ? Tokens.Color.STATUS_WIN : Tokens.Color.STATUS_ASH;
+        painter.fill(markerX, trackY - (SYMBOL - TRACK_H) / 2.0f, Tokens.Stroke.FOCUS, SYMBOL, marker);
+        return TRACK_W;
     }
 
-    private static void drawWheel(Painter painter, CasinoProtocol.Spin spin, boolean won,
-            boolean settled, int x, int y, int width, long age) {
+    /** A window onto the wheel: the pockets stream past until the winning one stops in the middle. */
+    private static int stage(Painter painter, CasinoProtocol.Spin spin, boolean won, boolean settled,
+            int x, int bandY, long age) {
         int index = 0;
         while (WHEEL[index] != spin.pocket()) {
             index++;
         }
         float travel = WHEEL_LAPS * WHEEL.length + index;
-        float position = travel * Motion.ease(Tokens.Easing.OUT,
-            Motion.progress(age - ENTER, Tokens.Duration.REVEAL));
+        float position = travel * Motion.eased(age - ENTER, Tokens.Duration.REVEAL, Tokens.Easing.OUT);
         int pitch = POCKET + Tokens.Space.HAIR;
-        int centre = x + width / 2;
-        int reach = width / pitch / 2 + 2;
-
-        painter.pushClip(x, y, width, STAGE);
+        int y = bandY + (LINE_ONE - POCKET) / 2;
+        int centre = x + WHEEL_W / 2;
+        int reach = WHEEL_W / pitch / 2 + 2;
+        painter.pushClip(x, y, WHEEL_W, POCKET);
         int nearest = Math.round(position);
         for (int k = nearest - reach; k <= nearest + reach; k++) {
             int pocket = WHEEL[Math.floorMod(k, WHEEL.length)];
-            float cellX = centre + (k - position) * pitch - POCKET / 2f;
-            painter.fill(cellX, y, POCKET, STAGE, Tokens.Radius.NONE, pocketColor(pocket));
+            float cellX = centre + (k - position) * pitch - POCKET / 2.0f;
+            painter.fill(cellX, y, POCKET, POCKET, pocketColor(pocket));
             Typeset.drawCentered(painter, Tokens.Type.MICRO, Integer.toString(pocket),
-                Math.round(cellX + POCKET / 2f), Typeset.centred(Tokens.Type.MICRO, y, STAGE),
-                pocket == 0 ? Tokens.Color.INK_ON_ACCENT : Tokens.Color.INK_PRIMARY);
+                Math.round(cellX + POCKET / 2.0f), Typeset.centred(Tokens.Type.MICRO, y, POCKET), Tokens.Color.INK_PRIMARY);
         }
+        painter.border(centre - POCKET / 2.0f, y, POCKET, POCKET, Tokens.Radius.NONE, Tokens.Stroke.HAIR,
+            settled && !won ? Tokens.Color.STATUS_ASH : Tokens.Color.ACCENT);
         painter.popClip();
-        painter.border(centre - POCKET / 2f - Tokens.Stroke.FOCUS, y - Tokens.Stroke.FOCUS,
-            POCKET + Tokens.Stroke.FOCUS * 2, STAGE + Tokens.Stroke.FOCUS * 2, Tokens.Radius.NONE,
-            Tokens.Stroke.FOCUS, settled && !won ? Tokens.Color.INK_SECONDARY : Tokens.Color.ACCENT);
+        return WHEEL_W;
     }
 
-    private static void drawCoin(Painter painter, boolean won, int cx, int cy, long age) {
-        float turns = (won ? COIN_HALF_TURNS : COIN_HALF_TURNS + 1) * Motion.ease(Tokens.Easing.OUT,
-            Motion.progress(age - ENTER, Tokens.Duration.REVEAL));
+    /** A coin turning over: the gold face, and the ash edge between turns; it lands face or edge up. */
+    private static int coin(Painter painter, boolean won, boolean settled, int x, int bandY, long age) {
+        float cx = x + COIN / 2.0f;
+        float cy = bandY + LINE_ONE / 2.0f;
+        float turns = (won ? COIN_HALF_TURNS : COIN_HALF_TURNS + 1)
+            * Motion.eased(age - ENTER, Tokens.Duration.REVEAL, Tokens.Easing.OUT);
         float face = Math.abs((float) Math.cos(turns * Math.PI));
         boolean gold = Math.floorMod((int) Math.floor(turns + 0.5f), 2) == 0;
-        float width = Math.max(Tokens.Stroke.FOCUS, COIN * face);
-        painter.fill(cx - width / 2, cy - COIN / 2f, width, COIN, Tokens.Radius.ROUND,
-            gold ? Tokens.Color.ACCENT : Tokens.Color.SURFACE_RAISED);
-        painter.border(cx - width / 2, cy - COIN / 2f, width, COIN, Tokens.Radius.ROUND,
-            Tokens.Stroke.HAIR, gold ? Tokens.Color.ACCENT_PRESSED : Tokens.Color.LINE_STRONG);
+        if (settled) {
+            face = won ? 1.0f : 0.0f;
+            gold = won;
+        }
+        float width = Math.max(COIN_EDGE, COIN * face);
+        painter.fill(cx - width / 2, cy - COIN / 2.0f, width, COIN, Tokens.Radius.ROUND,
+            gold ? Tokens.Color.ACCENT : Tokens.Color.STATUS_ASH);
+        if (gold) {
+            painter.border(cx - width / 2, cy - COIN / 2.0f, width, COIN, Tokens.Radius.ROUND,
+                Tokens.Stroke.HAIR, Tokens.Color.ACCENT_PRESSED);
+        }
+        return COIN;
+    }
+
+    /** Plays each cue of this card once, as its moment passes. */
+    private static void cue(CasinoProtocol.Result result, long key, long age) {
+        if (key != cuedFor) {
+            cuedFor = key;
+            cued = 0;
+        }
+        List<UiSounds.Cue> due = cuesDue(result, age);
+        for (int i = 0; i < due.size(); i++) {
+            if ((cued & (1 << i)) == 0) {
+                cued |= 1 << i;
+                UiSounds.play(due.get(i));
+            }
+        }
+    }
+
+    /**
+     * The cues whose moment has passed by {@code age}, in order: a reel tick as each reel of a
+     * slots result lands, then the verdict. Pure, so the timing is a test and not a recording.
+     */
+    static List<UiSounds.Cue> cuesDue(CasinoProtocol.Result result, long age) {
+        List<UiSounds.Cue> due = new ArrayList<>();
+        if (result.detail() instanceof CasinoProtocol.Reels reels) {
+            int count = reels.symbols().size();
+            for (int i = 0; i < count; i++) {
+                if (age >= reelStop(i, count)) {
+                    due.add(UiSounds.Cue.REEL);
+                }
+            }
+        }
+        if (age >= SETTLE) {
+            due.add(result.won() ? UiSounds.Cue.WIN : UiSounds.Cue.LOSE);
+        }
+        return due;
     }
 
     /** How far below its slot the card sits, 0..1: rises on arrival, sinks before it expires. */
@@ -233,36 +312,68 @@ public final class CasinoResultOverlay {
         return 1 - Motion.ease(Tokens.Easing.OUT, Motion.progress(age, ENTER));
     }
 
+    /** The win flash over the card: forty percent at the verdict, gone in {@link Tokens.Duration#FLASH}. */
+    static float flash(long age, boolean won) {
+        if (!won || age < SETTLE || age >= SETTLE + Tokens.Duration.FLASH) {
+            return 0.0f;
+        }
+        return FLASH_PEAK * (1.0f - Motion.eased(age - SETTLE, Tokens.Duration.FLASH, Tokens.Easing.OUT));
+    }
+
     /** When reel {@code index} of {@code count} lands; the last one lands as the reveal settles. */
     static long reelStop(int index, int count) {
         return SETTLE - (long) (count - 1 - index) * Tokens.Duration.SLOW;
     }
 
+    /** The first line: the game in motion, then the verdict. */
     static String title(CasinoProtocol.Result result, boolean settled) {
         if (settled) {
-            return result.won() ? "당첨이에요" : "아쉽지만 다음 기회예요";
+            return result.won() ? "당첨" : "아쉬워요";
         }
         return switch (result.game()) {
-            case COINFLIP -> "동전이 돌고 있어요";
-            case DICE -> "주사위를 굴리고 있어요";
-            case ROULETTE -> "휠이 돌아가고 있어요";
-            case SLOTS -> "릴이 돌아가고 있어요";
+            case COINFLIP -> "동전이 돌아요";
+            case DICE -> "주사위가 굴러요";
+            case ROULETTE -> "휠이 돌아가요";
+            case SLOTS -> "릴이 돌아가요";
         };
     }
 
+    /** The large figure on the right: the multiplier of a win; the roll or the pocket of a loss. */
+    static String figure(CasinoProtocol.Result result, boolean settled) {
+        if (!settled) {
+            return "";
+        }
+        if (result.won()) {
+            return multiplier(result.payoutMultiplier());
+        }
+        return switch (result.detail()) {
+            case CasinoProtocol.Roll roll -> Integer.toString(roll.roll());
+            case CasinoProtocol.Spin spin -> Integer.toString(spin.pocket());
+            default -> "";
+        };
+    }
+
+    /** The second line: the game and the bet as the player placed it, then what came up. */
     static String detail(CasinoProtocol.Result result, boolean settled) {
         return switch (result.detail()) {
-            case CasinoProtocol.Roll roll -> settled
-                ? "굴림 " + roll.roll() + " · 목표 " + roll.target() + " 미만"
-                : "목표 " + roll.target() + " 미만이 나오면 이겨요";
-            case CasinoProtocol.Spin spin -> settled
-                ? "포켓 " + spin.pocket() + " · " + betName(spin.bet()) + "에 걸었어요"
-                : betName(spin.bet()) + "에 걸었어요";
-            case CasinoProtocol.Reels reels -> !settled ? ""
-                : reels.matched() < 2 ? "같은 그림이 없어요"
-                : symbolName(majority(reels)) + " " + reels.matched() + "개가 맞았어요";
-            case CasinoProtocol.Coin ignored -> !settled ? ""
-                : result.won() ? "동전이 고른 면으로 떨어졌어요" : "동전이 반대 면으로 떨어졌어요";
+            case CasinoProtocol.Roll roll -> "주사위 · 목표 " + roll.target() + " 미만";
+            case CasinoProtocol.Spin spin -> "룰렛 · " + betName(spin.bet()) + "에 걸었어요";
+            case CasinoProtocol.Reels reels -> !settled ? "슬롯" : "슬롯 · " + String.join(" · ",
+                reels.symbols().stream().map(CasinoResultOverlay::symbolName).toList());
+            case CasinoProtocol.Coin ignored -> "동전 던지기";
+        };
+    }
+
+    /** The second line's right end: what the reveal showed, once it has. */
+    static String meta(CasinoProtocol.Result result, boolean settled) {
+        if (!settled) {
+            return "";
+        }
+        return switch (result.detail()) {
+            case CasinoProtocol.Roll roll -> "나온 수 " + roll.roll();
+            case CasinoProtocol.Spin spin -> "포켓 " + spin.pocket();
+            case CasinoProtocol.Reels reels -> reels.matched() < 2 ? "일치 없음" : reels.matched() + "개 일치";
+            case CasinoProtocol.Coin ignored -> result.won() ? "고른 면" : "반대 면";
         };
     }
 
@@ -270,7 +381,7 @@ public final class CasinoResultOverlay {
     static String multiplier(double value) {
         BigDecimal exact = BigDecimal.valueOf(value);
         BigDecimal shown = exact.setScale(2, RoundingMode.DOWN);
-        return "×" + (shown.signum() == 0 ? exact : shown).stripTrailingZeros().toPlainString();
+        return (shown.signum() == 0 ? exact : shown).stripTrailingZeros().toPlainString() + "배";
     }
 
     static String gameName(CasinoProtocol.Game game) {
@@ -307,9 +418,9 @@ public final class CasinoResultOverlay {
 
     static int pocketColor(int pocket) {
         if (pocket == 0) {
-            return Tokens.Color.STATUS_LIVE;
+            return Tokens.Color.WHEEL_GREEN;
         }
-        return RED.contains(pocket) ? Tokens.Color.STATUS_DANGER : Tokens.Color.SURFACE_RAISED;
+        return RED.contains(pocket) ? Tokens.Color.WHEEL_RED : Tokens.Color.WHEEL_BLACK;
     }
 
     private static String majority(CasinoProtocol.Reels reels) {

@@ -52,11 +52,18 @@ public final class Glass {
      * tall. Returns the width it took, so a row of them can be laid out.
      */
     public static int keycap(Painter painter, int x, int y, String name, int ink) {
+        return keycap(painter, x, y, name, ink, Tokens.Color.LINE_STRONG, Tokens.Color.SURFACE_CONTROL_DISABLED);
+    }
+
+    /** A keycap in given inks: on a gold button its line is the button's own ink, faded, and it has no fill. */
+    public static int keycap(Painter painter, int x, int y, String name, int ink, int line, int fill) {
         int w = keycapWidth(name);
         int h = Tokens.Size.KEYCAP;
-        painter.fill(x, y, w, h, Tokens.Radius.KEY, Tokens.Color.SURFACE_CONTROL_DISABLED);
-        painter.border(x, y, w, h, Tokens.Radius.KEY, Tokens.Stroke.HAIR, Tokens.Color.LINE_STRONG);
-        painter.hRule(x, y + h - 1, w, Tokens.Color.LINE_STRONG);
+        if (fill != 0) {
+            painter.fill(x, y, w, h, Tokens.Radius.KEY, fill);
+        }
+        painter.border(x, y, w, h, Tokens.Radius.KEY, Tokens.Stroke.HAIR, line);
+        painter.hRule(x, y + h - 1, w, line);
         Typeset.drawCentered(painter, Tokens.Type.MICRO, name, x + w / 2,
             Typeset.centred(Tokens.Type.MICRO, y, h - 1), ink);
         return w;

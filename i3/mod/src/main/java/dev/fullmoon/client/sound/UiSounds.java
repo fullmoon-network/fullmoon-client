@@ -7,7 +7,7 @@ import dev.fullmoon.client.design.Tokens;
 
 /**
  * The client's own UI cues: a soft tick when the focus moves, a confirm, a way back, a menu
- * opening and closing, a refusal, a tab change. Original sounds, synthesised for Fullmoon by
+ * opening and closing, a refusal, a tab change, and the result card's reel stop, win and loss. Original sounds, synthesised for Fullmoon by
  * {@code i3/design/make-ui-sounds.py}; the events are registered under {@code fullmoon:ui.*}.
  *
  * <p>Nothing here touches the game. {@link #play} hands a {@link Cue} to whatever sink the client
@@ -25,7 +25,13 @@ public final class UiSounds {
         OPEN("ui.open"),
         CLOSE("ui.close"),
         ERROR("ui.error"),
-        TAB("ui.tab");
+        TAB("ui.tab"),
+        /** A slot reel landing on the result card. */
+        REEL("ui.reel"),
+        /** The verdict of a won bet, with the card's flash. */
+        WIN("ui.win"),
+        /** The verdict of a lost bet: one low note, not a refusal. */
+        LOSE("ui.lose");
 
         private final String path;
 

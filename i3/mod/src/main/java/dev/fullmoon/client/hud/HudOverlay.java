@@ -2,8 +2,12 @@ package dev.fullmoon.client.hud;
 
 import dev.fullmoon.client.FullmoonClient;
 import dev.fullmoon.client.layout.Box;
+import dev.fullmoon.client.menu.ServerMenuScreen;
 import dev.fullmoon.client.render.Painter;
+import dev.fullmoon.client.warp.WarpScreen;
 
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 
 import net.minecraft.client.DeltaTracker;
@@ -18,7 +22,14 @@ public final class HudOverlay {
     private HudOverlay() {}
 
     public static void init() {
-        net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(ID, HudOverlay::render);
+        HudElementRegistry.addLast(ID, HudOverlay::render);
+        // A pane of glass covers the whole world; the hotbar showing through under the hint bar
+        // reads as a bug, not as depth, so the hotbar waits with the rest of the HUD.
+        HudElementRegistry.replaceElement(VanillaHudElements.HOTBAR, vanilla -> (gfx, delta) -> {
+            if (!underGlass()) {
+                vanilla.render(gfx, delta);
+            }
+        });
         ScoreboardSidebar.init();
         // A bet is placed from a casino menu, so the result lands while that screen is still up;
         // the HUD layer is skipped under any screen and would hold the card until it expired.
@@ -30,13 +41,16 @@ public final class HudOverlay {
             }));
     }
 
+    /**
+     * Whether one of the client's full-screen panes is over the world. The client's own chips
+     * and sidebar, and the game's hotbar, would bleed through it as dark blocks, so they wait.
+     */
+    public static boolean underGlass() {
+        return Minecraft.getInstance().screen instanceof ServerMenuScreen
+            || Minecraft.getInstance().screen instanceof WarpScreen;
+    }
+
     private static void render(GuiGraphicsExtractor gfx, DeltaTracker deltaTracker) {
-        // A server menu is one pane of glass over the world; the client's own chips and sidebar
-        // would bleed through it as dark blocks, so they wait until it closes.
-        if (net.minecraft.client.Minecraft.getInstance().screen
-                instanceof dev.fullmoon.client.menu.ServerMenuScreen) {
-            return;
-        }
         Minecraft client = Minecraft.getInstance();
         if (client.options.hideGui || client.screen != null) {
             return;
@@ -46,8 +60,8 @@ public final class HudOverlay {
         int height = client.getWindow().getGuiScaledHeight();
 
         Painter painter = new Painter(gfx);
-        HudElementRegistry.getInstance().poll(System.currentTimeMillis());
-        for (HudElement elem : HudElementRegistry.getInstance().elements()) {
+        dev.fullmoon.client.hud.HudElementRegistry.getInstance().poll(System.currentTimeMillis());
+        for (HudElement elem : dev.fullmoon.client.hud.HudElementRegistry.getInstance().elements()) {
             if (elem.enabled()) {
                 Box bounds = elem.computeBounds(width, height, client);
                 elem.draw(painter, bounds, client, false);

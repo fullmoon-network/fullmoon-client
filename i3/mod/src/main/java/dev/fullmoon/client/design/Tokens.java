@@ -80,6 +80,20 @@ public final class Tokens {
         public static final int MOON_LIT = 0xFFF6E7BF;
         /** the unlit face of a moon phase · #262D3D */
         public static final int MOON_SHADOW = 0xFF262D3D;
+        /** a red roulette pocket on the result card · #B8443F */
+        public static final int WHEEL_RED = 0xFFB8443F;
+        /** a black roulette pocket · #262A36 */
+        public static final int WHEEL_BLACK = 0xFF262A36;
+        /** the zero pocket · #2F7D62 */
+        public static final int WHEEL_GREEN = 0xFF2F7D62;
+        /** a server's yellow or gold text, softened for the glass · #F5C542 */
+        public static final int CHAT_YELLOW = 0xFFF5C542;
+        /** a server's aqua text · #7FD8E8 */
+        public static final int CHAT_AQUA = 0xFF7FD8E8;
+        /** a server's blue text · #8EA6F2 */
+        public static final int CHAT_BLUE = 0xFF8EA6F2;
+        /** a server's light purple text · #CFA0EA */
+        public static final int CHAT_PURPLE = 0xFFCFA0EA;
 
         private Color() {}
     }
@@ -120,6 +134,18 @@ public final class Tokens {
         public static final int HINT = 14;
         public static final int CELL = 20;
         public static final int CELL_GAP = 2;
+        public static final int CARD = 220;
+        public static final int CARD_H = 44;
+        public static final int HOTBAR = 22;
+        public static final int HUD_CHIP = 16;
+        public static final int HUD_KEY = 14;
+        public static final int SIDEBAR = 132;
+        public static final int SIDEBAR_TOP = 100;
+        public static final int ROUTE_ROW = 24;
+        public static final int ROUTE_ROW_MOCK = 20;
+        public static final int COMPASS = 44;
+        public static final int REEL = 14;
+        public static final int POCKET = 14;
 
         private Size() {}
     }
@@ -155,6 +181,8 @@ public final class Tokens {
         public static final int NUDGE = 220;
         public static final int REVEAL = 1200;
         public static final int REDUCED = 120;
+        public static final int FLASH = 260;
+        public static final int VERDICT = 120;
 
         private Duration() {}
     }
@@ -283,6 +311,13 @@ public final class Tokens {
             java.util.Map.entry("status.win", Color.STATUS_WIN),
             java.util.Map.entry("status.ash", Color.STATUS_ASH),
             java.util.Map.entry("moon.lit", Color.MOON_LIT),
-            java.util.Map.entry("moon.shadow", Color.MOON_SHADOW)
+            java.util.Map.entry("moon.shadow", Color.MOON_SHADOW),
+            java.util.Map.entry("wheel.red", Color.WHEEL_RED),
+            java.util.Map.entry("wheel.black", Color.WHEEL_BLACK),
+            java.util.Map.entry("wheel.green", Color.WHEEL_GREEN),
+            java.util.Map.entry("chat.yellow", Color.CHAT_YELLOW),
+            java.util.Map.entry("chat.aqua", Color.CHAT_AQUA),
+            java.util.Map.entry("chat.blue", Color.CHAT_BLUE),
+            java.util.Map.entry("chat.purple", Color.CHAT_PURPLE)
         );
 }

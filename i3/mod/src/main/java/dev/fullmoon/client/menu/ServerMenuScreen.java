@@ -274,8 +274,27 @@ public final class ServerMenuScreen extends SurfaceScreen {
         if (layout.mode() == ServerMenuLayout.Mode.COLUMNS) {
             ServerMenuDetail.strip(painter, layout.detail(), current, clock(), busy);
         } else {
-            ServerMenuDetail.column(painter, layout.detail(), current, busy);
+            ServerMenuDetail.column(painter, layout.detail(), current, about(current), busy);
         }
+    }
+
+    /**
+     * What the menu's fact items say about one choice: a {@code key · value} line whose key is the
+     * choice's name, as 하우스 몫 lists 동전 · 1.0%. Returned as {@code fact name · value}.
+     */
+    private List<MenuLore.Fact> about(ServerMenuEntry choice) {
+        List<MenuLore.Fact> out = new ArrayList<>();
+        if (choice == null) {
+            return out;
+        }
+        for (ServerMenuEntry fact : facts) {
+            for (MenuLore.Fact line : fact.lore().facts()) {
+                if (line.key().equals(choice.label())) {
+                    out.add(new MenuLore.Fact(fact.label(), line.value()));
+                }
+            }
+        }
+        return out;
     }
 
     /** The fact item that carries a bar, if any: the sell menu's limit clock. */
