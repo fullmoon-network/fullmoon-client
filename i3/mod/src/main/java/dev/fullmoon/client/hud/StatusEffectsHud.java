@@ -21,7 +21,12 @@ public final class StatusEffectsHud extends BaseHudElement {
 
     @Override
     public int measureWidth(Minecraft client) {
-        String text = formatText(client, false);
+        return measureWidth(client, false);
+    }
+
+    @Override
+    public int measureWidth(Minecraft client, boolean isEditor) {
+        String text = formatText(client, isEditor);
         return chipWidth(0, java.util.List.of(new Part(text, "FX")));
     }
 

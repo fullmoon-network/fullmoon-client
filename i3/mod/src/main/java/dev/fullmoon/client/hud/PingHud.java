@@ -21,7 +21,12 @@ public final class PingHud extends BaseHudElement {
 
     @Override
     public int measureWidth(Minecraft client) {
-        return chipWidth(dotWidth(), parts(client, false));
+        return measureWidth(client, false);
+    }
+
+    @Override
+    public int measureWidth(Minecraft client, boolean isEditor) {
+        return chipWidth(dotWidth(), parts(client, isEditor));
     }
 
     @Override

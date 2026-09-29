@@ -19,7 +19,12 @@ public final class FpsHud extends BaseHudElement {
 
     @Override
     public int measureWidth(Minecraft client) {
-        return chipWidth(0, parts(client, false));
+        return measureWidth(client, false);
+    }
+
+    @Override
+    public int measureWidth(Minecraft client, boolean isEditor) {
+        return chipWidth(0, parts(client, isEditor));
     }
 
     @Override

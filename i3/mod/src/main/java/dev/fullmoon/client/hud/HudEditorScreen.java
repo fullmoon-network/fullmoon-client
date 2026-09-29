@@ -140,8 +140,7 @@ public final class HudEditorScreen extends Screen {
         int right = header.right() - Tokens.Space.LOOSE;
         closeButton.place(new Box(right - IconButton.SIZE + Tokens.Space.BASE, header.y() + (header.h() - IconButton.SIZE) / 2,
             IconButton.SIZE, IconButton.SIZE));
-        Box dock = layout.dock(HudEditorLayout.chipsWidth(chipWidths()), resetButton.measure(), width);
-        resetButton.place(HudEditorLayout.tail(dock, resetButton.measure(), Button.HEIGHT));
+        resetButton.place(dock().tail());
 
         int x = header.x() + Tokens.Space.LOOSE + Typeset.width(Tokens.Type.TITLE, tr("title")) + Tokens.Space.GUTTER;
         HudElement current = selectedElement();
@@ -174,7 +173,7 @@ public final class HudEditorScreen extends Screen {
                 if (!elem.enabled()) {
                     continue;
                 }
-                Box b = elem.computeBounds(width, height, client);
+                Box b = elem.computeBounds(width, height, client, true);
                 if (b.holds(mx, my)) {
                     select(elem.id());
                     dragging = true;
@@ -199,7 +198,7 @@ public final class HudEditorScreen extends Screen {
         Anchor chosen = Anchor.fromGrid(Math.min(col, 2), Math.min(row, 2));
 
         Minecraft client = Minecraft.getInstance();
-        int elemW = elem.measureWidth(client);
+        int elemW = elem.measureWidth(client, true);
         int elemH = elem.measureHeight(client);
         int currScreenX = elem.anchor().computeX(width, elemW, elem.offsetX());
         int currScreenY = elem.anchor().computeY(height, elemH, elem.offsetY());
@@ -214,13 +213,12 @@ public final class HudEditorScreen extends Screen {
     }
 
     private boolean handleDockClick(int mx, int my) {
-        int[] widths = chipWidths();
-        Box dock = layout.dock(HudEditorLayout.chipsWidth(widths), resetButton.measure(), width);
-        if (!dock.holds(mx, my)) {
+        HudEditorLayout.Dock dock = dock();
+        if (!dock.box().holds(mx, my)) {
             return false;
         }
         for (int i = 0; i < elements.size(); i++) {
-            if (HudEditorLayout.chip(dock, widths, i).holds(mx, my)) {
+            if (dock.chips().get(i).holds(mx, my)) {
                 HudElement elem = elements.get(i);
                 select(elem.id());
                 elem.setEnabled(!elem.enabled());
@@ -261,7 +259,7 @@ public final class HudEditorScreen extends Screen {
             HudElement elem = selectedElement();
             if (elem != null) {
                 Minecraft client = Minecraft.getInstance();
-                int elemW = elem.measureWidth(client);
+                int elemW = elem.measureWidth(client, true);
                 int elemH = elem.measureHeight(client);
                 int dx = (int) (event.x() - dragStartX);
                 int dy = (int) (event.y() - dragStartY);
@@ -336,7 +334,7 @@ public final class HudEditorScreen extends Screen {
 
     /** The snap grid, as one dim dot per sixteen pixels of the canvas. */
     private void dots(Painter painter) {
-        Box canvas = layout.canvas(width);
+        Box canvas = Box.between(0, layout.header().bottom(), width, dock().box().y());
         int color = Rgb.alpha(Tokens.Color.LINE_HAIRLINE, 0.35f);
         for (int y = canvas.y() + GRID_STEP - canvas.y() % GRID_STEP; y < canvas.bottom(); y += GRID_STEP) {
             for (int x = GRID_STEP; x < width; x += GRID_STEP) {
@@ -349,37 +347,61 @@ public final class HudEditorScreen extends Screen {
         Minecraft client = Minecraft.getInstance();
         for (HudElement elem : elements) {
             if (elem.enabled()) {
-                elem.draw(painter, elem.computeBounds(width, height, client), client, true);
+                elem.draw(painter, elem.computeBounds(width, height, client, true), client, true);
             }
         }
     }
 
-    /** The chosen element: a hairline of gold around it, and its anchor and offset on a chip above. */
+    /**
+     * The chosen element: a hairline of gold around it, and its anchor and offset on a chip beside
+     * it — above, else right, left or below, in the first of those places that stays on screen and
+     * covers neither strip nor another element. An element in a top corner usually has none (the
+     * header starts where its right-hand place would be, the next chip sits under it); then the
+     * header's anchor grid and name say where it is, and no badge is drawn half under the strip.
+     */
     private void outline(Painter painter) {
         HudElement elem = selectedElement();
         if (elem == null || !elem.enabled()) {
             return;
         }
-        Box b = elem.computeBounds(width, height, Minecraft.getInstance()).inset(-Tokens.Space.TIGHT);
+        Minecraft client = Minecraft.getInstance();
+        Box b = elem.computeBounds(width, height, client, true).inset(-Tokens.Space.TIGHT);
         painter.border(b.x(), b.y(), b.w(), b.h(), Tokens.Radius.NONE, Tokens.Stroke.HAIR, Tokens.Color.ACCENT);
         String badge = elem.anchor().label() + " · " + elem.offsetX() + ", " + elem.offsetY();
         int w = Typeset.tabularWidth(Tokens.Type.BODY, badge) + Tokens.Space.COZY * 2;
         int h = Tokens.Size.HUD_CHIP;
-        // Above the element; beside it when the element sits at the top, because the chip under a
-        // top-corner element is usually another chip.
-        int x = Math.clamp(b.x(), 0, Math.max(0, width - w));
-        int y = b.y() - Tokens.Space.SNUG - h;
-        if (y < 0) {
-            y = b.y();
-            x = b.right() + Tokens.Space.SNUG + w <= width ? b.right() + Tokens.Space.SNUG : b.x() - Tokens.Space.SNUG - w;
-            if (x < 0) {
-                x = Math.clamp(b.x(), 0, Math.max(0, width - w));
-                y = b.bottom() + Tokens.Space.SNUG;
+        int gap = Tokens.Space.SNUG;
+        int under = Math.clamp(b.x(), 0, Math.max(0, width - w));
+        Box spot = firstClear(elem, client, List.of(
+            new Box(under, b.y() - gap - h, w, h),
+            new Box(b.right() + gap, b.y(), w, h),
+            new Box(b.x() - gap - w, b.y(), w, h),
+            new Box(under, b.bottom() + gap, w, h)));
+        if (spot == null) {
+            return;
+        }
+        painter.fill(spot.x(), spot.y(), w, h, Tokens.Color.SURFACE_GLASS_HUD);
+        Typeset.tabular(painter, Tokens.Type.BODY, badge, spot.x() + Tokens.Space.COZY,
+            Typeset.centred(Tokens.Type.BODY, spot.y(), h), Tokens.Color.ACCENT);
+    }
+
+    private Box firstClear(HudElement chosen, Minecraft client, List<Box> spots) {
+        Box header = layout.header();
+        Box dock = dock().box();
+        for (Box spot : spots) {
+            boolean clear = spot.x() >= 0 && spot.y() >= 0 && spot.right() <= width && spot.bottom() <= height
+                && !spot.overlaps(header) && !spot.overlaps(dock);
+            for (HudElement other : elements) {
+                if (clear && other != chosen && other.enabled()
+                        && spot.overlaps(other.computeBounds(width, height, client, true))) {
+                    clear = false;
+                }
+            }
+            if (clear) {
+                return spot;
             }
         }
-        painter.fill(x, y, w, h, Tokens.Color.SURFACE_GLASS_HUD);
-        Typeset.tabular(painter, Tokens.Type.BODY, badge, x + Tokens.Space.COZY, Typeset.centred(Tokens.Type.BODY, y, h),
-            Tokens.Color.ACCENT);
+        return null;
     }
 
     /** The strip across the top: the editor's name, the chosen element's anchor and switch, the way out. */
@@ -417,13 +439,13 @@ public final class HudEditorScreen extends Screen {
 
     /** One chip per element on a glass strip; the gold bar glides to the chosen one. */
     private void dock(Painter painter, int mx, int my) {
-        int[] widths = chipWidths();
-        Box dock = layout.dock(HudEditorLayout.chipsWidth(widths), resetButton.measure(), width);
+        HudEditorLayout.Dock folded = dock();
+        Box dock = folded.box();
         painter.fill(dock.x(), dock.y(), dock.w(), dock.h(), Tokens.Color.SURFACE_GLASS);
         painter.hRule(dock.x(), dock.y(), dock.w(), Tokens.Color.SURFACE_HIGHLIGHT);
         for (int i = 0; i < elements.size(); i++) {
             HudElement elem = elements.get(i);
-            Box chip = HudEditorLayout.chip(dock, widths, i);
+            Box chip = folded.chips().get(i);
             boolean chosen = elem.id().equals(selectedId);
             if (chosen) {
                 if (!glide.placed()) {
@@ -442,13 +464,18 @@ public final class HudEditorScreen extends Screen {
         }
         for (int i = 0; i < elements.size(); i++) {
             HudElement elem = elements.get(i);
-            Box chip = HudEditorLayout.chip(dock, widths, i);
+            Box chip = folded.chips().get(i);
             float dotX = chip.x() + Tokens.Space.COZY + DOT;
             painter.dot(dotX, chip.midY(), DOT, elem.enabled() ? Tokens.Color.STATUS_LIVE : Tokens.Color.STATUS_IDLE);
             Typeset.draw(painter, Tokens.Type.BODY, elem.label(), Math.round(dotX + DOT) + Tokens.Space.BASE,
                 Typeset.centred(Tokens.Type.BODY, chip.y(), chip.h()),
                 elem.enabled() ? Tokens.Color.INK_PRIMARY : Tokens.Color.INK_TERTIARY);
         }
+    }
+
+    /** The dock at this window's size: one chip per element, the reset at the end of the last row. */
+    private HudEditorLayout.Dock dock() {
+        return layout.dock(chipWidths(), resetButton.measure(), Button.HEIGHT, width);
     }
 
     /** A chip is its dot, its label and eight pixels either side. */
