@@ -13,12 +13,19 @@ const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "
 export function Seal() {
   return (
     <span className="seal" aria-hidden>
-      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="square">
-        <path d="M3 1.2v5.3c0 1.3-.5 2.3-1.6 3" />
-        <path d="M3 1.2h4.6v7.6c0 .5-.3.8-.9.7" />
-        <path d="M3 3.9h4.6M3 6.3h4.6" />
-      </svg>
+      <MoonGlyph size={10} />
     </span>
+  );
+}
+
+/** 月, drawn in the current ink at any size. */
+export function MoonGlyph({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="square" aria-hidden>
+      <path d="M3 1.2v5.3c0 1.3-.5 2.3-1.6 3" />
+      <path d="M3 1.2h4.6v7.6c0 .5-.3.8-.9.7" />
+      <path d="M3 3.9h4.6M3 6.3h4.6" />
+    </svg>
   );
 }
 

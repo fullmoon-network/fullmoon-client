@@ -104,8 +104,9 @@ kbd { font: inherit; }
 *::-webkit-scrollbar-thumb:hover { background: var(--color-ink-disabled); background-clip: padding-box; }
 
 .num { font-variant-numeric: lining-nums tabular-nums; }
+/* a monospace face has no Hangul; the body faces answer those glyphs instead of a system fallback */
 .mono {
-  font-family: "JetBrains Mono", "Cascadia Mono", ui-monospace, monospace;
+  font-family: "JetBrains Mono", "Cascadia Mono", ui-monospace, monospace, 'Fullmoon Sans', 'Pretendard';
   font-size: var(--type-micro-size);
 }
 .sr-only {
@@ -124,8 +125,13 @@ kbd { font: inherit; }
   color: var(--color-ink-tertiary);
 }
 
-::view-transition-old(root) { animation: fade-out var(--dur-fast) var(--ease-out); }
-::view-transition-new(root) { animation: fade-in var(--dur-base) var(--ease-out); }
+/* A screen change crossfades the content area only. The window around it stays live, so the
+   rail's selection glides in the open instead of under a whole-window crossfade, where the old
+   bar would ghost beside the new one. */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+.content { view-transition-name: screen; }
+::view-transition-old(screen) { animation: fade-out var(--dur-fast) var(--ease-out); }
+::view-transition-new(screen) { animation: fade-in var(--dur-base) var(--ease-out); }
 
 /* ── keyframes: transform and opacity only ── */
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }

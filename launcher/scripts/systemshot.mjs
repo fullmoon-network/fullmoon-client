@@ -59,13 +59,43 @@ try {
   await sleep(250);
   await shot("play-hover");
 
-  // the glide: click and photograph the indicator on its way, then at rest
-  await page.mouse.down();
-  await page.mouse.up();
-  for (let i = 0; i < 4; i++) {
-    await page.screenshot({ path: `${OUT}/glide-rail-0${i}.png` });
-    await sleep(40);
+  // The glide, frame by frame. A screenshot at this size takes longer than the whole 140 ms
+  // transition, so the rig pauses every running animation the moment the rail's indicator starts
+  // moving and steps them all through their timelines: each frame is the state at that instant.
+  const started = await page.evaluate(async () => {
+    [...document.querySelectorAll(".rail-item")].find((b) => b.textContent?.trim() === "대시보드")?.click();
+    const t0 = performance.now();
+    while (performance.now() - t0 < 1500) {
+      await new Promise((r) => requestAnimationFrame(r));
+      const moving = document.getAnimations().some((a) => a.effect?.target?.classList?.contains("glide"));
+      if (moving) {
+        for (const a of document.getAnimations()) {
+          a.pause();
+          a.currentTime = 0;
+        }
+        return true;
+      }
+    }
+    return false;
+  });
+  log.push(`glide transition caught: ${started}`);
+  const STEPS = [0, 15, 30, 45, 70, 100, 140];
+  writeFileSync(`${OUT}/glide-rail.json`, JSON.stringify({ ms: STEPS }));
+  for (const [i, ms] of STEPS.entries()) {
+    await page.evaluate((t) => {
+      for (const a of document.getAnimations()) a.currentTime = t;
+    }, ms);
+    await page.screenshot({ path: `${OUT}/glide-rail-${String(i).padStart(2, "0")}.png` });
   }
+  await page.evaluate(() => {
+    for (const a of document.getAnimations()) {
+      try {
+        a.finish();
+      } catch {
+        a.play();
+      }
+    }
+  });
   await sleep(900);
   await shot("dashboard");
 

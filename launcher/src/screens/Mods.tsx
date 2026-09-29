@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../components/Icon";
 import { Badge, Button, Empty, Toggle } from "../components/ui";
+import { MoonGlyph } from "../components/TitleBar";
 import { core } from "../core/client";
 import type { InstalledMod } from "../core/bindings";
 import { useStore } from "../state/store";
@@ -143,7 +144,7 @@ export function ModsScreen() {
                       className={`mod-card tile ${m.ours ? "is-ours" : ""} ${!m.enabled ? "is-off" : ""}`}
                     >
                       <div className="mod-card-head">
-                        <span className={`mod-glyph ${m.ours ? "is-ours" : ""}`} aria-hidden>{m.ours ? "月" : m.name.slice(0, 1)}</span>
+                        <span className={`mod-glyph ${m.ours ? "is-ours" : ""}`} aria-hidden>{m.ours ? <MoonGlyph size={16} /> : m.name.slice(0, 1)}</span>
                         <div className="mod-card-title">
                           <strong>{m.name}</strong>
                           {/* the version of the jar that is actually there, not the

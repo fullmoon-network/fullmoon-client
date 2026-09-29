@@ -194,11 +194,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   /** sessionId whose launch overlay the user dismissed — null shows it again */
   const [overlayHiddenFor, setOverlayHiddenFor] = useState<string | null>(null);
 
-  /* screen switches ride the View Transitions API when available */
+  /* screen switches ride the View Transitions API when available and motion is not reduced */
   const setScreen = useCallback((s: Screen, tab?: SettingsTab) => {
     setSettingsTab(tab ?? null);
     const doc = document as Document & { startViewTransition?: (cb: () => void) => void };
-    if (doc.startViewTransition) {
+    const reduced =
+      document.documentElement.dataset.motion === "reduced" ||
+      (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+    if (doc.startViewTransition && !reduced) {
       doc.startViewTransition(() => flushSync(() => setScreenState(s)));
     } else {
       setScreenState(s);
