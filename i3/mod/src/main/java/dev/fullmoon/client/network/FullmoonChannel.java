@@ -35,6 +35,8 @@ public final class FullmoonChannel {
         buffer -> new Envelope(buffer.readByteArray(BridgeProtocol.MAX_PAYLOAD_BYTES)));
     private static final AtomicReference<BridgeState> STATE =
         new AtomicReference<>(BridgeState.disconnected());
+    /** The capture rig's switch: it rebuilds the concept mockup from the snapshot the client drew. */
+    private static final boolean MENU_DUMP = Boolean.getBoolean("fullmoon.menuDump");
 
     private FullmoonChannel() {}
 
@@ -231,6 +233,9 @@ public final class FullmoonChannel {
         }
         LOG.info("Opened fullmoon:v1 server menu {} revision {} ({} items)",
             open.id(), open.revision(), open.items().size());
+        if (MENU_DUMP) {
+            LOG.info("fullmoon:v1 menu snapshot {}", open);
+        }
     }
 
     private static void closeMenu(BridgeState state, MenuProtocol.Close close) {

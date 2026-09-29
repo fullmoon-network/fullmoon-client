@@ -54,7 +54,7 @@ final class ServerMenuLayoutTest {
         List<GridCursor.Cell> cells = layout.cells(List.of(19, 20, 21, 22, 23, 24));
         assertEquals(0, layout.maxScroll(cells), "the casino's six games are all in view");
         assertTrue(layout.hintY() + Tokens.Size.HINT <= DESIGN.bottom(), "the hint bar stays on screen");
-        assertTrue(layout.panel().y() >= Tokens.Size.EDGE / 4);
+        assertEquals((DESIGN.h() - Tokens.Size.PANEL_H) / 2, layout.panel().y(), "centred alone");
     }
 
     @Test

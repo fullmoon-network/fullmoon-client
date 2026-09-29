@@ -50,6 +50,10 @@ loom {
         providers.gradleProperty("density").orNull?.let { density ->
             vmArg("-Dfullmoon.density=$density")
         }
+        // The capture rig re-renders the mockup with what the server actually sent, read from the log.
+        providers.gradleProperty("menu_dump").orNull?.let { dump ->
+            vmArg("-Dfullmoon.menuDump=$dump")
+        }
     }
 }
 

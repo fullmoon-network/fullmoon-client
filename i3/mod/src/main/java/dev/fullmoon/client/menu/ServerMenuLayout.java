@@ -39,7 +39,7 @@ public record ServerMenuLayout(
         public static final Density SHIPPED = new Density(
             Tokens.Size.ROW, Tokens.Size.ROW_ONE, Tokens.Size.PANEL_H, Tokens.Size.FACTS);
         public static final Density MOCK = new Density(
-            Tokens.Size.ROW_MOCK, Tokens.Size.ROW_ONE_MOCK, Tokens.Size.PANEL_H_MOCK, Tokens.Size.FACTS_MOCK);
+            Tokens.Size.ROW_MOCK, Tokens.Size.ROW_ONE_MOCK, Tokens.Size.MOCK_PANEL_H, Tokens.Size.FACTS_MOCK);
 
         /** The density the process was started with; the capture rig asks for the mockup's. */
         public static Density current() {
@@ -72,9 +72,10 @@ public record ServerMenuLayout(
         Mode mode = modeFor(choices);
         int edge = Tokens.Size.EDGE;
         int panelW = Math.min(Tokens.Size.PANEL_W, viewport.w() - edge * 2);
-        int room = viewport.h() - Tokens.Size.HINT - HINT_GAP - edge;
-        int panelH = Math.min(density.panelH(), room);
-        int panelY = viewport.y() + Math.max(edge / 4, (viewport.h() - panelH - Tokens.Size.HINT - HINT_GAP) / 2);
+        // Centred alone, as the mockup centres it; the hint bar lives in the margin under it, so
+        // the panel may only be as tall as leaves that margin on both sides.
+        int panelH = Math.min(density.panelH(), viewport.h() - (Tokens.Size.HINT + HINT_GAP) * 2);
+        int panelY = viewport.y() + (viewport.h() - panelH) / 2;
         Box panel = new Box(viewport.x() + (viewport.w() - panelW) / 2, panelY, panelW, panelH);
         Box header = new Box(panel.x(), panel.y(), panel.w(), Tokens.Size.HEADER);
         int hintY = panel.bottom() + HINT_GAP;

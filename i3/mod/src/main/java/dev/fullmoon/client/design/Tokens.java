@@ -101,7 +101,7 @@ public final class Tokens {
     public static final class Size {
         public static final int PANEL_W = 512;
         public static final int PANEL_H = 316;
-        public static final int PANEL_HMOCK = 300;
+        public static final int MOCK_PANEL_H = 300;
         public static final int EDGE = 24;
         public static final int HEADER = 28;
         public static final int ROW = 40;

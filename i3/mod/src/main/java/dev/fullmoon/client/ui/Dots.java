@@ -27,7 +27,7 @@ public final class Dots {
     }
 
     /** How much room a layout has to keep for a run of them. */
-    static int width() {
+    public static int width() {
         return 2 * PITCH + 2 * RADIUS;
     }
 }

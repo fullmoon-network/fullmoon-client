@@ -187,7 +187,7 @@ public abstract class Widget implements Focus.Target {
     }
 
     /** A press landed on this control while it could not answer: it shakes its head. */
-    final void nudge() {
+    protected final void nudge() {
         nudgedAt = System.nanoTime();
     }
 
