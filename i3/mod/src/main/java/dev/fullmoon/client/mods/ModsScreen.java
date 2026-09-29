@@ -53,7 +53,7 @@ public final class ModsScreen extends HubScreen {
         search = surface.add(new TextField("", tr("search.placeholder"), query, QUERY_LIMIT,
             ignored -> true, this::searched));
         results = surface.add(new ListPanel(tr("results.label"), rows(items), tr("results.empty"),
-            this.selected, row -> selected = row).picksOnMove());
+            this.selected, row -> this.selected = row).picksOnMove());
         surface.focus().point(results);
     }
 
