@@ -102,6 +102,18 @@ test("selection glides: one indicator per list, moved on the base duration, snap
   assert.match(base, /\[data-motion="reduced"\] \*[\s\S]*?transition-duration: var\(--dur-reduced\) !important/);
 });
 
+test("a screen change fades the old screen out once and never brings it back", () => {
+  const base = src("styles/base.css");
+  // the window stays live so the rail glides in the open; only the content area transitions
+  assert.match(base, /::view-transition-old\(root\), ::view-transition-new\(root\) \{ animation: none; \}/);
+  assert.match(base, /\.content \{ view-transition-name: screen; \}/);
+  // the fade is filled and the transition lasts exactly as long, so the old screen cannot reappear
+  assert.match(base, /::view-transition-old\(screen\) \{ animation: fade-out var\(--dur-fast\) var\(--ease-out\) both; \}/);
+  assert.match(base, /::view-transition-group\(screen\) \{ animation-duration: var\(--dur-fast\); \}/);
+  // reduced motion skips the view transition altogether
+  assert.match(src("state/store.tsx"), /if \(doc\.startViewTransition && !reduced\)/);
+});
+
 test("no palace remains: no ornament tokens, no frame classes, no Palace module", () => {
   const tokens = src("design/tokens.css");
   assert.doesNotMatch(tokens, /--color-(ornament|line-gilt|line-gilt-faint|line-lattice)/);

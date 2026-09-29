@@ -128,10 +128,14 @@ kbd { font: inherit; }
 /* A screen change crossfades the content area only. The window around it stays live, so the
    rail's selection glides in the open instead of under a whole-window crossfade, where the old
    bar would ghost beside the new one. */
+/* The old screen fades out over the new one, which makes its own entrance (.screen-enter), and
+   the transition lasts exactly that fade: an unfilled fade would end before the transition does
+   and put the old screen back at full strength for its last frames. */
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
 .content { view-transition-name: screen; }
-::view-transition-old(screen) { animation: fade-out var(--dur-fast) var(--ease-out); }
-::view-transition-new(screen) { animation: fade-in var(--dur-base) var(--ease-out); }
+::view-transition-group(screen) { animation-duration: var(--dur-fast); }
+::view-transition-old(screen) { animation: fade-out var(--dur-fast) var(--ease-out) both; }
+::view-transition-new(screen) { animation: none; }
 
 /* ── keyframes: transform and opacity only ── */
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
