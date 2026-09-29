@@ -18,7 +18,7 @@ inventory effects, and every other gameplay rule remain server-side.
 ## Handshake
 
 ```text
-C -> S  {"type":"hello","proto":1,"client":"fullmoon","version":"3.1.0"}
+C -> S  {"type":"hello","proto":1,"client":"fullmoon","version":"3.2.0"}
 S -> C  {"type":"welcome","proto":1,"waypoints":[...]}
 ```
 
