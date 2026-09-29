@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 final class WarpRoutesTest {
     @Test
-    void routesAreOrderedByGroupNameAndIdWithoutMutatingTheSnapshot() {
+    void routesAreGroupedInTheServersOwnOrderWithoutMutatingTheSnapshot() {
         BridgeProtocol.Waypoint west = waypoint("west", "West Gate", "gate", 3, 4, 12);
         BridgeProtocol.Waypoint keep = waypoint("keep", "Main Keep", "palace", 0, 64, 0);
         BridgeProtocol.Waypoint gate = waypoint("gate", "Palace Gate", "palace", 0, 64, 0);
@@ -21,7 +21,7 @@ final class WarpRoutesTest {
         List<BridgeProtocol.Waypoint> ordered = WarpRoutes.ordered(snapshot);
 
         assertEquals(List.of(gate, west, keep), snapshot);
-        assertEquals(List.of(west, keep, gate), ordered);
+        assertEquals(List.of(west, gate, keep), ordered, "groups in order, the server's order inside one");
         assertThrows(UnsupportedOperationException.class, () -> ordered.clear());
     }
 

@@ -40,6 +40,9 @@ final class ScoreboardSidebarTest {
         assertTrue(ScoreboardSidebar.isHelp("/텔레포트 로비 곳곳으로 이동"));
         assertTrue(ScoreboardSidebar.isHelp("§f/텔레포트 §7로비 곳곳으로 이동"));
         assertFalse(ScoreboardSidebar.isHelp("소지금 2억원"));
+        assertTrue(ScoreboardSidebar.isHelp("§7도움말 §f/텔레포트 · 로비 곳곳으로 이동"), "the lobby labels its help line");
+        assertEquals("/텔레포트 로비 곳곳으로 이동", ScoreboardSidebar.helpText("§7도움말 §f/텔레포트 · 로비 곳곳으로 이동"));
+        assertEquals("/텔레포트 로비 곳곳으로 이동", ScoreboardSidebar.helpText("/텔레포트 로비 곳곳으로 이동"));
     }
 
     @Test

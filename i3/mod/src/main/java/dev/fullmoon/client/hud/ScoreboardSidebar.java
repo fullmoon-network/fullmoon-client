@@ -172,9 +172,21 @@ public final class ScoreboardSidebar {
             c == '-' || c == '_' || c == '=' || c == '—' || c == '―' || (c >= 0x2500 && c <= 0x257F));
     }
 
-    /** A line that names a command is the sidebar's help, and sits apart under a hairline. */
+    /**
+     * A line that names a command is the sidebar's help, and sits apart under a hairline. The
+     * lobby writes it {@code 도움말 /텔레포트 · 로비 곳곳으로 이동}: a label before the command.
+     */
     static boolean isHelp(String text) {
-        return LEGACY_CODE.matcher(text).replaceAll("").strip().startsWith("/");
+        String plain = LEGACY_CODE.matcher(text).replaceAll("").strip();
+        return plain.startsWith("/") || plain.contains(" /");
+    }
+
+    /** The help line from the command on, its label dropped and the dot after the command with it. */
+    static String helpText(String text) {
+        String plain = LEGACY_CODE.matcher(text).replaceAll("").strip();
+        int slash = plain.indexOf('/');
+        String fromCommand = slash < 0 ? plain : plain.substring(slash);
+        return fromCommand.replaceFirst(" · ", " ");
     }
 
     /** The coloured stretches of a component, flattened, with the server's colours translated. */
@@ -291,7 +303,7 @@ public final class ScoreboardSidebar {
                     cursor += Tokens.Stroke.HAIR + Tokens.Space.SNUG;
                     ruled = true;
                 }
-                helpLine(painter, x + PAD_X, cursor, inner, LEGACY_CODE.matcher(raw).replaceAll("").strip());
+                helpLine(painter, x + PAD_X, cursor, inner, helpText(raw));
                 cursor += LINE;
                 continue;
             }

@@ -7,10 +7,9 @@ import java.util.Objects;
 import dev.fullmoon.client.network.BridgeProtocol;
 
 public final class WarpRoutes {
+    /** Groups in order; inside a group the server's own order stands (the sort is stable). */
     private static final Comparator<BridgeProtocol.Waypoint> ORDER =
-        Comparator.comparing(BridgeProtocol.Waypoint::group, String.CASE_INSENSITIVE_ORDER)
-            .thenComparing(BridgeProtocol.Waypoint::name, String.CASE_INSENSITIVE_ORDER)
-            .thenComparing(BridgeProtocol.Waypoint::id);
+        Comparator.comparing(BridgeProtocol.Waypoint::group, String.CASE_INSENSITIVE_ORDER);
 
     /** The refusals the protocol names. Everything else is the server's own and reads as such. */
     private static final List<String> REASONS = List.of("cooldown", "permission", "world",
