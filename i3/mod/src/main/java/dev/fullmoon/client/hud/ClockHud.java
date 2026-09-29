@@ -24,8 +24,8 @@ public final class ClockHud extends BaseHudElement {
     @Override
     public int measureWidth(Minecraft client) {
         String text = formatText(client, false);
-        return PADDING_H * 2 + moonWidth() + Typeset.width(Tokens.Type.LABEL, "TIME") + Tokens.Space.SNUG
-            + Typeset.width(Tokens.Type.BODY_STRONG, text);
+        return PADDING_H * 2 + moonWidth() + Typeset.width(Tokens.Type.MICRO, "TIME") + Tokens.Space.SNUG
+            + Typeset.width(Tokens.Type.STRONG, text);
     }
 
     private static int moonWidth() {

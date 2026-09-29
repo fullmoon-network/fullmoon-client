@@ -18,7 +18,7 @@ public final class PingHud extends BaseHudElement {
     @Override
     public int measureWidth(Minecraft client) {
         String text = formatText(client, false);
-        return PADDING_H * 2 + Tokens.Space.COZY + Typeset.width(Tokens.Type.BODY_STRONG, text);
+        return PADDING_H * 2 + Tokens.Space.COZY + Typeset.width(Tokens.Type.STRONG, text);
     }
 
     @Override

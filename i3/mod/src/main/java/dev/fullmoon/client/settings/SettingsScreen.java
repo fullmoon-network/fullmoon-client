@@ -9,6 +9,7 @@ import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.keybinds.KeybindsScreen;
 import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.mods.ModsScreen;
+import dev.fullmoon.client.prefs.ClientPrefs;
 import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.text.Typeset;
@@ -49,7 +50,9 @@ public final class SettingsScreen extends SurfaceScreen {
         spec("subtitles", "accessibility", Options::showSubtitles),
         spec("high_contrast", "accessibility", Options::highContrast),
         spec("autosave_indicator", "interface", Options::showAutosaveIndicator),
-        spec("chat_drafts", "interface", Options::saveChatDrafts));
+        spec("chat_drafts", "interface", Options::saveChatDrafts),
+        spec("reduce_motion", "interface", options -> ClientPrefs.REDUCE_MOTION),
+        spec("ui_sounds", "interface", options -> ClientPrefs.UI_SOUNDS));
 
     private record Spec(String id, String section, Function<Options, OptionInstance<Boolean>> option) {}
 
@@ -111,7 +114,7 @@ public final class SettingsScreen extends SurfaceScreen {
         int edge = compact ? Tokens.Space.LOOSE : Tokens.Space.SECTION;
         int frame = Math.min(MAX_CONTENT, width - edge * 2);
         content = new Box((width - frame) / 2, edge, frame, height - edge * 2);
-        footerY = content.bottom() - Tokens.Type.LABEL.leading() - Tokens.Space.COZY;
+        footerY = content.bottom() - Tokens.Type.MICRO.leading() - Tokens.Space.COZY;
 
         int railY = content.y() + HubChrome.mastheadHeight(compact);
         hub.place(new Box(content.x(), railY, content.w(), TabRail.HEIGHT));
@@ -136,7 +139,7 @@ public final class SettingsScreen extends SurfaceScreen {
 
         if (toggle != null) {
             int cardY = body.y() + DevChrome.sectionHeadHeight()
-                + Tokens.Type.TITLE.leading() + Tokens.Space.COZY
+                + Tokens.Type.ROW.leading() + Tokens.Space.COZY
                 + Tokens.Type.BODY.leading() * 2 + Tokens.Space.GUTTER;
             int toggleW = Toggle.TRACK_W;
             toggle.place(new Box(detail.right() - toggleW - Tokens.Space.COZY,
@@ -182,10 +185,10 @@ public final class SettingsScreen extends SurfaceScreen {
 
         SettingSearch.Entry copy = item.copy();
         int y = DevChrome.sectionHead(painter, copy.section(), detail.x(), body.y());
-        Typeset.draw(painter, Tokens.Type.TITLE, copy.label(), detail.x(), y,
+        Typeset.draw(painter, Tokens.Type.ROW, copy.label(), detail.x(), y,
             Tokens.Color.INK_PRIMARY);
 
-        int descY = y + Tokens.Type.TITLE.leading() + Tokens.Space.COZY;
+        int descY = y + Tokens.Type.ROW.leading() + Tokens.Space.COZY;
         Typeset.drawWrapped(painter, Tokens.Type.BODY, copy.description(), detail.x(), descY,
             detail.w(), height < COMPACT_HEIGHT ? 2 : 3, Tokens.Color.INK_SECONDARY);
 
@@ -194,12 +197,12 @@ public final class SettingsScreen extends SurfaceScreen {
         painter.border(detail.x(), cardY, detail.w(), CARD_HEIGHT, Tokens.Radius.SM, Tokens.Stroke.HAIR,
             Tokens.Color.LINE_HAIRLINE);
 
-        int textY = cardY + (CARD_HEIGHT - Tokens.Type.BODY_STRONG.leading()) / 2;
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG, tr("state.enabled"),
+        int textY = cardY + (CARD_HEIGHT - Tokens.Type.STRONG.leading()) / 2;
+        Typeset.draw(painter, Tokens.Type.STRONG, tr("state.enabled"),
             detail.x() + Tokens.Space.COZY, textY, Tokens.Color.INK_PRIMARY);
 
         int noteY = cardY + CARD_HEIGHT + Tokens.Space.COZY;
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("source.minecraft"), detail.x(), noteY,
+        Typeset.draw(painter, Tokens.Type.MICRO, tr("source.minecraft"), detail.x(), noteY,
             Tokens.Color.INK_TERTIARY);
     }
 
@@ -210,9 +213,9 @@ public final class SettingsScreen extends SurfaceScreen {
     private void footer(Painter painter) {
         painter.hRule(content.x(), footerY, content.w(), Tokens.Color.LINE_HAIRLINE);
         int y = footerY + Tokens.Space.COZY;
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("footer.keys"), content.x(), y,
+        Typeset.draw(painter, Tokens.Type.MICRO, tr("footer.keys"), content.x(), y,
             Tokens.Color.INK_TERTIARY);
-        Typeset.drawRight(painter, Tokens.Type.LABEL, tr("footer.saved"), content.right(), y,
+        Typeset.drawRight(painter, Tokens.Type.MICRO, tr("footer.saved"), content.right(), y,
             Tokens.Color.INK_TERTIARY);
     }
 

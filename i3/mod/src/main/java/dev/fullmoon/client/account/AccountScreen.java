@@ -67,7 +67,7 @@ public final class AccountScreen extends SurfaceScreen {
         int edge = compact ? Tokens.Space.LOOSE : Tokens.Space.SECTION;
         int frame = Math.min(MAX_CONTENT, width - edge * 2);
         content = new Box((width - frame) / 2, edge, frame, height - edge * 2);
-        footerY = content.bottom() - Tokens.Type.LABEL.leading() - Tokens.Space.COZY;
+        footerY = content.bottom() - Tokens.Type.MICRO.leading() - Tokens.Space.COZY;
 
         int railY = content.y() + HubChrome.mastheadHeight(compact);
         hub.place(new Box(content.x(), railY, content.w(), TabRail.HEIGHT));
@@ -132,12 +132,12 @@ public final class AccountScreen extends SurfaceScreen {
 
         int textX = body.x() + Tokens.Space.COZY;
         int row1Y = y + Tokens.Space.COZY;
-        Typeset.draw(painter, Tokens.Type.TITLE, username, textX, row1Y, Tokens.Color.INK_PRIMARY);
-        Typeset.drawRight(painter, Tokens.Type.LABEL, tr("type", userType),
-            body.right() - Tokens.Space.COZY, row1Y + (Tokens.Type.TITLE.leading() - Tokens.Type.LABEL.leading()) / 2,
+        Typeset.draw(painter, Tokens.Type.ROW, username, textX, row1Y, Tokens.Color.INK_PRIMARY);
+        Typeset.drawRight(painter, Tokens.Type.MICRO, tr("type", userType),
+            body.right() - Tokens.Space.COZY, row1Y + (Tokens.Type.ROW.leading() - Tokens.Type.MICRO.leading()) / 2,
             Tokens.Color.INK_TERTIARY);
 
-        int row2Y = row1Y + Tokens.Type.TITLE.leading() + Tokens.Space.SNUG;
+        int row2Y = row1Y + Tokens.Type.ROW.leading() + Tokens.Space.SNUG;
         Typeset.draw(painter, Tokens.Type.BODY, "UUID: " + uuid, textX, row2Y, Tokens.Color.INK_SECONDARY);
 
         // Connection Section
@@ -149,16 +149,16 @@ public final class AccountScreen extends SurfaceScreen {
             Tokens.Color.LINE_HAIRLINE);
 
         int sRow1Y = y + Tokens.Space.COZY;
-        int dotCenterY = sRow1Y + Typeset.capHeight(Tokens.Type.BODY_STRONG) / 2;
+        int dotCenterY = sRow1Y + Typeset.capHeight(Tokens.Type.STRONG) / 2;
         painter.dot(textX + Tokens.Space.SNUG, dotCenterY, Tokens.Space.SNUG,
             live ? Tokens.Color.STATUS_LIVE : Tokens.Color.STATUS_IDLE);
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG, serverStatus,
+        Typeset.draw(painter, Tokens.Type.STRONG, serverStatus,
             textX + Tokens.Space.SECTION, sRow1Y,
             live ? Tokens.Color.INK_PRIMARY : Tokens.Color.INK_SECONDARY);
 
-        int sRow2Y = sRow1Y + Tokens.Type.BODY_STRONG.leading() + Tokens.Space.SNUG;
+        int sRow2Y = sRow1Y + Tokens.Type.STRONG.leading() + Tokens.Space.SNUG;
         String authText = live ? tr("footer.info") : tr("server.offline");
-        Typeset.draw(painter, Tokens.Type.LABEL, authText, textX + Tokens.Space.SECTION, sRow2Y,
+        Typeset.draw(painter, Tokens.Type.MICRO, authText, textX + Tokens.Space.SECTION, sRow2Y,
             Tokens.Color.INK_TERTIARY);
     }
 
@@ -169,10 +169,10 @@ public final class AccountScreen extends SurfaceScreen {
     private void footer(Painter painter) {
         painter.hRule(content.x(), footerY, content.w(), Tokens.Color.LINE_HAIRLINE);
         int y = footerY + Tokens.Space.COZY;
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("footer.keys"), content.x(), y,
+        Typeset.draw(painter, Tokens.Type.MICRO, tr("footer.keys"), content.x(), y,
             Tokens.Color.INK_TERTIARY);
         String rightText = statusMessage.isEmpty() ? tr("footer.info") : statusMessage;
-        Typeset.drawRight(painter, Tokens.Type.LABEL, rightText, content.right(), y,
+        Typeset.drawRight(painter, Tokens.Type.MICRO, rightText, content.right(), y,
             Tokens.Color.ACCENT);
     }
 

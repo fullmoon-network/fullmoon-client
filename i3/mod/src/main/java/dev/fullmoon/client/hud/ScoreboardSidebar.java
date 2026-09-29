@@ -11,7 +11,7 @@ import dev.fullmoon.client.menu.ServerMenuSample;
 import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.text.Typeset;
-import dev.fullmoon.client.ui.Palace;
+import dev.fullmoon.client.ui.Glass;
 
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
@@ -157,42 +157,40 @@ public final class ScoreboardSidebar {
     private static void draw(Painter painter, Component title, List<Line> all, List<Box> occupied) {
         // The frame already rules the title off, so a server's own rule straight under it would double it.
         List<Line> lines = !all.isEmpty() && isRule(all.getFirst().name().getString()) ? all.subList(1, all.size()) : all;
-        int titleW = Typeset.width(Tokens.Type.HEADING, title);
+        int titleW = Typeset.width(Tokens.Type.TITLE, title);
         int rowsW = 0;
         for (Line line : lines) {
             if (isRule(line.name().getString())) {
                 continue;
             }
-            int valueW = Typeset.width(Tokens.Type.BODY_STRONG, line.value());
+            int valueW = Typeset.width(Tokens.Type.STRONG, line.value());
             rowsW = Math.max(rowsW, Typeset.width(Tokens.Type.BODY, line.name())
                 + (valueW > 0 ? Tokens.Space.COZY + valueW : 0));
         }
         int w = Math.max(titleW, rowsW) + PAD * 2;
         int rule = Tokens.Space.SNUG * 2 + Tokens.Stroke.HAIR;
-        int h = PAD + Tokens.Type.HEADING.leading() + rule + lines.size() * Tokens.Type.BODY.leading() + PAD;
+        int h = PAD + Tokens.Type.TITLE.leading() + rule + lines.size() * Tokens.Type.BODY.leading() + PAD;
         Box at = place(painter.width(), painter.height(), w, h, occupied);
         int x = at.x();
         int y = at.y();
 
         painter.fill(x, y, w, h, Tokens.Radius.NONE, Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.82f));
-        painter.border(x, y, w, h, Tokens.Radius.NONE, Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT_FAINT);
-        Palace.ticks(painter, x - 1, y - 1, w + 2, h + 2, TICK);
 
         int cursor = y + PAD;
-        Typeset.draw(painter, Tokens.Type.HEADING, title, x + (w - titleW) / 2, cursor, Tokens.Color.ACCENT);
-        cursor += Tokens.Type.HEADING.leading() + Tokens.Space.SNUG;
-        Palace.dashedRule(painter, x + PAD, cursor, w - PAD * 2);
+        Typeset.draw(painter, Tokens.Type.TITLE, title, x + (w - titleW) / 2, cursor, Tokens.Color.ACCENT);
+        cursor += Tokens.Type.TITLE.leading() + Tokens.Space.SNUG;
+        Glass.hair(painter, x + PAD, cursor, w - PAD * 2);
         cursor += Tokens.Stroke.HAIR + Tokens.Space.SNUG;
         for (Line line : lines) {
             if (isRule(line.name().getString()) && line.value().getString().isBlank()) {
-                Palace.dashedRule(painter, x + PAD, cursor + Tokens.Type.BODY.leading() / 2, w - PAD * 2);
+                Glass.hair(painter, x + PAD, cursor + Tokens.Type.BODY.leading() / 2, w - PAD * 2);
                 cursor += Tokens.Type.BODY.leading();
                 continue;
             }
             Typeset.draw(painter, Tokens.Type.BODY, line.name(), x + PAD, cursor, Tokens.Color.INK_SECONDARY);
-            int valueW = Typeset.width(Tokens.Type.BODY_STRONG, line.value());
+            int valueW = Typeset.width(Tokens.Type.STRONG, line.value());
             if (valueW > 0) {
-                Typeset.draw(painter, Tokens.Type.BODY_STRONG, line.value(), x + w - PAD - valueW, cursor,
+                Typeset.draw(painter, Tokens.Type.STRONG, line.value(), x + w - PAD - valueW, cursor,
                     Tokens.Color.INK_PRIMARY);
             }
             cursor += Tokens.Type.BODY.leading();

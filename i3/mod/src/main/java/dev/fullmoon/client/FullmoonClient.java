@@ -6,7 +6,9 @@ import dev.fullmoon.client.map.MapScreen;
 import dev.fullmoon.client.menu.ServerMenuSample;
 import dev.fullmoon.client.menu.ServerMenuScreen;
 import dev.fullmoon.client.network.FullmoonChannel;
+import dev.fullmoon.client.prefs.ClientPrefs;
 import dev.fullmoon.client.settings.SettingsScreen;
+import dev.fullmoon.client.sound.GameSounds;
 import dev.fullmoon.client.text.Typeset;
 import dev.fullmoon.client.title.FullmoonTitleScreen;
 import dev.fullmoon.client.ui.DevScreen;
@@ -66,6 +68,8 @@ public final class FullmoonClient implements ClientModInitializer {
         KeyMappingHelper.registerKeyMapping(HUD_EDITOR);
         KeyMappingHelper.registerKeyMapping(MAP);
         FullmoonChannel.register();
+        GameSounds.install();
+        ClientPrefs.load();
         dev.fullmoon.client.hud.HudOverlay.init();
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {

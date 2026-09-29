@@ -11,7 +11,7 @@ import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.settings.SettingsScreen;
 import dev.fullmoon.client.text.Typeset;
-import dev.fullmoon.client.ui.Palace;
+import dev.fullmoon.client.ui.Glass;
 import dev.fullmoon.client.ui.SurfaceScreen;
 
 import net.fabricmc.loader.api.FabricLoader;
@@ -103,14 +103,14 @@ public final class FullmoonTitleScreen extends SurfaceScreen {
         int today = wide ? 30 : 24;
         int playH = wide ? 44 : 32;
         int rowH = wide ? 24 : 19;
-        int plaqueH = band + Palace.DANCHEONG_HEIGHT + pad + today + Tokens.Space.LOOSE
+        int plaqueH = band + pad + today + Tokens.Space.LOOSE
             + playH + Tokens.Space.COZY + rowH * rows.size() + pad;
         plaque = new Box(margin, Math.max(Tokens.Space.SECTION, (height - plaqueH) / 2 - Tokens.Space.COZY),
             plaqueW, plaqueH);
 
         int x = plaque.x() + pad;
         int w = plaque.w() - pad * 2;
-        int y = plaque.y() + band + Palace.DANCHEONG_HEIGHT + pad + today + Tokens.Space.LOOSE;
+        int y = plaque.y() + band + pad + today + Tokens.Space.LOOSE;
         play.place(new Box(x, y, w, playH));
         y += playH + Tokens.Space.COZY;
         for (TitleRow row : rows) {
@@ -119,8 +119,8 @@ public final class FullmoonTitleScreen extends SurfaceScreen {
         }
 
         int barY = height - Tokens.Space.SECTION;
-        int small = Typeset.width(Tokens.Type.BODY_STRONG, language.label()) + Tokens.Space.GUTTER + Tokens.Space.SNUG;
-        int smallA = Typeset.width(Tokens.Type.BODY_STRONG, accessibility.label()) + Tokens.Space.GUTTER + Tokens.Space.SNUG;
+        int small = Typeset.width(Tokens.Type.STRONG, language.label()) + Tokens.Space.GUTTER + Tokens.Space.SNUG;
+        int smallA = Typeset.width(Tokens.Type.STRONG, accessibility.label()) + Tokens.Space.GUTTER + Tokens.Space.SNUG;
         accessibility.place(new Box(width - margin - smallA, barY - rowH / 2, smallA, rowH));
         language.place(new Box(width - margin - smallA - Tokens.Space.LOOSE - small, barY - rowH / 2, small, rowH));
 
@@ -196,14 +196,14 @@ public final class FullmoonTitleScreen extends SurfaceScreen {
         float cx = width - (wide ? 150.0f : 90.0f);
         float cy = height * 0.27f;
         painter.moon(cx, cy, r, moon.lit(), moon.waxing(), Tokens.Color.MOON_LIT, Tokens.Color.MOON_SHADOW);
-        int dial = moon.full() ? Tokens.Color.ACCENT : Tokens.Color.LINE_GILT;
+        int dial = moon.full() ? Tokens.Color.ACCENT : Tokens.Color.LINE_STRONG;
         painter.ring(cx, cy, r + 9.0f, Tokens.Stroke.HAIR, dial);
         for (int tick = 0; tick < 60; tick++) {
             double a = tick / 60.0 * Math.PI * 2.0;
             boolean major = tick % 5 == 0;
             float d = r + (major ? 15.0f : 13.0f);
             painter.dot(cx + (float) Math.cos(a) * d, cy + (float) Math.sin(a) * d,
-                major ? 1.0f : 0.5f, major ? dial : Tokens.Color.LINE_GILT_FAINT);
+                major ? 1.0f : 0.5f, major ? dial : Tokens.Color.LINE_HAIRLINE);
         }
     }
 
@@ -219,44 +219,40 @@ public final class FullmoonTitleScreen extends SurfaceScreen {
 
     private void plaque(Painter painter) {
         Box p = plaque;
-        Palace.panel(painter, p.x(), p.y(), p.w(), p.h());
-        painter.fill(p.x() + 1, p.y() + 1, p.w() - 2, band - 1, Tokens.Color.SURFACE_RAISED);
-        Palace.lattice(painter, p.x() + 1, p.y() + 1, p.w() - 2, band - 1);
-        Palace.dancheong(painter, p.x() + 1, p.y() + band, p.w() - 2);
+        Glass.panel(painter, p);
+        Glass.hair(painter, p.x(), p.y() + band, p.w());
 
         boolean wide = width >= WIDE;
         int pad = wide ? Tokens.Space.GUTTER : Tokens.Space.LOOSE;
-        Typeset.draw(painter, Tokens.Type.LABEL, I18n.get("fullmoon.title.tagline"), p.x() + pad,
+        Typeset.draw(painter, Tokens.Type.MICRO, I18n.get("fullmoon.title.tagline"), p.x() + pad,
             p.y() + pad - Tokens.Space.TIGHT, Tokens.Color.ACCENT);
-        Tokens.Type.Role mark = wide ? Tokens.Type.WORDMARK : Tokens.Type.DISPLAY;
-        int sealSize = wide ? 34 : 24;
-        int rowTop = p.y() + pad + Tokens.Type.LABEL.leading();
+        Tokens.Type.Role mark = wide ? Tokens.Type.MARK : Tokens.Type.DISPLAY;
+        int rowTop = p.y() + pad + Tokens.Type.MICRO.leading();
         int rowH = band - (rowTop - p.y()) - Tokens.Space.COZY;
-        Palace.seal(painter, p.x() + pad, rowTop + (rowH - sealSize) / 2.0f, sealSize);
-        Typeset.draw(painter, mark, "Fullmoon", p.x() + pad + sealSize + Tokens.Space.LOOSE,
+        Typeset.draw(painter, mark, "Fullmoon", p.x() + pad,
             Typeset.centred(mark, rowTop, rowH), Tokens.Color.INK_PRIMARY);
     }
 
     private void today(Painter painter) {
         boolean wide = width >= WIDE;
         int pad = wide ? Tokens.Space.GUTTER : Tokens.Space.LOOSE;
-        int top = plaque.y() + band + Palace.DANCHEONG_HEIGHT + pad;
+        int top = plaque.y() + band + pad;
         int h = wide ? 30 : 24;
         float r = wide ? 7.0f : 5.5f;
         float cx = plaque.x() + pad + r + 1.0f;
         float cy = top + h / 2.0f - 1.0f;
         painter.moon(cx, cy, r, moon.lit(), moon.waxing(), Tokens.Color.MOON_LIT, Tokens.Color.MOON_SHADOW);
-        painter.ring(cx, cy, r + 2.5f, Tokens.Stroke.HAIR, moon.full() ? Tokens.Color.ACCENT : Tokens.Color.LINE_GILT);
+        painter.ring(cx, cy, r + 2.5f, Tokens.Stroke.HAIR, moon.full() ? Tokens.Color.ACCENT : Tokens.Color.LINE_STRONG);
 
         int textX = (int) (cx + r + Tokens.Space.LOOSE);
         String headline = I18n.get("fullmoon.title.moon." + moon.name().name().toLowerCase(Locale.ROOT));
         String detail = moon.full()
             ? I18n.get("fullmoon.title.moon.next", moon.daysToNextFull())
             : I18n.get("fullmoon.title.moon.until", moon.daysToFull());
-        Typeset.draw(painter, Tokens.Type.HEADING, headline, textX, top, Tokens.Color.ACCENT);
-        Typeset.draw(painter, Tokens.Type.LABEL, detail, textX, top + Tokens.Type.HEADING.leading() - 1,
+        Typeset.draw(painter, Tokens.Type.TITLE, headline, textX, top, Tokens.Color.ACCENT);
+        Typeset.draw(painter, Tokens.Type.MICRO, detail, textX, top + Tokens.Type.TITLE.leading() - 1,
             Tokens.Color.INK_TERTIARY);
-        Palace.dashedRule(painter, plaque.x() + pad, top + h + Tokens.Space.SNUG, plaque.w() - pad * 2);
+        Glass.hair(painter, plaque.x() + pad, top + h + Tokens.Space.SNUG, plaque.w() - pad * 2);
     }
 
     private void bar(Painter painter) {
@@ -264,12 +260,12 @@ public final class FullmoonTitleScreen extends SurfaceScreen {
         int margin = wide ? Tokens.Space.FIELD + Tokens.Space.COZY : Tokens.Space.SECTION;
         int y = height - Tokens.Space.SECTION;
         String name = Minecraft.getInstance().getUser().getName();
-        int nameY = Typeset.centred(Tokens.Type.BODY_STRONG, y - 9, 18);
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG, name, margin, nameY, Tokens.Color.INK_SECONDARY);
+        int nameY = Typeset.centred(Tokens.Type.STRONG, y - 9, 18);
+        Typeset.draw(painter, Tokens.Type.STRONG, name, margin, nameY, Tokens.Color.INK_SECONDARY);
         String meta = (version.isEmpty() ? "Fullmoon" : "Fullmoon " + version)
             + "  ·  " + I18n.get("fullmoon.title.copyright");
         int metaRight = language.bounds().x() - Tokens.Space.GUTTER;
-        Typeset.drawRight(painter, Tokens.Type.LABEL, meta, metaRight,
-            Typeset.centred(Tokens.Type.LABEL, y - 9, 18), Tokens.Color.INK_TERTIARY);
+        Typeset.drawRight(painter, Tokens.Type.MICRO, meta, metaRight,
+            Typeset.centred(Tokens.Type.MICRO, y - 9, 18), Tokens.Color.INK_TERTIARY);
     }
 }

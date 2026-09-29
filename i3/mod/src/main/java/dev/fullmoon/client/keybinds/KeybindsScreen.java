@@ -135,7 +135,7 @@ public final class KeybindsScreen extends SurfaceScreen {
         int edge = compact ? Tokens.Space.LOOSE : Tokens.Space.SECTION;
         int frame = Math.min(MAX_CONTENT, width - edge * 2);
         content = new Box((width - frame) / 2, edge, frame, height - edge * 2);
-        footerY = content.bottom() - Tokens.Type.LABEL.leading() - Tokens.Space.COZY;
+        footerY = content.bottom() - Tokens.Type.MICRO.leading() - Tokens.Space.COZY;
 
         int railY = content.y() + HubChrome.mastheadHeight(compact);
         hub.place(new Box(content.x(), railY, content.w(), TabRail.HEIGHT));
@@ -160,9 +160,9 @@ public final class KeybindsScreen extends SurfaceScreen {
 
         if (rebind != null && reset != null) {
             int cardY = body.y() + DevChrome.sectionHeadHeight()
-                + Tokens.Type.TITLE.leading() + Tokens.Space.COZY;
+                + Tokens.Type.ROW.leading() + Tokens.Space.COZY;
             int buttonY = cardY + CARD_HEIGHT + Tokens.Space.COZY
-                + Tokens.Type.LABEL.leading() + Tokens.Space.LOOSE;
+                + Tokens.Type.MICRO.leading() + Tokens.Space.LOOSE;
             int rebindW = rebind.measure();
             int resetW = reset.measure();
             rebind.place(new Box(detail.x(), buttonY, rebindW, Button.HEIGHT));
@@ -208,10 +208,10 @@ public final class KeybindsScreen extends SurfaceScreen {
 
         KeybindEntry entry = item.entry();
         int y = DevChrome.sectionHead(painter, entry.category(), detail.x(), body.y());
-        Typeset.draw(painter, Tokens.Type.TITLE, entry.label(), detail.x(), y,
+        Typeset.draw(painter, Tokens.Type.ROW, entry.label(), detail.x(), y,
             Tokens.Color.INK_PRIMARY);
 
-        int cardY = y + Tokens.Type.TITLE.leading() + Tokens.Space.COZY;
+        int cardY = y + Tokens.Type.ROW.leading() + Tokens.Space.COZY;
         boolean hasConflict = !item.conflicts().isEmpty();
         int cardBorder = listening ? Tokens.Color.ACCENT
             : (hasConflict ? Tokens.Color.STATUS_DANGER : Tokens.Color.LINE_HAIRLINE);
@@ -220,14 +220,14 @@ public final class KeybindsScreen extends SurfaceScreen {
         painter.border(detail.x(), cardY, detail.w(), CARD_HEIGHT, Tokens.Radius.SM, Tokens.Stroke.HAIR,
             cardBorder);
 
-        int textY = cardY + (CARD_HEIGHT - Tokens.Type.BODY_STRONG.leading()) / 2;
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG, tr("entry.id", entry.id()),
+        int textY = cardY + (CARD_HEIGHT - Tokens.Type.STRONG.leading()) / 2;
+        Typeset.draw(painter, Tokens.Type.STRONG, tr("entry.id", entry.id()),
             detail.x() + Tokens.Space.COZY, textY, Tokens.Color.INK_SECONDARY);
 
         String boundText = listening ? tr("state.listening") : entry.boundKey();
         int boundColor = listening ? Tokens.Color.ACCENT
             : (hasConflict ? Tokens.Color.STATUS_DANGER : Tokens.Color.INK_PRIMARY);
-        Typeset.drawRight(painter, Tokens.Type.BODY_STRONG, boundText,
+        Typeset.drawRight(painter, Tokens.Type.STRONG, boundText,
             detail.right() - Tokens.Space.COZY, textY, boundColor);
 
         int conflictY = cardY + CARD_HEIGHT + Tokens.Space.COZY;
@@ -237,10 +237,10 @@ public final class KeybindsScreen extends SurfaceScreen {
                 if (i > 0) warning.append(", ");
                 warning.append(item.conflicts().get(i).label());
             }
-            Typeset.drawWrapped(painter, Tokens.Type.LABEL, warning.toString(), detail.x(), conflictY,
+            Typeset.drawWrapped(painter, Tokens.Type.MICRO, warning.toString(), detail.x(), conflictY,
                 detail.w(), 2, Tokens.Color.STATUS_DANGER);
         } else {
-            Typeset.draw(painter, Tokens.Type.LABEL, tr("conflict.none"), detail.x(), conflictY,
+            Typeset.draw(painter, Tokens.Type.MICRO, tr("conflict.none"), detail.x(), conflictY,
                 Tokens.Color.INK_TERTIARY);
         }
     }
@@ -252,9 +252,9 @@ public final class KeybindsScreen extends SurfaceScreen {
     private void footer(Painter painter) {
         painter.hRule(content.x(), footerY, content.w(), Tokens.Color.LINE_HAIRLINE);
         int y = footerY + Tokens.Space.COZY;
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("footer.keys"), content.x(), y,
+        Typeset.draw(painter, Tokens.Type.MICRO, tr("footer.keys"), content.x(), y,
             Tokens.Color.INK_TERTIARY);
-        Typeset.drawRight(painter, Tokens.Type.LABEL, tr("footer.saved"), content.right(), y,
+        Typeset.drawRight(painter, Tokens.Type.MICRO, tr("footer.saved"), content.right(), y,
             Tokens.Color.INK_TERTIARY);
     }
 

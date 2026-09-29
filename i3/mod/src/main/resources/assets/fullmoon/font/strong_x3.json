@@ -2,15 +2,9 @@
     "providers": [
         {
             "type": "ttf",
-            "file": "fullmoon:display.ttf",
-            "size": 13,
-            "oversample": 2
-        },
-        {
-            "type": "ttf",
             "file": "fullmoon:sans-semibold.ttf",
-            "size": 13,
-            "oversample": 2
+            "size": 9,
+            "oversample": 3
         },
         {
             "type": "reference",

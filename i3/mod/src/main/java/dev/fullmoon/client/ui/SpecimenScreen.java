@@ -56,7 +56,7 @@ public final class SpecimenScreen extends DevScreen {
             typeRoll(painter, body.x(), body.y(), leftW) + Tokens.Space.SECTION, leftW);
         int rightBottom = figures(painter, rightX,
             colorBands(painter, rightX, body.y(), rightW) + Tokens.Space.SECTION, rightW);
-        rightBottom = palace(painter, rightX, rightBottom + Tokens.Space.SECTION, rightW);
+        rightBottom = glass(painter, rightX, rightBottom + Tokens.Space.SECTION, rightW);
 
         painter.vRule(body.x() + leftW + Tokens.Space.GUTTER / 2, body.y(),
             Math.max(leftBottom, rightBottom) - body.y(), Tokens.Color.LINE_HAIRLINE);
@@ -71,7 +71,7 @@ public final class SpecimenScreen extends DevScreen {
     private static int typeRoll(Painter painter, int x, int y, int w) {
         int cursor = DevChrome.sectionHead(painter, "타입 스케일", x, y);
         int nameCol = nameColumn();
-        int metricW = Typeset.tabularWidth(Tokens.Type.LABEL, "22/28") + Tokens.Space.LOOSE;
+        int metricW = Typeset.tabularWidth(Tokens.Type.MICRO, "22/28") + Tokens.Space.LOOSE;
         int sampleW = w - nameCol - metricW;
 
         for (Map.Entry<String, Tokens.Type.Role> entry : Tokens.Type.ROLL) {
@@ -81,7 +81,7 @@ public final class SpecimenScreen extends DevScreen {
             // however large the face in it is.
             int textY = Typeset.centred(role, cursor, rowH);
 
-            Typeset.draw(painter, Tokens.Type.LABEL, entry.getKey(), x, textY, Tokens.Color.INK_TERTIARY);
+            Typeset.draw(painter, Tokens.Type.MICRO, entry.getKey(), x, textY, Tokens.Color.INK_TERTIARY);
 
             // The column is clipped, not the row: the game hangs every face off one 9 px line
             // box, so a 22 px sample legitimately draws taller than the band it is measured in,
@@ -90,7 +90,7 @@ public final class SpecimenScreen extends DevScreen {
             Typeset.draw(painter, role, sample(role, sampleW), x + nameCol, textY, Tokens.Color.INK_PRIMARY);
             painter.popClip();
 
-            Typeset.tabularRight(painter, Tokens.Type.LABEL, role.px() + "/" + role.leading(),
+            Typeset.tabularRight(painter, Tokens.Type.MICRO, role.px() + "/" + role.leading(),
                 x + w, textY, Tokens.Color.INK_TERTIARY);
 
             cursor += rowH;
@@ -118,7 +118,7 @@ public final class SpecimenScreen extends DevScreen {
     private static int nameColumn() {
         int widest = 0;
         for (Map.Entry<String, Tokens.Type.Role> entry : Tokens.Type.ROLL) {
-            widest = Math.max(widest, Typeset.width(Tokens.Type.LABEL, entry.getKey()));
+            widest = Math.max(widest, Typeset.width(Tokens.Type.MICRO, entry.getKey()));
         }
         return widest + Tokens.Space.LOOSE;
     }
@@ -146,44 +146,48 @@ public final class SpecimenScreen extends DevScreen {
                     painter.dot(cx + cellW / 2.0f, mid, Tokens.Space.SNUG, Tokens.Color.ACCENT);
                 }
             }
-            Typeset.drawCentered(painter, Tokens.Type.LABEL, captions[i],
+            Typeset.drawCentered(painter, Tokens.Type.MICRO, captions[i],
                 cx + cellW / 2, cursor + cellH + Tokens.Space.SNUG, Tokens.Color.INK_TERTIARY);
         }
-        return cursor + cellH + Tokens.Space.SNUG + Tokens.Type.LABEL.leading();
+        return cursor + cellH + Tokens.Space.SNUG + Tokens.Type.MICRO.leading();
     }
 
     /**
-     * The palace vocabulary on one small panel, then the moon at five phases. The phases are
-     * the ones the casino and the clock reach — a sliver, a crescent, the half, a gibbous and
-     * the full disc — so a terminator that bends the wrong way shows up here first.
+     * The glass vocabulary on one small panel — a header with its way back and out, a chosen row,
+     * a keycap, an action row, a reason line — then the moon at five phases. The phases are the
+     * ones the casino and the clock reach, so a terminator that bends the wrong way shows up here
+     * first.
      */
-    private static int palace(Painter painter, int x, int y, int w) {
-        int cursor = DevChrome.sectionHead(painter, "궁궐 · 달", x, y);
-        int out = Palace.BRACKET_OUTSET;
-        int px = x + out;
-        int py = cursor + out;
-        int pw = w - out * 2;
-        int band = 22;
-        int ph = band + Palace.DANCHEONG_HEIGHT + 30;
+    private static int glass(Painter painter, int x, int y, int w) {
+        int cursor = DevChrome.sectionHead(painter, "유리 · 달", x, y);
+        Box panel = new Box(x + 1, cursor + 1, w - 2, 96);
+        Glass.panel(painter, panel);
+        int header = Tokens.Size.HEADER;
+        Glass.back(painter, panel.x() + 10, panel.y() + header / 2.0f, 8, Tokens.Color.INK_TERTIARY);
+        Typeset.draw(painter, Tokens.Type.TITLE, "만월", panel.x() + 18,
+            Typeset.centred(Tokens.Type.TITLE, panel.y(), header), Tokens.Color.INK_PRIMARY);
+        Glass.close(painter, panel.right() - 14, panel.y() + header / 2.0f, 7, Tokens.Color.INK_TERTIARY);
+        Glass.keycap(painter, panel.right() - 24 - Glass.keycapWidth("Esc"), panel.y() + (header - Tokens.Size.KEYCAP) / 2, "Esc");
+        Glass.hair(painter, panel.x(), panel.y() + header, panel.w());
 
-        Palace.panel(painter, px, py, pw, ph);
-        painter.fill(px + 1, py + 1, pw - 2, band - 1, Tokens.Color.SURFACE_RAISED);
-        Palace.lattice(painter, px + 1, py + 1, pw - 2, band - 1);
-        int seal = band - 8;
-        Palace.seal(painter, px + 6, py + 4, seal);
-        Typeset.draw(painter, Tokens.Type.HEADING, "만월궁",
-            px + 6 + seal + Tokens.Space.COZY, Typeset.centred(Tokens.Type.HEADING, py, band), Tokens.Color.INK_PRIMARY);
-        Palace.dancheong(painter, px + 1, py + band, pw - 2);
+        int rowY = panel.y() + header;
+        Box chosen = new Box(panel.x(), rowY, panel.w(), Tokens.Size.ROW_ONE);
+        painter.fill(chosen.x(), chosen.y(), chosen.w(), chosen.h(), Tokens.Color.ACCENT_WASH);
+        painter.fill(chosen.x(), chosen.y(), Tokens.Stroke.BAR, chosen.h(), Tokens.Color.ACCENT);
+        Typeset.draw(painter, Tokens.Type.ROW, "선택한 줄", chosen.x() + Tokens.Space.LOOSE,
+            Typeset.centred(Tokens.Type.ROW, chosen.y(), chosen.h()), Tokens.Color.INK_PRIMARY);
+        Box other = new Box(panel.x(), chosen.bottom(), panel.w(), Tokens.Size.ROW_ONE);
+        painter.fill(other.x(), other.y(), other.w(), other.h(), Tokens.Color.SURFACE_RAISED);
+        Typeset.draw(painter, Tokens.Type.ROW, "가리킨 줄", other.x() + Tokens.Space.LOOSE,
+            Typeset.centred(Tokens.Type.ROW, other.y(), other.h()), Tokens.Color.INK_PRIMARY);
 
-        int rowY = py + band + Palace.DANCHEONG_HEIGHT + 8;
-        String[] rows = {"선택한 줄", "다른 줄"};
-        for (int i = 0; i < rows.length; i++) {
-            int ry = rowY + i * 11;
-            Palace.marker(painter, px + 10, ry + Typeset.capHeight(Tokens.Type.BODY) / 2.0f + 1, i == 0);
-            Typeset.draw(painter, Tokens.Type.BODY, rows[i], px + 18, ry,
-                i == 0 ? Tokens.Color.INK_PRIMARY : Tokens.Color.INK_SECONDARY);
-        }
-        cursor = py + ph + out + Tokens.Space.LOOSE;
+        int foot = other.bottom() + Tokens.Space.SNUG;
+        Glass.actionRow(painter, new Box(panel.x() + Tokens.Space.LOOSE, foot,
+            panel.w() / 2 - Tokens.Space.LOOSE, Tokens.Size.ACTION_ROW), false, "고르기", 1.0f);
+        Glass.markedLine(painter, panel.midX() + Tokens.Space.COZY,
+            Typeset.centred(Tokens.Type.STRONG, foot, Tokens.Size.ACTION_ROW), "잔액이 부족해요",
+            Tokens.Color.STATUS_DANGER, true);
+        cursor = panel.bottom() + Tokens.Space.LOOSE;
 
         float[] phases = {0.08f, 0.3f, 0.5f, 0.75f, 1.0f};
         float r = 9.0f;
@@ -191,10 +195,10 @@ public final class SpecimenScreen extends DevScreen {
         for (int i = 0; i < phases.length; i++) {
             float cx = x + cell * i + cell / 2.0f;
             painter.moon(cx, cursor + r, r, phases[i], true, Tokens.Color.MOON_LIT, Tokens.Color.MOON_SHADOW);
-            Typeset.drawCentered(painter, Tokens.Type.LABEL, Math.round(phases[i] * 100) + "%",
+            Typeset.drawCentered(painter, Tokens.Type.MICRO, Math.round(phases[i] * 100) + "%",
                 Math.round(cx), (int) (cursor + r * 2 + Tokens.Space.SNUG), Tokens.Color.INK_TERTIARY);
         }
-        return (int) (cursor + r * 2 + Tokens.Space.SNUG + Tokens.Type.LABEL.leading());
+        return (int) (cursor + r * 2 + Tokens.Space.SNUG + Tokens.Type.MICRO.leading());
     }
 
     private static int colorBands(Painter painter, int x, int y, int w) {
@@ -209,13 +213,13 @@ public final class SpecimenScreen extends DevScreen {
         int bandH = 14;
         int nameCol = 0;
         for (String family : families.keySet()) {
-            nameCol = Math.max(nameCol, Typeset.width(Tokens.Type.LABEL, family));
+            nameCol = Math.max(nameCol, Typeset.width(Tokens.Type.MICRO, family));
         }
         nameCol += Tokens.Space.COZY;
 
         for (Map.Entry<String, List<Integer>> family : families.entrySet()) {
-            Typeset.draw(painter, Tokens.Type.LABEL, family.getKey(), x,
-                Typeset.centred(Tokens.Type.LABEL, cursor, bandH), Tokens.Color.INK_TERTIARY);
+            Typeset.draw(painter, Tokens.Type.MICRO, family.getKey(), x,
+                Typeset.centred(Tokens.Type.MICRO, cursor, bandH), Tokens.Color.INK_TERTIARY);
 
             List<Integer> swatches = family.getValue();
             int gap = Tokens.Space.TIGHT;
@@ -239,12 +243,12 @@ public final class SpecimenScreen extends DevScreen {
         String live = String.format("%06d", frames);
         int half = w / 2;
 
-        Typeset.draw(painter, Tokens.Type.LABEL, "고정폭", x, cursor, Tokens.Color.INK_TERTIARY);
-        Typeset.draw(painter, Tokens.Type.LABEL, "비례", x + half, cursor, Tokens.Color.INK_TERTIARY);
-        cursor += Tokens.Type.LABEL.leading() + Tokens.Space.TIGHT;
+        Typeset.draw(painter, Tokens.Type.MICRO, "고정폭", x, cursor, Tokens.Color.INK_TERTIARY);
+        Typeset.draw(painter, Tokens.Type.MICRO, "비례", x + half, cursor, Tokens.Color.INK_TERTIARY);
+        cursor += Tokens.Type.MICRO.leading() + Tokens.Space.TIGHT;
 
-        Typeset.tabular(painter, Tokens.Type.BODY_STRONG, live, x, cursor, Tokens.Color.ACCENT);
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG, live, x + half, cursor, Tokens.Color.INK_SECONDARY);
-        return cursor + Tokens.Type.BODY_STRONG.leading();
+        Typeset.tabular(painter, Tokens.Type.STRONG, live, x, cursor, Tokens.Color.ACCENT);
+        Typeset.draw(painter, Tokens.Type.STRONG, live, x + half, cursor, Tokens.Color.INK_SECONDARY);
+        return cursor + Tokens.Type.STRONG.leading();
     }
 }

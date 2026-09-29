@@ -5,27 +5,31 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.fullmoon.client.design.Tokens;
+import dev.fullmoon.client.render.Rgb;
 import org.junit.jupiter.api.Test;
 
 class VoiceTest {
+    /** The glass the controls sit on, composited over the void: what a translucent ground is measured against. */
+    private static final int GLASS = Rgb.over(Tokens.Color.SURFACE_GLASS, Tokens.Color.SURFACE_VOID);
+
     @Test
     void inkNeverLandsOnItsOwnGround() {
         for (Voice voice : Voice.values()) {
             for (State state : State.values()) {
                 Chrome chrome = voice.chrome(state);
-                assertNotEquals(chrome.fill(), chrome.ink(), voice + " " + state);
+                assertNotEquals(Rgb.over(chrome.fill(), GLASS), chrome.ink(), voice + " " + state);
             }
         }
     }
 
     @Test
-    void everyStateIsOpaque() {
+    void everyInkIsOpaqueAndEveryGroundIsATintOfTheGlassOrTheGold() {
         for (Voice voice : Voice.values()) {
             for (State state : State.values()) {
                 Chrome chrome = voice.chrome(state);
-                assertEquals(0xFF, chrome.fill() >>> 24, voice + " " + state + " fill alpha");
                 assertEquals(0xFF, chrome.ink() >>> 24, voice + " " + state + " ink alpha");
-                assertEquals(0xFF, chrome.line() >>> 24, voice + " " + state + " line alpha");
+                assertTrue(chrome.fill() >>> 24 > 0, voice + " " + state + " has a ground");
+                assertTrue(chrome.line() >>> 24 > 0, voice + " " + state + " has an edge");
             }
         }
     }
@@ -33,18 +37,18 @@ class VoiceTest {
     @Test
     void hoverIsVisibleWithoutTheMouseMoving() {
         assertNotEquals(Voice.QUIET.chrome(State.REST).fill(), Voice.QUIET.chrome(State.HOVER).fill());
-        assertNotEquals(Voice.QUIET.chrome(State.REST).line(), Voice.QUIET.chrome(State.HOVER).line());
         assertNotEquals(Voice.LOUD.chrome(State.REST).line(), Voice.LOUD.chrome(State.HOVER).line(),
             "a loud control cannot repaint its fill on hover, so its edge has to carry it");
     }
 
     @Test
-    void aPressDarkensRatherThanLifts() {
-        assertTrue(luminance(Voice.LOUD.chrome(State.ACTIVE).fill())
-            < luminance(Voice.LOUD.chrome(State.REST).fill()));
-        assertTrue(luminance(Voice.QUIET.chrome(State.ACTIVE).fill())
-                > luminance(Voice.QUIET.chrome(State.REST).fill()),
-            "a quiet control has no fill to darken; it takes the accent wash instead");
+    void aPressSinksRatherThanLifts() {
+        for (Voice voice : Voice.values()) {
+            assertTrue(luminance(Rgb.over(voice.chrome(State.ACTIVE).fill(), GLASS))
+                < luminance(Rgb.over(voice.chrome(State.REST).fill(), GLASS)), voice.name());
+        }
+        assertTrue(luminance(Rgb.over(Voice.QUIET.chrome(State.HOVER).fill(), GLASS))
+            > luminance(Rgb.over(Voice.QUIET.chrome(State.REST).fill(), GLASS)), "and hover lifts");
     }
 
     @Test
@@ -65,7 +69,7 @@ class VoiceTest {
     void bothVoicesGoGreyTogether() {
         for (Voice voice : Voice.values()) {
             assertEquals(Tokens.Color.INK_DISABLED, voice.chrome(State.DISABLED).ink());
-            assertEquals(Tokens.Color.SURFACE_SUNKEN, voice.chrome(State.DISABLED).fill());
+            assertEquals(Tokens.Color.SURFACE_CONTROL_DISABLED, voice.chrome(State.DISABLED).fill());
         }
     }
 

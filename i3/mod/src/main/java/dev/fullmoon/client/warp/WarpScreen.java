@@ -16,7 +16,7 @@ import dev.fullmoon.client.ui.Button;
 import dev.fullmoon.client.ui.DevChrome;
 import dev.fullmoon.client.ui.ListPanel;
 import dev.fullmoon.client.ui.ListRow;
-import dev.fullmoon.client.ui.Palace;
+import dev.fullmoon.client.ui.Glass;
 import dev.fullmoon.client.ui.SurfaceScreen;
 import dev.fullmoon.client.ui.Voice;
 
@@ -85,7 +85,7 @@ public final class WarpScreen extends SurfaceScreen {
         int edge = compact ? Tokens.Space.LOOSE : Tokens.Space.SECTION;
         int frame = Math.min(MAX_CONTENT, width - edge * 2);
         content = new Box((width - frame) / 2, edge, frame, height - edge * 2);
-        footerY = content.bottom() - Tokens.Type.LABEL.leading() - Tokens.Space.COZY;
+        footerY = content.bottom() - Tokens.Type.MICRO.leading() - Tokens.Space.COZY;
 
         int bodyY = content.y() + headerHeight() + Tokens.Space.GUTTER;
         body = Box.between(content.x(), bodyY, content.right(), footerY - Tokens.Space.GUTTER);
@@ -126,13 +126,13 @@ public final class WarpScreen extends SurfaceScreen {
     }
 
     private void header(Painter painter) {
-        int brandY = content.y() + Palace.brandRise(Tokens.Type.DISPLAY);
-        int textX = Palace.brand(painter, Tokens.Type.DISPLAY, content.x(), brandY);
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("subtitle"), textX,
-            brandY + Tokens.Type.LABEL.leading() + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
-        Typeset.drawRight(painter, Tokens.Type.LABEL, tr("authority"), content.right(), brandY,
+        int brandY = content.y() + Glass.rise(Tokens.Type.DISPLAY);
+        int textX = Glass.wordmark(painter, Tokens.Type.DISPLAY, content.x(), brandY);
+        Typeset.draw(painter, Tokens.Type.MICRO, tr("subtitle"), textX,
+            brandY + Tokens.Type.MICRO.leading() + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
+        Typeset.drawRight(painter, Tokens.Type.MICRO, tr("authority"), content.right(), brandY,
             Tokens.Color.INK_TERTIARY);
-        Palace.dancheong(painter, content.x(), content.y() + headerHeight() - Tokens.Space.SNUG,
+        Glass.hair(painter, content.x(), content.y() + headerHeight() - Tokens.Space.SNUG,
             content.w());
     }
 
@@ -148,13 +148,13 @@ public final class WarpScreen extends SurfaceScreen {
         }
 
         int y = DevChrome.sectionHead(painter, group(route), detail.x(), body.y());
-        Typeset.draw(painter, Tokens.Type.TITLE, route.name(), detail.x(), y,
+        Typeset.draw(painter, Tokens.Type.ROW, route.name(), detail.x(), y,
             Tokens.Color.INK_PRIMARY);
-        int idY = y + Tokens.Type.TITLE.leading() + Tokens.Space.SNUG;
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("detail.route_id", route.id()),
+        int idY = y + Tokens.Type.ROW.leading() + Tokens.Space.SNUG;
+        Typeset.draw(painter, Tokens.Type.MICRO, tr("detail.route_id", route.id()),
             detail.x(), idY, Tokens.Color.INK_TERTIARY);
 
-        int bandY = idY + Tokens.Type.LABEL.leading() + Tokens.Space.COZY;
+        int bandY = idY + Tokens.Type.MICRO.leading() + Tokens.Space.COZY;
         drawFacts(painter, route, bandY);
 
         int noteY = body.bottom() - Button.HEIGHT - Tokens.Type.BODY.leading()
@@ -172,33 +172,33 @@ public final class WarpScreen extends SurfaceScreen {
         int left = detail.x() + Tokens.Space.COZY;
         int right = detail.right() - Tokens.Space.COZY;
         int labelY = y + Tokens.Space.COZY;
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("detail.world"), left, labelY,
+        Typeset.draw(painter, Tokens.Type.MICRO, tr("detail.world"), left, labelY,
             Tokens.Color.INK_TERTIARY);
-        Typeset.drawRight(painter, Tokens.Type.BODY_STRONG, route.world(), right, labelY,
+        Typeset.drawRight(painter, Tokens.Type.STRONG, route.world(), right, labelY,
             Tokens.Color.INK_PRIMARY);
 
         int ruleY = labelY + Tokens.Type.BODY.leading() + Tokens.Space.SNUG;
         painter.hRule(left, ruleY, right - left, Tokens.Color.LINE_HAIRLINE);
         int coordinatesY = ruleY + Tokens.Space.COZY;
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("detail.coordinates"), left, coordinatesY,
+        Typeset.draw(painter, Tokens.Type.MICRO, tr("detail.coordinates"), left, coordinatesY,
             Tokens.Color.INK_TERTIARY);
-        Typeset.tabularRight(painter, Tokens.Type.BODY_STRONG, coordinates(route), right,
+        Typeset.tabularRight(painter, Tokens.Type.STRONG, coordinates(route), right,
             coordinatesY, Tokens.Color.INK_PRIMARY);
 
         int distanceY = coordinatesY + Tokens.Type.BODY.leading() + Tokens.Space.SNUG;
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("detail.distance"), left, distanceY,
+        Typeset.draw(painter, Tokens.Type.MICRO, tr("detail.distance"), left, distanceY,
             Tokens.Color.INK_TERTIARY);
-        Typeset.tabularRight(painter, Tokens.Type.BODY_STRONG, distance(route), right,
+        Typeset.tabularRight(painter, Tokens.Type.STRONG, distance(route), right,
             distanceY, Tokens.Color.ACCENT);
     }
 
     private void footer(Painter painter) {
         painter.hRule(content.x(), footerY, content.w(), Tokens.Color.LINE_HAIRLINE);
         int y = footerY + Tokens.Space.COZY;
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("footer.keys"), content.x(), y,
+        Typeset.draw(painter, Tokens.Type.MICRO, tr("footer.keys"), content.x(), y,
             Tokens.Color.INK_TERTIARY);
         Status status = status();
-        Typeset.drawRight(painter, Tokens.Type.LABEL, status.copy(), content.right(), y,
+        Typeset.drawRight(painter, Tokens.Type.MICRO, status.copy(), content.right(), y,
             status.color());
     }
 
@@ -241,7 +241,7 @@ public final class WarpScreen extends SurfaceScreen {
     }
 
     private static int headerHeight() {
-        return Tokens.Type.DISPLAY.leading() + Tokens.Type.LABEL.leading()
+        return Tokens.Type.DISPLAY.leading() + Tokens.Type.MICRO.leading()
             + Tokens.Space.GUTTER;
     }
 

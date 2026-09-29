@@ -1,0 +1,47 @@
+package dev.fullmoon.client.sound;
+
+import java.util.EnumMap;
+import java.util.Map;
+
+import dev.fullmoon.client.FullmoonClient;
+import dev.fullmoon.client.design.Tokens;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.sounds.SoundEvent;
+
+/**
+ * The game half of {@link UiSounds}: the registered events, and the one call that plays a note
+ * through the game's sound manager as a UI sound, so the master slider applies to it.
+ */
+public final class GameSounds {
+    private static final Map<UiSounds.Cue, SoundEvent> EVENTS = new EnumMap<>(UiSounds.Cue.class);
+
+    private GameSounds() {}
+
+    /** Registers the events and installs the sink. Idempotent within one game process. */
+    public static void install() {
+        if (!EVENTS.isEmpty()) {
+            return;
+        }
+        for (UiSounds.Cue cue : UiSounds.Cue.values()) {
+            Identifier id = Identifier.fromNamespaceAndPath(FullmoonClient.NAMESPACE, cue.path());
+            SoundEvent event = SoundEvent.createVariableRangeEvent(id);
+            Registry.register(BuiltInRegistries.SOUND_EVENT, id, event);
+            EVENTS.put(cue, event);
+        }
+        UiSounds.sink(GameSounds::play);
+    }
+
+    private static void play(UiSounds.Note note) {
+        SoundEvent event = EVENTS.get(note.cue());
+        Minecraft client = Minecraft.getInstance();
+        if (event == null || client == null) {
+            return;
+        }
+        client.getSoundManager().play(SimpleSoundInstance.forUI(event, note.pitch(), Tokens.Sound.VOLUME));
+    }
+}

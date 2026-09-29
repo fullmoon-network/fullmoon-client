@@ -6,6 +6,7 @@ import java.util.function.IntConsumer;
 import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.render.Painter;
+import dev.fullmoon.client.sound.UiSounds;
 import dev.fullmoon.client.text.Typeset;
 
 import com.mojang.blaze3d.platform.InputConstants;
@@ -73,12 +74,12 @@ public final class TabRail extends Widget {
         painter.hRule(b.x(), base, b.w(), chrome.line());
 
         int[] widths = widths();
-        int y = Typeset.centred(Tokens.Type.LABEL, b.y(), b.h() - Tokens.Stroke.FOCUS);
+        int y = Typeset.centred(Tokens.Type.MICRO, b.y(), b.h() - Tokens.Stroke.FOCUS);
         int x = b.x();
         for (int i = 0; i < tabs.size(); i++) {
             boolean here = i == index;
             boolean touched = state.live() && (i == over || (state == State.FOCUS_VISIBLE && i == marked));
-            Typeset.draw(painter, Tokens.Type.LABEL, tabs.get(i), x + PAD, y,
+            Typeset.draw(painter, Tokens.Type.MICRO, tabs.get(i), x + PAD, y,
                 ink(state, chrome, here || touched));
             if (here) {
                 painter.fill(x, base - Tokens.Stroke.HAIR, widths[i], Tokens.Stroke.FOCUS,
@@ -162,6 +163,7 @@ public final class TabRail extends Widget {
         marked = tab;
         if (tab != index) {
             index = tab;
+            UiSounds.play(UiSounds.Cue.TAB);
             onPick.accept(index);
         }
     }
@@ -169,7 +171,7 @@ public final class TabRail extends Widget {
     private int[] widths() {
         int[] widths = new int[tabs.size()];
         for (int i = 0; i < tabs.size(); i++) {
-            widths[i] = Typeset.width(Tokens.Type.LABEL, tabs.get(i)) + PAD * 2;
+            widths[i] = Typeset.width(Tokens.Type.MICRO, tabs.get(i)) + PAD * 2;
         }
         return widths;
     }

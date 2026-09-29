@@ -5,7 +5,6 @@ import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.text.Typeset;
-import dev.fullmoon.client.ui.Palace;
 
 /** Base class for HUD elements providing common anchor state and chip styling. */
 public abstract class BaseHudElement implements HudElement {
@@ -102,10 +101,7 @@ public abstract class BaseHudElement implements HudElement {
     /** Draws a chip: night glass inside a gilt hairline, with the frame's ticks on two corners. */
     protected void drawContainer(Painter painter, Box bounds) {
         painter.fill(bounds.x(), bounds.y(), bounds.w(), bounds.h(),
-            Tokens.Radius.NONE, Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.82f));
-        painter.border(bounds.x(), bounds.y(), bounds.w(), bounds.h(),
-            Tokens.Radius.NONE, Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT_FAINT);
-        Palace.ticks(painter, bounds.x() - 1, bounds.y() - 1, bounds.w() + 2, bounds.h() + 2, TICK);
+            Tokens.Radius.NONE, Tokens.Color.SURFACE_GLASS_HUD);
     }
 
     /**
@@ -131,10 +127,10 @@ public abstract class BaseHudElement implements HudElement {
         currentX += drawLeadingMark(painter, currentX, bounds.y() + bounds.h() / 2.0f);
 
         if (key != null && !key.isEmpty()) {
-            Typeset.draw(painter, Tokens.Type.LABEL, key, currentX, textY, Tokens.Color.ACCENT);
-            currentX += Typeset.width(Tokens.Type.LABEL, key) + Tokens.Space.SNUG;
+            Typeset.draw(painter, Tokens.Type.MICRO, key, currentX, textY, Tokens.Color.ACCENT);
+            currentX += Typeset.width(Tokens.Type.MICRO, key) + Tokens.Space.SNUG;
         }
 
-        Typeset.tabular(painter, Tokens.Type.BODY_STRONG, val, currentX, textY, Tokens.Color.INK_PRIMARY);
+        Typeset.tabular(painter, Tokens.Type.STRONG, val, currentX, textY, Tokens.Color.INK_PRIMARY);
     }
 }

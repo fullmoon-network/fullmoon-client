@@ -20,32 +20,32 @@ public final class DevChrome {
     private DevChrome() {}
 
     public static int headerHeight() {
-        return Tokens.Type.DISPLAY.leading() + Tokens.Type.LABEL.leading() + Tokens.Space.GUTTER;
+        return Tokens.Type.DISPLAY.leading() + Tokens.Type.MICRO.leading() + Tokens.Space.GUTTER;
     }
 
     public static int sectionHeadHeight() {
-        return Tokens.Type.LABEL.leading() + Tokens.Space.COZY;
+        return Tokens.Type.MICRO.leading() + Tokens.Space.COZY;
     }
 
     /** The masthead. Returns the y its content starts at. */
     public static int header(Painter painter, int x, int y, int w, String subtitle) {
-        int brandY = y + Palace.brandRise(Tokens.Type.DISPLAY);
-        int textX = Palace.brand(painter, Tokens.Type.DISPLAY, x, brandY);
-        Typeset.draw(painter, Tokens.Type.LABEL, subtitle, textX,
-            brandY + Tokens.Type.LABEL.leading() + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
-        Typeset.tabularRight(painter, Tokens.Type.LABEL,
+        int brandY = y + Glass.rise(Tokens.Type.DISPLAY);
+        int textX = Glass.wordmark(painter, Tokens.Type.DISPLAY, x, brandY);
+        Typeset.draw(painter, Tokens.Type.MICRO, subtitle, textX,
+            brandY + Tokens.Type.MICRO.leading() + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
+        Typeset.tabularRight(painter, Tokens.Type.MICRO,
             painter.width() + " × " + painter.height() + " gui px",
             x + w, brandY, Tokens.Color.INK_TERTIARY);
 
-        Palace.dancheong(painter, x, y + Tokens.Type.DISPLAY.leading() + Tokens.Type.LABEL.leading(), w);
+        Glass.hair(painter, x, y + Tokens.Type.DISPLAY.leading() + Tokens.Type.MICRO.leading(), w);
         return y + headerHeight();
     }
 
     /** A section head is a label with an accent tick, never a tag left and a value right. */
     public static int sectionHead(Painter painter, String name, int x, int y) {
-        painter.diamond(x + Tokens.Space.TIGHT, Typeset.capTop(Tokens.Type.LABEL, y)
-            + Typeset.capHeight(Tokens.Type.LABEL) / 2.0f, Tokens.Space.TIGHT + 0.5f, 0.0f, Tokens.Color.ACCENT);
-        Typeset.draw(painter, Tokens.Type.LABEL, name, x + Tokens.Space.BASE + Tokens.Space.TIGHT, y,
+        painter.diamond(x + Tokens.Space.TIGHT, Typeset.capTop(Tokens.Type.MICRO, y)
+            + Typeset.capHeight(Tokens.Type.MICRO) / 2.0f, Tokens.Space.TIGHT + 0.5f, 0.0f, Tokens.Color.ACCENT);
+        Typeset.draw(painter, Tokens.Type.MICRO, name, x + Tokens.Space.BASE + Tokens.Space.TIGHT, y,
             Tokens.Color.INK_SECONDARY);
         return y + sectionHeadHeight();
     }
@@ -53,13 +53,13 @@ public final class DevChrome {
     public static void footer(Painter painter, int x, int y, int w, String keys, String status) {
         painter.hRule(x, y, w, Tokens.Color.LINE_HAIRLINE);
         int textY = y + Tokens.Space.COZY;
-        Typeset.draw(painter, Tokens.Type.LABEL, keys, x, textY, Tokens.Color.INK_TERTIARY);
-        Typeset.tabularRight(painter, Tokens.Type.LABEL, status, x + w, textY,
+        Typeset.draw(painter, Tokens.Type.MICRO, keys, x, textY, Tokens.Color.INK_TERTIARY);
+        Typeset.tabularRight(painter, Tokens.Type.MICRO, status, x + w, textY,
             Tokens.Color.INK_TERTIARY);
     }
 
     /** Where the footer rule goes on a screen {@code height} tall. */
     public static int footerY(int height) {
-        return height - Tokens.Space.SECTION - Tokens.Type.LABEL.leading();
+        return height - Tokens.Space.SECTION - Tokens.Type.MICRO.leading();
     }
 }

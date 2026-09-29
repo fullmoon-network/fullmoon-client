@@ -20,10 +20,15 @@ import org.joml.Matrix3x2f;
  * empty rect when disjoint — and also calls through to the public
  * {@code enableScissor}/{@code disableScissor} so vanilla text drawn inside the same clip
  * obeys it.
+ *
+ * <p>{@link #opacity} multiplies the alpha of every colour submitted after it, shapes and text
+ * alike, which is how a whole panel fades in as one thing. Item icons are drawn by the game
+ * and cannot take it; a screen that fades keeps them back until the fade is mostly through.
  */
 public final class Painter {
     private final GuiGraphicsExtractor gfx;
     private final Deque<ScreenRectangle> clips = new ArrayDeque<>();
+    private float opacity = 1.0f;
 
     public Painter(GuiGraphicsExtractor gfx) {
         this.gfx = gfx;
@@ -39,6 +44,20 @@ public final class Painter {
 
     public int height() {
         return gfx.guiHeight();
+    }
+
+    /** Multiplies every alpha submitted from here on; 1 draws colours as their tokens say. */
+    public void opacity(float value) {
+        opacity = Math.clamp(value, 0.0f, 1.0f);
+    }
+
+    public float opacity() {
+        return opacity;
+    }
+
+    /** A colour with this painter's opacity applied, for the game's own text call. */
+    public int tint(int color) {
+        return opacity >= 1.0f ? color : Rgb.scaleAlpha(color, opacity);
     }
 
     /** Fills a rect. */
@@ -104,6 +123,48 @@ public final class Painter {
         gfx.pose().popMatrix();
     }
 
+    /** A straight stroke between two points, {@code thickness} wide, with rounded ends. */
+    public void line(float x1, float y1, float x2, float y2, float thickness, int color) {
+        float dx = x2 - x1;
+        float dy = y2 - y1;
+        float length = (float) Math.sqrt(dx * dx + dy * dy);
+        if (length <= 0.0f) {
+            dot((x1 + x2) / 2, (y1 + y2) / 2, thickness / 2, color);
+            return;
+        }
+        gfx.pose().pushMatrix();
+        gfx.pose().translate((x1 + x2) / 2, (y1 + y2) / 2);
+        gfx.pose().rotate((float) Math.atan2(dy, dx));
+        submit(0.0f, 0.0f, length / 2 + thickness / 2, thickness / 2, thickness / 2, 0.0f, color, color);
+        gfx.pose().popMatrix();
+    }
+
+    /** ‹ or ›: a chevron {@code size} tall about ({@code cx}, {@code cy}), its point on the left when {@code left}. */
+    public void chevron(float cx, float cy, float size, float thickness, int color, boolean left) {
+        float half = size / 2;
+        float reach = size * 0.36f;
+        float tip = left ? cx - reach / 2 : cx + reach / 2;
+        float back = left ? cx + reach / 2 : cx - reach / 2;
+        line(back, cy - half, tip, cy, thickness, color);
+        line(tip, cy, back, cy + half, thickness, color);
+    }
+
+    /** ✕: two diagonals across a {@code size} square about the centre. */
+    public void cross(float cx, float cy, float size, float thickness, int color) {
+        float half = size / 2;
+        line(cx - half, cy - half, cx + half, cy + half, thickness, color);
+        line(cx + half, cy - half, cx - half, cy + half, thickness, color);
+    }
+
+    /** ✔: a short stroke down to the foot, a long one up to the right, in a {@code size} square. */
+    public void check(float cx, float cy, float size, float thickness, int color) {
+        float half = size / 2;
+        float footX = cx - half * 0.25f;
+        float footY = cy + half * 0.7f;
+        line(cx - half, cy + half * 0.05f, footX, footY, thickness, color);
+        line(footX, footY, cx + half, cy - half * 0.75f, thickness, color);
+    }
+
     /**
      * A moon of radius {@code r} with {@code lit} of its disc lit: the unlit face as a dot, the
      * lit face on top of it through the moon pipeline.
@@ -114,7 +175,7 @@ public final class Painter {
             return;
         }
         gfx.guiRenderState.addGuiElement(new MoonRenderState(
-            new Matrix3x2f(gfx.pose()), cx, cy, r, lit, waxing, litColor, clips.peekLast()));
+            new Matrix3x2f(gfx.pose()), cx, cy, r, lit, waxing, tint(litColor), clips.peekLast()));
     }
 
     private void shape(float x, float y, float w, float h, float radius, float thickness, int color) {
@@ -133,9 +194,13 @@ public final class Painter {
     private void submit(
         float cx, float cy, float hx, float hy, float radius, float thickness, int top, int bottom
     ) {
+        if (tint(top) >>> 24 == 0 && tint(bottom) >>> 24 == 0) {
+            return;
+        }
         // The pose is a live stack; a render state outlives this call, so it gets a copy.
         gfx.guiRenderState.addGuiElement(new ShapeRenderState(
-            new Matrix3x2f(gfx.pose()), cx, cy, hx, hy, radius, thickness, top, bottom, clips.peekLast()));
+            new Matrix3x2f(gfx.pose()), cx, cy, hx, hy, radius, thickness, tint(top), tint(bottom),
+            clips.peekLast()));
     }
 
     /** Clips subsequent draws — this painter's and the game's text — to a rect. */

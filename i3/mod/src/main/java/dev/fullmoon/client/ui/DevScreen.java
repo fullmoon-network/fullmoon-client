@@ -66,7 +66,7 @@ public abstract class DevScreen extends SurfaceScreen {
     private boolean ringed;
 
     protected DevScreen(Page page) {
-        super(Typeset.say(Tokens.Type.TITLE, page.title()));
+        super(Typeset.say(Tokens.Type.ROW, page.title()));
         this.page = page;
         // First on the surface, so Tab reaches the rail before the page under it — and so a step
         // from nowhere lands there, which is what carries the ring across a page change.

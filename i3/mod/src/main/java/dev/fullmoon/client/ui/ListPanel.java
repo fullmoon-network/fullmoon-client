@@ -6,6 +6,7 @@ import java.util.function.IntConsumer;
 import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.render.Painter;
+import dev.fullmoon.client.sound.UiSounds;
 import dev.fullmoon.client.text.Typeset;
 
 import com.mojang.blaze3d.platform.InputConstants;
@@ -240,7 +241,11 @@ public final class ListPanel extends Widget {
      * enough, and it is the row itself that looks refused.
      */
     private boolean moveTo(int index) {
+        int was = marked;
         marked = Math.clamp(index, 0, rows.size() - 1);
+        if (marked != was) {
+            UiSounds.play(UiSounds.Cue.FOCUS);
+        }
         first = Math.clamp(first, marked - visible() + 1, marked);
         first = Math.clamp(first, 0, maxFirst());
         return true;

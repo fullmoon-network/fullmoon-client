@@ -123,9 +123,23 @@ public final class MenuIcons {
 
     private MenuIcons() {}
 
+    /** Whether {@code icon} names a mark drawn here rather than an item texture. */
+    public static boolean knows(String icon) {
+        return art(icon) != null;
+    }
+
     /** Draws the mark centred on {@code cx},{@code cy} in a {@code size} box; false if unknown. */
     public static boolean draw(Painter painter, String icon, float cx, float cy, float size) {
-        String[] art = switch (icon) {
+        String[] art = art(icon);
+        if (art == null) {
+            return false;
+        }
+        PixelArt.draw(painter, art, cx, cy, size, pixel -> color((char) pixel));
+        return true;
+    }
+
+    private static String[] art(String icon) {
+        return switch (icon) {
             case "fullmoon.casino.coinflip" -> COIN;
             case "fullmoon.casino.dice" -> DICE;
             case "fullmoon.casino.roulette" -> ROULETTE;
@@ -134,11 +148,6 @@ public final class MenuIcons {
             case "fullmoon.casino.jackpot" -> JACKPOT;
             default -> null;
         };
-        if (art == null) {
-            return false;
-        }
-        PixelArt.draw(painter, art, cx, cy, size, pixel -> color((char) pixel));
-        return true;
     }
 
     private static int color(char pixel) {

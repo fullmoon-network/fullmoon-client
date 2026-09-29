@@ -161,11 +161,11 @@ public record MapLayout(Box content, Box map, Box rail, Box band, Box action) {
     }
 
     private static int headingHeight() {
-        return Tokens.Type.LABEL.leading() + Tokens.Space.COZY;
+        return Tokens.Type.MICRO.leading() + Tokens.Space.COZY;
     }
 
     private static int bandHeight(int actionHeight) {
-        return Tokens.Space.COZY + Tokens.Type.LABEL.leading() + Tokens.Space.SNUG
-            + Tokens.Type.BODY_STRONG.leading() + Tokens.Space.COZY + actionHeight;
+        return Tokens.Space.COZY + Tokens.Type.MICRO.leading() + Tokens.Space.SNUG
+            + Tokens.Type.STRONG.leading() + Tokens.Space.COZY + actionHeight;
     }
 }

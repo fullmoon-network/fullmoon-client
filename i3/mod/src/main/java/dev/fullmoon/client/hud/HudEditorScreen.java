@@ -9,7 +9,6 @@ import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.text.Typeset;
 import dev.fullmoon.client.ui.Button;
 import dev.fullmoon.client.ui.Chord;
-import dev.fullmoon.client.ui.Palace;
 import dev.fullmoon.client.ui.Surface;
 import dev.fullmoon.client.ui.Toggle;
 import dev.fullmoon.client.ui.Voice;
@@ -394,8 +393,8 @@ public final class HudEditorScreen extends Screen {
 
         // Position Badge above element
         String badge = String.format("%s · (%d, %d)", elem.anchor().label(), elem.offsetX(), elem.offsetY());
-        int badgeW = Typeset.width(Tokens.Type.LABEL, badge) + Tokens.Space.SNUG * 2;
-        int badgeH = Tokens.Type.LABEL.leading() + 4;
+        int badgeW = Typeset.width(Tokens.Type.MICRO, badge) + Tokens.Space.SNUG * 2;
+        int badgeH = Tokens.Type.MICRO.leading() + 4;
         int badgeX = x;
         int badgeY = y - badgeH - Tokens.Space.TIGHT;
 
@@ -404,7 +403,7 @@ public final class HudEditorScreen extends Screen {
                 Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.90f));
             painter.border(badgeX, badgeY, badgeW, badgeH, Tokens.Radius.SM, Tokens.Stroke.HAIR,
                 Tokens.Color.LINE_HAIRLINE);
-            Typeset.draw(painter, Tokens.Type.LABEL, badge, badgeX + Tokens.Space.SNUG,
+            Typeset.draw(painter, Tokens.Type.MICRO, badge, badgeX + Tokens.Space.SNUG,
                 badgeY + 2, Tokens.Color.ACCENT);
         }
     }
@@ -413,16 +412,15 @@ public final class HudEditorScreen extends Screen {
         int barY = 12;
 
         // 1. Left Title & Seal
-        int capH = Typeset.capHeight(Tokens.Type.BODY_STRONG);
+        int capH = Typeset.capHeight(Tokens.Type.STRONG);
         int seal = capH + Tokens.Space.SNUG;
-        Palace.seal(painter, 24, barY + (INSPECTOR_H - seal) / 2.0f, seal);
         int titleX = 24 + seal + Tokens.Space.COZY;
         int titleY = barY + (INSPECTOR_H - 9) / 2;
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG, "Fullmoon HUD Studio", titleX, titleY, Tokens.Color.INK_PRIMARY);
+        Typeset.draw(painter, Tokens.Type.STRONG, "Fullmoon HUD Studio", titleX, titleY, Tokens.Color.INK_PRIMARY);
 
-        int snapX = titleX + Typeset.width(Tokens.Type.BODY_STRONG, "Fullmoon HUD Studio") + Tokens.Space.SNUG;
+        int snapX = titleX + Typeset.width(Tokens.Type.STRONG, "Fullmoon HUD Studio") + Tokens.Space.SNUG;
         int snapY = barY + (INSPECTOR_H - 9) / 2;
-        Typeset.draw(painter, Tokens.Type.LABEL, "· 4px 스냅", snapX, snapY, Tokens.Color.INK_TERTIARY);
+        Typeset.draw(painter, Tokens.Type.MICRO, "· 4px 스냅", snapX, snapY, Tokens.Color.INK_TERTIARY);
 
         HudElement elem = selectedElement();
         if (elem != null) {
@@ -431,7 +429,7 @@ public final class HudEditorScreen extends Screen {
 
             int modNameX = inspX + Tokens.Space.LOOSE;
             int modNameY = barY + (INSPECTOR_H - 9) / 2;
-            Typeset.draw(painter, Tokens.Type.BODY_STRONG, elem.label(), modNameX, modNameY, Tokens.Color.INK_PRIMARY);
+            Typeset.draw(painter, Tokens.Type.STRONG, elem.label(), modNameX, modNameY, Tokens.Color.INK_PRIMARY);
 
             int anchorBoxX = inspX + 135;
             int totalGridH = ANCHOR_CELL_SIZE * 3 + ANCHOR_CELL_GAP * 2;
@@ -454,15 +452,14 @@ public final class HudEditorScreen extends Screen {
 
             int anchorLabelX = anchorBoxX + ANCHOR_CELL_SIZE * 3 + ANCHOR_CELL_GAP * 2 + Tokens.Space.SNUG;
             int anchorLabelY = barY + (INSPECTOR_H - 9) / 2;
-            Typeset.draw(painter, Tokens.Type.LABEL, elem.anchor().label(), anchorLabelX, anchorLabelY, Tokens.Color.INK_SECONDARY);
+            Typeset.draw(painter, Tokens.Type.MICRO, elem.anchor().label(), anchorLabelX, anchorLabelY, Tokens.Color.INK_SECONDARY);
         }
     }
 
     /** The editor's own bars: the HUD chips' night glass and gilt hairline, ticked on two corners. */
     private static void glass(Painter painter, int x, int y, int w, int h) {
         painter.fill(x, y, w, h, Tokens.Radius.NONE, Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.90f));
-        painter.border(x, y, w, h, Tokens.Radius.NONE, Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT_FAINT);
-        Palace.ticks(painter, x - 1, y - 1, w + 2, h + 2, Tokens.Space.COZY);
+        painter.border(x, y, w, h, Tokens.Radius.NONE, Tokens.Stroke.HAIR, Tokens.Color.LINE_HAIRLINE);
     }
 
     private void drawModuleDock(Painter painter, int mx, int my) {
@@ -499,14 +496,14 @@ public final class HudEditorScreen extends Screen {
             int textY = pillBox.y() + (DOCK_PILL_H - 9) / 2;
             int ink = elem.enabled() ? Tokens.Color.INK_PRIMARY : Tokens.Color.INK_TERTIARY;
 
-            Typeset.draw(painter, Tokens.Type.LABEL, elem.label(), textX, textY, ink);
+            Typeset.draw(painter, Tokens.Type.MICRO, elem.label(), textX, textY, ink);
 
             currX += pillW + DOCK_PILL_GAP;
         }
     }
 
     private int measureDockPillWidth(HudElement elem) {
-        return 10 + 4 + 8 + Typeset.width(Tokens.Type.LABEL, elem.label()) + 10;
+        return 10 + 4 + 8 + Typeset.width(Tokens.Type.MICRO, elem.label()) + 10;
     }
 
     private int computeDockWidth() {

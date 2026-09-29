@@ -104,29 +104,29 @@ public final class KeystrokesHud extends BaseHudElement {
         painter.fill(x, top, w, face, Tokens.Radius.NONE,
             down ? Tokens.Color.ACCENT : Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.82f));
         painter.border(x, top, w, face, Tokens.Radius.NONE, Tokens.Stroke.HAIR,
-            down ? Tokens.Color.ACCENT_PRESSED : Tokens.Color.LINE_GILT_FAINT);
+            down ? Tokens.Color.ACCENT_PRESSED : Tokens.Color.LINE_STRONG);
         if (!down) {
-            painter.hRule(x, y + face, w, Tokens.Color.LINE_GILT);
+            painter.hRule(x, y + face, w, Tokens.Color.LINE_STRONG);
         }
         return top;
     }
 
     private static void key(Painter painter, int x, int y, String name, boolean down) {
         int top = cap(painter, x, y, KEY, KEY, down);
-        Typeset.drawCentered(painter, Tokens.Type.BODY_STRONG, name, x + KEY / 2,
-            Typeset.centred(Tokens.Type.BODY_STRONG, top, KEY - LIP),
+        Typeset.drawCentered(painter, Tokens.Type.STRONG, name, x + KEY / 2,
+            Typeset.centred(Tokens.Type.STRONG, top, KEY - LIP),
             down ? Tokens.Color.INK_ON_ACCENT : Tokens.Color.INK_PRIMARY);
     }
 
     private static void mouse(Painter painter, int x, int y, String name, int cps, boolean down) {
         int top = cap(painter, x, y, MOUSE_W, MOUSE_H, down);
-        int leading = Tokens.Type.LABEL.leading();
+        int leading = Tokens.Type.MICRO.leading();
         int first = top + (MOUSE_H - LIP - leading * 2) / 2;
-        Typeset.drawCentered(painter, Tokens.Type.LABEL, name, x + MOUSE_W / 2, first,
+        Typeset.drawCentered(painter, Tokens.Type.MICRO, name, x + MOUSE_W / 2, first,
             down ? Tokens.Color.INK_ON_ACCENT : Tokens.Color.INK_TERTIARY);
         String rate = cps + " CPS";
-        Typeset.tabular(painter, Tokens.Type.LABEL, rate,
-            x + (MOUSE_W - Typeset.tabularWidth(Tokens.Type.LABEL, rate)) / 2, first + leading,
+        Typeset.tabular(painter, Tokens.Type.MICRO, rate,
+            x + (MOUSE_W - Typeset.tabularWidth(Tokens.Type.MICRO, rate)) / 2, first + leading,
             down ? Tokens.Color.INK_ON_ACCENT : Tokens.Color.INK_PRIMARY);
     }
 
@@ -134,6 +134,6 @@ public final class KeystrokesHud extends BaseHudElement {
         int top = cap(painter, x, y, WIDTH, SPACE_H, down);
         painter.fill(x + SPACE_INSET, top + (SPACE_H - LIP) / 2 - 1, WIDTH - SPACE_INSET * 2,
             Tokens.Stroke.FOCUS, Tokens.Radius.NONE,
-            down ? Tokens.Color.INK_ON_ACCENT : Tokens.Color.LINE_GILT);
+            down ? Tokens.Color.INK_ON_ACCENT : Tokens.Color.LINE_STRONG);
     }
 }

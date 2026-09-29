@@ -95,9 +95,9 @@ public final class ModsScreen extends SurfaceScreen {
         int edge = compact ? Tokens.Space.LOOSE : Tokens.Space.SECTION;
         int frame = Math.min(MAX_CONTENT, width - edge * 2);
         content = new Box((width - frame) / 2, edge, frame, height - edge * 2);
-        footerY = content.bottom() - Tokens.Type.LABEL.leading() - Tokens.Space.COZY;
+        footerY = content.bottom() - Tokens.Type.MICRO.leading() - Tokens.Space.COZY;
 
-        int railY = content.y() + (compact ? Tokens.Type.TITLE.leading() : Tokens.Type.DISPLAY.leading()) + Tokens.Space.COZY;
+        int railY = content.y() + (compact ? Tokens.Type.ROW.leading() : Tokens.Type.DISPLAY.leading()) + Tokens.Space.COZY;
         hub.place(new Box(content.x(), railY, content.w(), TabRail.HEIGHT));
 
         int searchY = railY + TabRail.HEIGHT + Tokens.Space.LOOSE;
@@ -156,19 +156,19 @@ public final class ModsScreen extends SurfaceScreen {
         }
 
         int y = DevChrome.sectionHead(painter, item.id(), detail.x(), body.y());
-        Typeset.draw(painter, Tokens.Type.TITLE, item.name(), detail.x(), y,
+        Typeset.draw(painter, Tokens.Type.ROW, item.name(), detail.x(), y,
             Tokens.Color.INK_PRIMARY);
 
-        int versionY = y + Tokens.Type.TITLE.leading() + Tokens.Space.SNUG;
-        Typeset.draw(painter, Tokens.Type.LABEL, "v" + item.version() + " · " + item.environment(),
+        int versionY = y + Tokens.Type.ROW.leading() + Tokens.Space.SNUG;
+        Typeset.draw(painter, Tokens.Type.MICRO, "v" + item.version() + " · " + item.environment(),
             detail.x(), versionY, Tokens.Color.INK_TERTIARY);
 
-        int authorY = versionY + Tokens.Type.LABEL.leading() + Tokens.Space.COZY;
+        int authorY = versionY + Tokens.Type.MICRO.leading() + Tokens.Space.COZY;
         String authors = item.authors().isEmpty() ? "Unknown" : String.join(", ", item.authors());
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("authors", authors), detail.x(), authorY,
+        Typeset.draw(painter, Tokens.Type.MICRO, tr("authors", authors), detail.x(), authorY,
             Tokens.Color.INK_SECONDARY);
 
-        int descY = authorY + Tokens.Type.LABEL.leading() + Tokens.Space.COZY;
+        int descY = authorY + Tokens.Type.MICRO.leading() + Tokens.Space.COZY;
         String desc = item.description().isBlank() ? tr("no.description") : item.description();
         Typeset.drawWrapped(painter, Tokens.Type.BODY, desc, detail.x(), descY,
             detail.w(), height < COMPACT_HEIGHT ? 3 : 4, Tokens.Color.INK_SECONDARY);
@@ -178,14 +178,14 @@ public final class ModsScreen extends SurfaceScreen {
         painter.border(detail.x(), cardY, detail.w(), 32, Tokens.Radius.SM, Tokens.Stroke.HAIR,
             Tokens.Color.LINE_HAIRLINE);
 
-        int textY = cardY + (32 - Tokens.Type.BODY_STRONG.leading()) / 2;
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG, item.id(),
+        int textY = cardY + (32 - Tokens.Type.STRONG.leading()) / 2;
+        Typeset.draw(painter, Tokens.Type.STRONG, item.id(),
             detail.x() + Tokens.Space.COZY, textY, Tokens.Color.INK_PRIMARY);
 
-        int dotX = detail.right() - Typeset.width(Tokens.Type.LABEL, "활성") - Tokens.Space.SECTION;
+        int dotX = detail.right() - Typeset.width(Tokens.Type.MICRO, "활성") - Tokens.Space.SECTION;
         painter.dot(dotX, cardY + 16, Tokens.Space.SNUG, Tokens.Color.STATUS_LIVE);
-        Typeset.drawRight(painter, Tokens.Type.LABEL, "활성",
-            detail.right() - Tokens.Space.COZY, cardY + (32 - Tokens.Type.LABEL.leading()) / 2,
+        Typeset.drawRight(painter, Tokens.Type.MICRO, "활성",
+            detail.right() - Tokens.Space.COZY, cardY + (32 - Tokens.Type.MICRO.leading()) / 2,
             Tokens.Color.INK_SECONDARY);
     }
 
@@ -196,9 +196,9 @@ public final class ModsScreen extends SurfaceScreen {
     private void footer(Painter painter) {
         painter.hRule(content.x(), footerY, content.w(), Tokens.Color.LINE_HAIRLINE);
         int y = footerY + Tokens.Space.COZY;
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("footer.keys"), content.x(), y,
+        Typeset.draw(painter, Tokens.Type.MICRO, tr("footer.keys"), content.x(), y,
             Tokens.Color.INK_TERTIARY);
-        Typeset.drawRight(painter, Tokens.Type.LABEL, tr("footer.info"), content.right(), y,
+        Typeset.drawRight(painter, Tokens.Type.MICRO, tr("footer.info"), content.right(), y,
             Tokens.Color.INK_TERTIARY);
     }
 

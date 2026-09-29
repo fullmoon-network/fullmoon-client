@@ -16,14 +16,14 @@ public final class HubChrome {
     private HubChrome() {}
 
     public static int mastheadHeight(boolean compact) {
-        return (compact ? Tokens.Type.TITLE.leading() : Tokens.Type.DISPLAY.leading())
+        return (compact ? Tokens.Type.ROW.leading() : Tokens.Type.DISPLAY.leading())
             + Tokens.Space.COZY;
     }
 
     public static void masthead(Painter painter, Box content, boolean compact) {
-        Tokens.Type.Role brand = compact ? Tokens.Type.TITLE : Tokens.Type.DISPLAY;
-        int y = content.y() + Palace.brandRise(brand);
-        Palace.brand(painter, brand, content.x(), y);
+        Tokens.Type.Role brand = compact ? Tokens.Type.ROW : Tokens.Type.DISPLAY;
+        int y = content.y() + Glass.rise(brand);
+        Glass.wordmark(painter, brand, content.x(), y);
         connection(painter, content, y);
     }
 
@@ -36,11 +36,11 @@ public final class HubChrome {
                                  : I18n.get("fullmoon.settings.server.connected", server.ip))
             : I18n.get("fullmoon.settings.server.disconnected");
 
-        int width = Typeset.width(Tokens.Type.LABEL, status);
+        int width = Typeset.width(Tokens.Type.MICRO, status);
         int textX = content.right() - width;
-        painter.dot(textX - Tokens.Space.COZY, y + Typeset.capHeight(Tokens.Type.LABEL) / 2.0f,
+        painter.dot(textX - Tokens.Space.COZY, y + Typeset.capHeight(Tokens.Type.MICRO) / 2.0f,
             Tokens.Space.SNUG, live ? Tokens.Color.STATUS_LIVE : Tokens.Color.STATUS_IDLE);
-        Typeset.draw(painter, Tokens.Type.LABEL, status, textX, y, Tokens.Color.INK_TERTIARY);
+        Typeset.draw(painter, Tokens.Type.MICRO, status, textX, y, Tokens.Color.INK_TERTIARY);
     }
 
     public static String categoryLabel(KeyMapping km) {

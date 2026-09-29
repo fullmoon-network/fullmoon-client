@@ -102,21 +102,21 @@ public final class ListScreen extends DevScreen {
      */
     private void sweep(Painter painter, Box body) {
         int captions = DevChrome.sectionHead(painter, "행 · 여덟 상태 × 두 선택", body.x(), body.y());
-        int top = captions + Tokens.Type.LABEL.leading() + Tokens.Space.SNUG;
+        int top = captions + Tokens.Type.MICRO.leading() + Tokens.Space.SNUG;
         Box grid = Box.between(body.x() + spine, top, body.right(),
             top + State.values().length * ListRow.HEIGHT);
 
         String[] columns = {"안 고른 행", "고른 행"};
         for (int col = 0; col < columns.length; col++) {
-            Typeset.drawCentered(painter, Tokens.Type.LABEL, columns[col],
+            Typeset.drawCentered(painter, Tokens.Type.MICRO, columns[col],
                 grid.col(col, columns.length, CELL_GAP).midX(), captions,
                 Tokens.Color.INK_TERTIARY);
         }
 
         for (State state : State.values()) {
             int rowTop = grid.y() + state.ordinal() * ListRow.HEIGHT;
-            Typeset.draw(painter, Tokens.Type.LABEL, words(state), body.x(),
-                Typeset.centred(Tokens.Type.LABEL, rowTop, ListRow.HEIGHT),
+            Typeset.draw(painter, Tokens.Type.MICRO, words(state), body.x(),
+                Typeset.centred(Tokens.Type.MICRO, rowTop, ListRow.HEIGHT),
                 Tokens.Color.INK_TERTIARY);
             for (int col = 0; col < columns.length; col++) {
                 ListRow row = col == 0 ? plain : chosen;
@@ -142,7 +142,7 @@ public final class ListScreen extends DevScreen {
 
     /** The head, the column captions, then one row per state. */
     private static int sweepHeight() {
-        return DevChrome.sectionHeadHeight() + Tokens.Type.LABEL.leading() + Tokens.Space.SNUG
+        return DevChrome.sectionHeadHeight() + Tokens.Type.MICRO.leading() + Tokens.Space.SNUG
             + State.values().length * ListRow.HEIGHT;
     }
 
@@ -150,7 +150,7 @@ public final class ListScreen extends DevScreen {
     private static int spine() {
         int widest = 0;
         for (State state : State.values()) {
-            widest = Math.max(widest, Typeset.width(Tokens.Type.LABEL, words(state)));
+            widest = Math.max(widest, Typeset.width(Tokens.Type.MICRO, words(state)));
         }
         return widest + Tokens.Space.SECTION;
     }

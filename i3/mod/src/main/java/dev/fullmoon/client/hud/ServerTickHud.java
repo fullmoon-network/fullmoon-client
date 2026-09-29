@@ -21,10 +21,10 @@ public final class ServerTickHud extends BaseHudElement {
     @Override
     public int measureWidth(Minecraft client) {
         String text = formatText(client, false);
-        return PADDING_H * 2 + Typeset.width(Tokens.Type.LABEL, "TPS") + Tokens.Space.SNUG
+        return PADDING_H * 2 + Typeset.width(Tokens.Type.MICRO, "TPS") + Tokens.Space.SNUG
             + Math.max(
-                Typeset.width(Tokens.Type.BODY_STRONG, text),
-                Typeset.width(Tokens.Type.BODY_STRONG, MAXIMUM_VALUE));
+                Typeset.width(Tokens.Type.STRONG, text),
+                Typeset.width(Tokens.Type.STRONG, MAXIMUM_VALUE));
     }
 
     @Override

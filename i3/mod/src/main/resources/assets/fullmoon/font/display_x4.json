@@ -1,0 +1,20 @@
+{
+    "providers": [
+        {
+            "type": "ttf",
+            "file": "fullmoon:serif-bold.ttf",
+            "size": 20,
+            "oversample": 4
+        },
+        {
+            "type": "ttf",
+            "file": "fullmoon:sans-bold.ttf",
+            "size": 20,
+            "oversample": 4
+        },
+        {
+            "type": "reference",
+            "id": "minecraft:include/space"
+        }
+    ]
+}

@@ -46,6 +46,10 @@ loom {
         providers.gradleProperty("dev_screen").orNull?.let { screen ->
             vmArg("-Dfullmoon.devScreen=$screen")
         }
+        // The concept mockup's row spacing, for photographing it beside the shipped spacing.
+        providers.gradleProperty("density").orNull?.let { density ->
+            vmArg("-Dfullmoon.density=$density")
+        }
     }
 }
 

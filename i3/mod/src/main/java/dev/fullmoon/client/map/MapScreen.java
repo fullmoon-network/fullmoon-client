@@ -16,7 +16,7 @@ import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.text.Typeset;
 import dev.fullmoon.client.ui.Button;
 import dev.fullmoon.client.ui.Chord;
-import dev.fullmoon.client.ui.Palace;
+import dev.fullmoon.client.ui.Glass;
 import dev.fullmoon.client.ui.Surface;
 import dev.fullmoon.client.ui.Tooltip;
 import dev.fullmoon.client.ui.Voice;
@@ -236,13 +236,13 @@ public final class MapScreen extends Screen {
 
     private void header(Painter painter) {
         Box content = layout.content();
-        int brandY = content.y() + Palace.brandRise(Tokens.Type.DISPLAY);
-        int textX = Palace.brand(painter, Tokens.Type.DISPLAY, content.x(), brandY);
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("subtitle"), textX,
-            brandY + Tokens.Type.LABEL.leading() + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
-        Typeset.drawRight(painter, Tokens.Type.LABEL, tr("authority"), content.right(), brandY,
+        int brandY = content.y() + Glass.rise(Tokens.Type.DISPLAY);
+        int textX = Glass.wordmark(painter, Tokens.Type.DISPLAY, content.x(), brandY);
+        Typeset.draw(painter, Tokens.Type.MICRO, tr("subtitle"), textX,
+            brandY + Tokens.Type.MICRO.leading() + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
+        Typeset.drawRight(painter, Tokens.Type.MICRO, tr("authority"), content.right(), brandY,
             Tokens.Color.INK_TERTIARY);
-        Palace.dancheong(painter, content.x(), layout.headerBottom() - Tokens.Space.COZY, content.w());
+        Glass.hair(painter, content.x(), layout.headerBottom() - Tokens.Space.COZY, content.w());
     }
 
     private void rail(Painter painter) {
@@ -272,7 +272,7 @@ public final class MapScreen extends Screen {
         } else if (layout.beyond(routes.size()) > 0) {
             // A rail too short to list every route still has to admit it. The map keeps marking
             // the ones the list dropped, so the count is the only place the loss is visible.
-            Typeset.draw(painter, Tokens.Type.LABEL,
+            Typeset.draw(painter, Tokens.Type.MICRO,
                 tr("routes.beyond", layout.beyond(routes.size())), rail.x(),
                 below + Tokens.Space.SNUG, Tokens.Color.INK_TERTIARY);
         }
@@ -285,10 +285,10 @@ public final class MapScreen extends Screen {
             painter.fill(row.x(), row.y(), Tokens.Stroke.FOCUS, row.h(), Tokens.Color.ACCENT);
         }
         int left = row.x() + (chosen ? Tokens.Space.COZY : 0);
-        String name = Typeset.fittingPrefix(Tokens.Type.BODY_STRONG, route.name(), row.w());
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG, name, left,
+        String name = Typeset.fittingPrefix(Tokens.Type.STRONG, route.name(), row.w());
+        Typeset.draw(painter, Tokens.Type.STRONG, name, left,
             row.y() + Tokens.Space.SNUG, Tokens.Color.INK_PRIMARY);
-        Typeset.tabular(painter, Tokens.Type.LABEL, route.x() + "  " + route.z(), left,
+        Typeset.tabular(painter, Tokens.Type.MICRO, route.x() + "  " + route.z(), left,
             row.y() + Tokens.Space.SNUG + Tokens.Type.BODY.leading(),
             Tokens.Color.INK_TERTIARY);
         painter.hRule(row.x(), row.bottom() - Tokens.Stroke.HAIR, row.w(),
@@ -304,21 +304,21 @@ public final class MapScreen extends Screen {
         Box band = layout.band();
         painter.hRule(band.x(), band.y(), band.w(), Tokens.Color.LINE_HAIRLINE);
         int labelY = band.y() + Tokens.Space.COZY;
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("chosen"), band.x(), labelY,
+        Typeset.draw(painter, Tokens.Type.MICRO, tr("chosen"), band.x(), labelY,
             Tokens.Color.INK_TERTIARY);
         Status status = status();
-        Typeset.drawRight(painter, Tokens.Type.LABEL, status.copy(), band.right(), labelY,
+        Typeset.drawRight(painter, Tokens.Type.MICRO, status.copy(), band.right(), labelY,
             status.color());
 
-        int nameY = labelY + Tokens.Type.LABEL.leading() + Tokens.Space.SNUG;
+        int nameY = labelY + Tokens.Type.MICRO.leading() + Tokens.Space.SNUG;
         BridgeProtocol.Waypoint route = selected();
         if (route == null) {
             Typeset.draw(painter, Tokens.Type.BODY, tr("chosen.none"), band.x(), nameY,
                 Tokens.Color.INK_TERTIARY);
             return;
         }
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG,
-            Typeset.fittingPrefix(Tokens.Type.BODY_STRONG, route.name(), band.w()),
+        Typeset.draw(painter, Tokens.Type.STRONG,
+            Typeset.fittingPrefix(Tokens.Type.STRONG, route.name(), band.w()),
             band.x(), nameY, Tokens.Color.INK_PRIMARY);
     }
 
@@ -342,28 +342,28 @@ public final class MapScreen extends Screen {
         int y = layout.footerTop() + Tokens.Space.COZY;
         painter.hRule(content.x(), layout.footerTop(), content.w(),
             Tokens.Color.LINE_HAIRLINE);
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("footer.keys"), content.x(), y,
+        Typeset.draw(painter, Tokens.Type.MICRO, tr("footer.keys"), content.x(), y,
             Tokens.Color.INK_TERTIARY);
         int color = sampleFailed ? Tokens.Color.STATUS_DANGER : Tokens.Color.INK_TERTIARY;
         String status = sampleFailed
             ? tr("status.failed")
             : tr("status.coverage", terrain.snapshot().mappedPercent());
-        Typeset.drawRight(painter, Tokens.Type.LABEL, status, content.right(), y, color);
+        Typeset.drawRight(painter, Tokens.Type.MICRO, status, content.right(), y, color);
     }
 
     private void section(Painter painter, String label, int y) {
         Box rail = layout.rail();
         painter.fill(rail.x(), y + Tokens.Space.TIGHT, Tokens.Stroke.FOCUS,
-            Tokens.Type.LABEL.px(), Tokens.Color.ACCENT);
-        Typeset.draw(painter, Tokens.Type.LABEL, label,
+            Tokens.Type.MICRO.px(), Tokens.Color.ACCENT);
+        Typeset.draw(painter, Tokens.Type.MICRO, label,
             rail.x() + Tokens.Space.COZY, y, Tokens.Color.INK_TERTIARY);
     }
 
     private void drawFact(Painter painter, String label, String value, int y) {
         Box rail = layout.rail();
-        Typeset.draw(painter, Tokens.Type.LABEL, label, rail.x(), y,
+        Typeset.draw(painter, Tokens.Type.MICRO, label, rail.x(), y,
             Tokens.Color.INK_TERTIARY);
-        Typeset.tabularRight(painter, Tokens.Type.BODY_STRONG, value, rail.right(), y,
+        Typeset.tabularRight(painter, Tokens.Type.STRONG, value, rail.right(), y,
             Tokens.Color.INK_PRIMARY);
     }
 

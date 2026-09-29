@@ -127,8 +127,8 @@ public final class KitScreen extends DevScreen {
             Box cell = grid.col(state.ordinal(), columns, CELL_GAP);
             String[] caption = caption(state);
             for (int i = 0; i < caption.length; i++) {
-                Typeset.drawCentered(painter, Tokens.Type.LABEL, caption[i], cell.midX(),
-                    captions + i * Tokens.Type.LABEL.leading(), Tokens.Color.INK_TERTIARY);
+                Typeset.drawCentered(painter, Tokens.Type.MICRO, caption[i], cell.midX(),
+                    captions + i * Tokens.Type.MICRO.leading(), Tokens.Color.INK_TERTIARY);
             }
         }
         painter.hRule(body.x(), top - Tokens.Space.TIGHT, body.w(), Tokens.Color.LINE_STRONG);
@@ -138,8 +138,8 @@ public final class KitScreen extends DevScreen {
         for (int i = 0; i < rows.size(); i++) {
             Row row = rows.get(i);
             int rowTop = top + i * ROW_H;
-            Typeset.draw(painter, Tokens.Type.LABEL, row.name(), body.x(),
-                Typeset.centred(Tokens.Type.LABEL, rowTop, ROW_H), Tokens.Color.INK_TERTIARY);
+            Typeset.draw(painter, Tokens.Type.MICRO, row.name(), body.x(),
+                Typeset.centred(Tokens.Type.MICRO, rowTop, ROW_H), Tokens.Color.INK_TERTIARY);
 
             for (State state : State.values()) {
                 Box cell = grid.col(state.ordinal(), columns, CELL_GAP);
@@ -160,13 +160,13 @@ public final class KitScreen extends DevScreen {
     /** The y the matrix's first row starts at: the section head, then the caption lines. */
     private int bandTop() {
         return matrixTop + DevChrome.sectionHeadHeight()
-            + CAPTION_LINES * Tokens.Type.LABEL.leading() + Tokens.Space.SNUG;
+            + CAPTION_LINES * Tokens.Type.MICRO.leading() + Tokens.Space.SNUG;
     }
 
     private int spine() {
         int widest = 0;
         for (Row row : rows) {
-            widest = Math.max(widest, Typeset.width(Tokens.Type.LABEL, row.name()));
+            widest = Math.max(widest, Typeset.width(Tokens.Type.MICRO, row.name()));
         }
         return widest + Tokens.Space.SECTION;
     }

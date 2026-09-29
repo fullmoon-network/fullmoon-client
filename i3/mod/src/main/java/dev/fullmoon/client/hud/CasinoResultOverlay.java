@@ -16,7 +16,6 @@ import dev.fullmoon.client.render.Motion;
 import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.text.Typeset;
-import dev.fullmoon.client.ui.Palace;
 
 /**
  * The settled-bet card: rises above the hotbar, plays the game's reveal, then states the result.
@@ -73,29 +72,24 @@ public final class CasinoResultOverlay {
         painter.pushClip(x - 1, y - 1, width + 2, HEIGHT + 2);
         painter.fill(x, top, width, HEIGHT, Tokens.Radius.NONE,
             Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.90f));
-        painter.border(x, top, width, HEIGHT, Tokens.Radius.NONE,
-            Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT_FAINT);
-        // The frame's brackets carry the verdict: gilt for a win, the plain gilt line otherwise.
-        Palace.ticks(painter, x - 1, top - 1, width + 2, HEIGHT + 2, Tokens.Space.COZY,
-            settled && result.won() ? Tokens.Color.ACCENT : Tokens.Color.LINE_GILT);
 
         int chipX = x + Tokens.Space.LOOSE + CHIP / 2;
         int chipY = top + Tokens.Space.COZY + CHIP / 2;
         painter.dot(chipX, chipY, CHIP / 2f, Tokens.Color.SURFACE_SUNKEN);
-        painter.ring(chipX, chipY, CHIP / 2f, Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT);
+        painter.ring(chipX, chipY, CHIP / 2f, Tokens.Stroke.HAIR, Tokens.Color.LINE_STRONG);
         MenuIcons.draw(painter, "fullmoon.casino." + result.game().wireName(),
             chipX, chipY, CHIP - Tokens.Space.SNUG);
 
         int textX = x + Tokens.Space.LOOSE + CHIP + Tokens.Space.COZY;
         int right = x + width - Tokens.Space.LOOSE;
         int eyebrowY = top + Tokens.Space.COZY;
-        int titleY = eyebrowY + Tokens.Type.LABEL.leading();
-        Typeset.draw(painter, Tokens.Type.LABEL, "풀문 카지노 · " + gameName(result.game()),
+        int titleY = eyebrowY + Tokens.Type.MICRO.leading();
+        Typeset.draw(painter, Tokens.Type.MICRO, "풀문 카지노 · " + gameName(result.game()),
             textX, eyebrowY, Tokens.Color.INK_TERTIARY);
         int pill = settled && result.won() ? drawPill(painter, multiplier(result.payoutMultiplier()), right, eyebrowY) : 0;
-        String title = Typeset.fittingPrefix(Tokens.Type.BODY_STRONG,
+        String title = Typeset.fittingPrefix(Tokens.Type.STRONG,
             title(result, settled), right - textX - pill);
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG, title, textX, titleY,
+        Typeset.draw(painter, Tokens.Type.STRONG, title, textX, titleY,
             settled && result.won() ? Tokens.Color.ACCENT : Tokens.Color.INK_PRIMARY);
 
         int stageX = x + Tokens.Space.LOOSE;
@@ -119,12 +113,12 @@ public final class CasinoResultOverlay {
     }
 
     private static int drawPill(Painter painter, String text, int right, int y) {
-        int width = Typeset.tabularWidth(Tokens.Type.LABEL, text) + Tokens.Space.BASE * 2;
-        int height = Tokens.Type.LABEL.leading() + Tokens.Space.TIGHT;
+        int width = Typeset.tabularWidth(Tokens.Type.MICRO, text) + Tokens.Space.BASE * 2;
+        int height = Tokens.Type.MICRO.leading() + Tokens.Space.TIGHT;
         painter.fill(right - width, y - Tokens.Space.HAIR, width, height, Tokens.Radius.ROUND,
             Tokens.Color.ACCENT);
-        Typeset.tabularRight(painter, Tokens.Type.LABEL, text, right - Tokens.Space.BASE,
-            Typeset.centred(Tokens.Type.LABEL, y - Tokens.Space.HAIR, height), Tokens.Color.INK_ON_ACCENT);
+        Typeset.tabularRight(painter, Tokens.Type.MICRO, text, right - Tokens.Space.BASE,
+            Typeset.centred(Tokens.Type.MICRO, y - Tokens.Space.HAIR, height), Tokens.Color.INK_ON_ACCENT);
         return width + Tokens.Space.COZY;
     }
 
@@ -133,7 +127,7 @@ public final class CasinoResultOverlay {
         int count = reels.symbols().size();
         int cell = Math.min(REEL_MAX, (width - (count - 1) * Tokens.Space.SNUG) / count);
         int left = x + (width - (cell * count + (count - 1) * Tokens.Space.SNUG)) / 2;
-        int leading = Tokens.Type.BODY_STRONG.leading();
+        int leading = Tokens.Type.STRONG.leading();
         for (int i = 0; i < count; i++) {
             int cellX = left + i * (cell + Tokens.Space.SNUG);
             String symbol = reels.symbols().get(i);
@@ -146,21 +140,21 @@ public final class CasinoResultOverlay {
                 hit ? Tokens.Color.ACCENT : Tokens.Color.LINE_HAIRLINE);
             painter.pushClip(cellX, y, cell, STAGE);
             int centre = cellX + cell / 2;
-            int baseline = Typeset.centred(Tokens.Type.BODY_STRONG, y, STAGE);
+            int baseline = Typeset.centred(Tokens.Type.STRONG, y, STAGE);
             if (age < stop) {
                 long frame = Math.max(0, age) / Tokens.Duration.FAST + i * 3L;
                 int scroll = Math.round(leading * Motion.progress(
                     Math.max(0, age) % Tokens.Duration.FAST, Tokens.Duration.FAST));
                 String current = REEL_ORDER.get((int) (frame % REEL_ORDER.size()));
                 String next = REEL_ORDER.get((int) ((frame + 1) % REEL_ORDER.size()));
-                Typeset.drawCentered(painter, Tokens.Type.BODY_STRONG, symbolName(current),
+                Typeset.drawCentered(painter, Tokens.Type.STRONG, symbolName(current),
                     centre, baseline - scroll, Tokens.Color.INK_TERTIARY);
-                Typeset.drawCentered(painter, Tokens.Type.BODY_STRONG, symbolName(next),
+                Typeset.drawCentered(painter, Tokens.Type.STRONG, symbolName(next),
                     centre, baseline - scroll + leading, Tokens.Color.INK_TERTIARY);
             } else {
                 int drop = Math.round(Tokens.Space.SNUG * (1 - Motion.ease(Tokens.Easing.OUT,
                     Motion.progress(age - stop, Tokens.Duration.BASE))));
-                Typeset.drawCentered(painter, Tokens.Type.BODY_STRONG, symbolName(symbol),
+                Typeset.drawCentered(painter, Tokens.Type.STRONG, symbolName(symbol),
                     centre, baseline - drop, hit ? Tokens.Color.ACCENT : Tokens.Color.INK_PRIMARY);
             }
             painter.popClip();
@@ -185,9 +179,9 @@ public final class CasinoResultOverlay {
         painter.fill(markerX - Tokens.Stroke.FOCUS / 2f, trackY - Tokens.Space.TIGHT,
             Tokens.Stroke.FOCUS, trackHeight + Tokens.Space.SNUG, Tokens.Radius.NONE, marker);
         String number = Integer.toString(Math.round(value));
-        int half = Typeset.tabularWidth(Tokens.Type.LABEL, number) / 2;
+        int half = Typeset.tabularWidth(Tokens.Type.MICRO, number) / 2;
         int labelX = Math.clamp(Math.round(markerX) - half, x, x + width - half * 2);
-        Typeset.tabular(painter, Tokens.Type.LABEL, number, labelX, y, marker);
+        Typeset.tabular(painter, Tokens.Type.MICRO, number, labelX, y, marker);
     }
 
     private static void drawWheel(Painter painter, CasinoProtocol.Spin spin, boolean won,
@@ -209,8 +203,8 @@ public final class CasinoResultOverlay {
             int pocket = WHEEL[Math.floorMod(k, WHEEL.length)];
             float cellX = centre + (k - position) * pitch - POCKET / 2f;
             painter.fill(cellX, y, POCKET, STAGE, Tokens.Radius.NONE, pocketColor(pocket));
-            Typeset.drawCentered(painter, Tokens.Type.LABEL, Integer.toString(pocket),
-                Math.round(cellX + POCKET / 2f), Typeset.centred(Tokens.Type.LABEL, y, STAGE),
+            Typeset.drawCentered(painter, Tokens.Type.MICRO, Integer.toString(pocket),
+                Math.round(cellX + POCKET / 2f), Typeset.centred(Tokens.Type.MICRO, y, STAGE),
                 pocket == 0 ? Tokens.Color.INK_ON_ACCENT : Tokens.Color.INK_PRIMARY);
         }
         painter.popClip();

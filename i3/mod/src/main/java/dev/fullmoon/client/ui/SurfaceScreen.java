@@ -17,7 +17,7 @@ public abstract class SurfaceScreen extends Screen {
     }
 
     @Override
-    public final void mouseMoved(double mouseX, double mouseY) {
+    public void mouseMoved(double mouseX, double mouseY) {
         surface.pointer(mouseX, mouseY);
     }
 

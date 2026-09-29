@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Bake the two Fullmoon UI faces out of Pretendard.
+"""Bake the three Fullmoon UI faces out of Pretendard.
 
-Two weights and no more, because the type roles need exactly two: Regular carries body and
-label, SemiBold carries title and bodyStrong. Display is a different face entirely — see
-make-display-font.py.
+Three weights and no more, because the type roles need exactly three: Regular carries body,
+SemiBold carries row, strong and micro, Bold carries figure. Display is a different face
+entirely — see make-display-font.py.
 
 The faces are renamed. Pretendard ships under the OFL with the Reserved Font Name
 'Pretendard', and a subset whose outlines have been rewritten is a Modified Version, which
@@ -24,6 +24,7 @@ OUT_DIR = pathlib.Path(__file__).resolve().parents[1] / "mod/src/main/resources/
 FACES = [
     ("Pretendard-Regular.otf", "sans-regular.ttf", "Regular"),
     ("Pretendard-SemiBold.otf", "sans-semibold.ttf", "SemiBold"),
+    ("Pretendard-Bold.otf", "sans-bold.ttf", "Bold"),
 ]
 FAMILY = "Fullmoon Sans"
 

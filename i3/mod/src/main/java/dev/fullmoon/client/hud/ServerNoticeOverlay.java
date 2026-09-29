@@ -32,9 +32,9 @@ final class ServerNoticeOverlay {
 
         int textX = x + Tokens.Space.LOOSE;
         int textWidth = width - Tokens.Space.SECTION;
-        String title = Typeset.fittingPrefix(Tokens.Type.BODY_STRONG, notice.title(), textWidth);
+        String title = Typeset.fittingPrefix(Tokens.Type.STRONG, notice.title(), textWidth);
         String body = Typeset.fittingPrefix(Tokens.Type.BODY, notice.body(), textWidth);
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG, title,
+        Typeset.draw(painter, Tokens.Type.STRONG, title,
             textX, y + Tokens.Space.COZY, Tokens.Color.INK_PRIMARY);
         Typeset.draw(painter, Tokens.Type.BODY, body,
             textX, y + Tokens.Space.SECTION, Tokens.Color.INK_SECONDARY);

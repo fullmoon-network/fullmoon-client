@@ -45,14 +45,14 @@ final class LobbyButton extends Widget {
             return;
         }
         int pad = Tokens.Space.GUTTER;
-        Typeset.draw(painter, Tokens.Type.HEADING, label(), b.x() + pad,
-            Typeset.centred(Tokens.Type.HEADING, b.y(), b.h()), Tokens.Color.INK_ON_ACCENT);
+        Typeset.draw(painter, Tokens.Type.TITLE, label(), b.x() + pad,
+            Typeset.centred(Tokens.Type.TITLE, b.y(), b.h()), Tokens.Color.INK_ON_ACCENT);
 
         String text = status.get();
-        int textY = Typeset.centred(Tokens.Type.LABEL, b.y(), b.h());
+        int textY = Typeset.centred(Tokens.Type.MICRO, b.y(), b.h());
         int right = b.right() - pad;
-        int textW = Typeset.width(Tokens.Type.LABEL, text);
-        Typeset.draw(painter, Tokens.Type.LABEL, text, right - textW, textY, Tokens.Color.INK_ON_ACCENT);
+        int textW = Typeset.width(Tokens.Type.MICRO, text);
+        Typeset.draw(painter, Tokens.Type.MICRO, text, right - textW, textY, Tokens.Color.INK_ON_ACCENT);
         painter.dot(right - textW - Tokens.Space.COZY, b.midY(), Tokens.Space.TIGHT + 0.5f,
             reachable.get() ? Tokens.Color.STATUS_LIVE : Tokens.Color.STATUS_IDLE);
     }

@@ -2,6 +2,7 @@ package dev.fullmoon.client.ui;
 
 import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.layout.Box;
+import dev.fullmoon.client.render.Motion;
 import dev.fullmoon.client.render.Painter;
 
 /**
@@ -14,6 +15,10 @@ import dev.fullmoon.client.render.Painter;
  *
  * <p>{@link #draw} is handed the state rather than working it out, so the same drawing code that
  * runs in a live surface can be asked for all eight states side by side.
+ *
+ * <p>A change of state is remembered with the moment it happened, so a control can crossfade its
+ * ground from the state it was in to the one it is in. The gallery, which hands states straight
+ * to {@link #draw}, never records a change and so draws every cell settled.
  */
 public abstract class Widget implements Focus.Target {
     /** Clear of the control's own edge by a hairline, so the two do not read as one thick line. */
@@ -26,6 +31,11 @@ public abstract class Widget implements Focus.Target {
     private State.Signals own = State.Signals.REST;
     private boolean ringing;
     private boolean holding;
+
+    private State seen = State.REST;
+    private State before = State.REST;
+    private long changedAt;
+    private long nudgedAt = Long.MIN_VALUE;
 
     protected Widget(Voice voice, String label) {
         this.voice = voice;
@@ -150,6 +160,45 @@ public abstract class Widget implements Focus.Target {
             radius + RING_GAP, Tokens.Stroke.FOCUS, color);
     }
 
+    /** The surface saw this widget in {@code state}; a change starts the crossfade clock. */
+    final void observe(State state) {
+        if (state != seen) {
+            before = seen;
+            seen = state;
+            changedAt = System.nanoTime();
+        }
+    }
+
+    /** The state this widget was in before the one it is in now. */
+    protected final State before() {
+        return before;
+    }
+
+    /**
+     * How far the crossfade from {@link #before()} has come, 0 to 1, eased on the fast duration.
+     * A widget that was never observed by a surface — a gallery cell — is always settled.
+     */
+    protected final float settle() {
+        if (changedAt == 0) {
+            return 1.0f;
+        }
+        long elapsed = (System.nanoTime() - changedAt) / 1_000_000L;
+        return Motion.eased(elapsed, Tokens.Duration.FAST, Tokens.Easing.OUT);
+    }
+
+    /** A press landed on this control while it could not answer: it shakes its head. */
+    final void nudge() {
+        nudgedAt = System.nanoTime();
+    }
+
+    /** The horizontal offset a nudge puts on the control's contents this frame. */
+    protected final float nudgeOffset() {
+        if (nudgedAt == Long.MIN_VALUE) {
+            return 0.0f;
+        }
+        return Motion.nudge((System.nanoTime() - nudgedAt) / 1_000_000L);
+    }
+
     /** Mouse down inside the bounds. Returning true captures the pointer until it comes up. */
     protected boolean press(double mx, double my) {
         return true;
@@ -193,7 +242,7 @@ public abstract class Widget implements Focus.Target {
     protected void blurred() {}
 
     /** Whether this control is wearing the ring. Surface-owned, like hover and press. */
-    final boolean ringing() {
+    protected final boolean ringing() {
         return ringing;
     }
 
@@ -205,7 +254,7 @@ public abstract class Widget implements Focus.Target {
      * cannot say two things. The ring answers to how focus arrived, and a caret answers to whether
      * it is here at all — a field clicked into has one and no ring.
      */
-    final boolean holding() {
+    protected final boolean holding() {
         return holding;
     }
 
@@ -215,7 +264,7 @@ public abstract class Widget implements Focus.Target {
     }
 
     /** Whether the pointer is on this control. A composite has to pass its own answer to its parts. */
-    final boolean hovered() {
+    protected final boolean hovered() {
         return own.hovered();
     }
 

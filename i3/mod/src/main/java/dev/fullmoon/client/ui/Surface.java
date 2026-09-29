@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 
 import dev.fullmoon.client.render.Painter;
+import dev.fullmoon.client.sound.UiSounds;
 
 import com.mojang.blaze3d.platform.InputConstants;
 
@@ -94,7 +95,9 @@ public final class Surface {
     public State state(Widget widget) {
         widget.holding(focus.holds(widget));
         widget.ringing(focus.rings(widget));
-        return widget.state(focus);
+        State state = widget.state(focus);
+        widget.observe(state);
+        return state;
     }
 
     /**
@@ -161,8 +164,11 @@ public final class Surface {
             return false;
         }
         // A dead control is not a hole in the surface. Letting the click through to whatever sits
-        // behind it punishes the player's aim for the control being off.
+        // behind it punishes the player's aim for the control being off; the control shakes its
+        // head instead, so the click is seen to have landed.
         if (!hit.state(focus).live()) {
+            hit.nudge();
+            UiSounds.play(UiSounds.Cue.ERROR);
             return true;
         }
         focus.point(hit);
@@ -209,6 +215,7 @@ public final class Surface {
             boolean moved = focus.advance(chord.shift() ? -1 : 1);
             if (moved) {
                 handedOff(holder);
+                UiSounds.play(UiSounds.Cue.FOCUS);
             }
             return moved;
         }
