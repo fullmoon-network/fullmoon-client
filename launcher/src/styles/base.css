@@ -2,9 +2,11 @@
    Colours, space, motion and type come from design/tokens.css, generated from
    i3/design/tokens.json. Nothing below writes a colour of its own. */
 
-/* The body face is the game's own: the three Pretendard cuts the mod bakes (assets/fullmoon/font),
-   so a launcher label and an in-game label are the same outlines and rasterise the same way.
-   They are a Hangul-and-Latin subset; the full Pretendard below them answers everything else. */
+/* The body face is the game's own: the Pretendard cuts the mod bakes (assets/fullmoon/font), so a
+   launcher label and an in-game label are the same outlines and rasterise the same way. They are
+   a Hangul-and-Latin subset without OpenType features — no tabular figures — so the bold, which
+   sets figures, is the full Pretendard Bold (as mock g sets it), and `.num` asks for the full
+   Pretendard first. */
 @font-face {
   font-family: 'Fullmoon Sans';
   src: url('../../../i3/mod/src/main/resources/assets/fullmoon/font/sans-regular.ttf') format('truetype');
@@ -19,7 +21,7 @@
 }
 @font-face {
   font-family: 'Fullmoon Sans';
-  src: url('../../../i3/mod/src/main/resources/assets/fullmoon/font/sans-bold.ttf') format('truetype');
+  src: url('/fonts/Pretendard-Bold.otf') format('opentype');
   font-weight: 700;
   font-display: swap;
 }
@@ -103,7 +105,7 @@ kbd { font: inherit; }
 }
 *::-webkit-scrollbar-thumb:hover { background: var(--color-ink-disabled); background-clip: padding-box; }
 
-.num { font-variant-numeric: lining-nums tabular-nums; }
+.num { font-family: 'Pretendard', 'Fullmoon Sans', system-ui, sans-serif; font-variant-numeric: lining-nums tabular-nums; }
 /* a monospace face has no Hangul; the body faces answer those glyphs instead of a system fallback */
 .mono {
   font-family: "JetBrains Mono", "Cascadia Mono", ui-monospace, monospace, 'Fullmoon Sans', 'Pretendard';

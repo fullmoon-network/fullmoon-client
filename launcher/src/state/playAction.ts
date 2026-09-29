@@ -1,5 +1,5 @@
 /* The one decision behind every play button: what pressing it does right now. The dock and the
-   home plaque both draw it, so a launcher that has no account, is still provisioning, is mid
+   play screen's hero both draw it, so a launcher that has no account, is still provisioning, is mid
    install, or already has a game up says the same thing in both places. */
 
 import { useStore } from "./store";

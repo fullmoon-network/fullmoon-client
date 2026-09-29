@@ -378,7 +378,7 @@ const en: Dict = {
     dark: "Night",
     light: "Day",
     accent: "Metal",
-    accentDesc: "Corner brackets, the main button and selection marks take this metal",
+    accentDesc: "The main button and selection marks take this metal",
     reduceMotion: "Reduce motion",
     reduceMotionDesc: "Selections switch instead of gliding and screens do not rise in. If your system asks for it, it is already on.",
     sounds: "Menu sounds",

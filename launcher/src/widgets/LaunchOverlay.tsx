@@ -16,7 +16,7 @@ const LEVEL_CLASS: Record<LogLevel, string> = {
 };
 
 /* The launch surface over the live game://log stream. Progress is the steps the log has proved,
-   drawn as a waxing moon on a dial with one tick per step — never a timer and never an estimate.
+   drawn as a moon that fills one step at a time — never a timer and never an estimate.
    The raw log stays one press away, folded, for the player who wants to watch it scroll. */
 export function LaunchOverlay({ onHide }: { onHide: () => void }) {
   const { game, logs, instances, killGame } = useStore();
