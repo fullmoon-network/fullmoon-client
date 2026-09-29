@@ -1246,3 +1246,16 @@ the browser build reports every server unreachable.
 - 실캡처는 아직 없다. 4차 캡처의 `casino-card`·`route`가 일시정지 메뉴였던 원인은 하네스(`/guild` 뒤의
   Esc)였고 고쳤다. 다음 실행이 네 게임의 카드(연출 중·정착), HUD(휴식·키 눌림), 항로(선택·요청·응답)를
   찍는다. 러너 빌드 이력과 다음 단계는 `~/.local/share/fullmoon-client-redesign/phaseB/HANDOFF.md`.
+
+## 2026-09-30 — phase B round 3: run 5 pairs, two fixes, the title screen in code
+
+Run 36607805509 photographed M1–M4 for real at 1280×720 GUI 2: the result card in all twelve
+states (four games, spin / win / lose — the rig re-bets until both outcomes are seen), the HUD with
+keys held, the route screen at rest, pending and accepted, and the M1 re-shots. The 1080p pass was
+lost to the tutorial prompt arriving as a chest before the handshake; the rig now escapes past it.
+The pairs matched the mockups apart from two things, both fixed in `cb68209`: the lobby's labelled
+help line was being split as label/value, and the route list sorted a group alphabetically instead
+of keeping the server's order. The 매입소 strip keeps 전량 판매가 (the mock was changed to agree).
+The title screen (`8cca445`) now follows mock (f): veil, wordmark, one gliding list with the live
+lobby answer, tonight's moon, the foot with real versions; its captures come with the next run.
+Evidence: `i3/docs/evidence/phaseB/sheet-*.jpg`, `*-720p-pair.jpg`, `glide-route-720p.gif`.
