@@ -240,6 +240,11 @@ public final class Typeset {
         return top + h / 2 + role.px() / 4 - ASCENT;
     }
 
+    /** The origin to draw at so the glyphs sit on {@code baseline}, whatever the face. */
+    public static int originFor(int baseline) {
+        return baseline - ASCENT;
+    }
+
     /**
      * The height of a role's capitals: the cap line down to the baseline. Same model as
      * {@link #centred} — a face carries about a quarter of its size below the baseline and the

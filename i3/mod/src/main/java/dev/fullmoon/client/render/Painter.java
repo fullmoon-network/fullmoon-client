@@ -83,6 +83,21 @@ public final class Painter {
         submit(x + hx, y + hy, hx, hy, 0.0f, 0.0f, top, bottom);
     }
 
+    /**
+     * Fills a rect whose colour runs from {@code left} to {@code right}: the vertical gradient
+     * turned a quarter on, since a shape carries one colour per end and only along its height.
+     */
+    public void fillGradientAcross(float x, float y, float w, float h, int left, int right) {
+        if (w <= 0.0f || h <= 0.0f) {
+            return;
+        }
+        gfx.pose().pushMatrix();
+        gfx.pose().translate(x + w, y);
+        gfx.pose().rotate((float) (Math.PI / 2.0));
+        fillGradient(0.0f, 0.0f, h, w, right, left);
+        gfx.pose().popMatrix();
+    }
+
     /** Strokes the inside edge of a rect. A 1px stroke on integer coords lands on one row. */
     public void border(float x, float y, float w, float h, float radius, float thickness, int color) {
         if (thickness > 0.0f) {
