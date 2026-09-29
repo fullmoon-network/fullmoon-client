@@ -17,16 +17,29 @@
 }
 @font-face {
   font-family: 'Pretendard';
+  src: url('/fonts/Pretendard-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Pretendard';
   src: url('/fonts/Pretendard-ExtraBold.otf') format('opentype');
   font-weight: 800;
   font-display: swap;
 }
-/* The display face is the one the game bakes: Noto Serif CJK KR frozen at 600, Latin plus the
-   KS X 1001 syllables (i3/design/make-display-font.py). One file for both halves. */
+/* The display face is the one the game bakes: Hahmlet (OFL) at 600 and 700, the same two files
+   the mod ships under assets/fullmoon/font, so a launcher wordmark and a title-screen wordmark
+   are the same outlines. */
 @font-face {
-  font-family: 'Fullmoon Serif';
-  src: url('../../../i3/mod/src/main/resources/assets/fullmoon/font/display.ttf') format('truetype');
+  font-family: 'Hahmlet';
+  src: url('../../../i3/mod/src/main/resources/assets/fullmoon/font/serif-semibold.ttf') format('truetype');
   font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Hahmlet';
+  src: url('../../../i3/mod/src/main/resources/assets/fullmoon/font/serif-bold.ttf') format('truetype');
+  font-weight: 700;
   font-display: swap;
 }
 
@@ -74,12 +87,12 @@ kbd { font: inherit; }
   border: 3px solid transparent;
   background-clip: padding-box;
 }
-*::-webkit-scrollbar-thumb:hover { background: var(--color-line-gilt); background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--color-ink-disabled); background-clip: padding-box; }
 
 .num { font-variant-numeric: lining-nums tabular-nums; }
 .mono {
   font-family: "JetBrains Mono", "Cascadia Mono", ui-monospace, monospace;
-  font-size: var(--type-label-size);
+  font-size: var(--type-micro-size);
 }
 .sr-only {
   position: absolute;
@@ -90,10 +103,10 @@ kbd { font: inherit; }
   white-space: nowrap;
 }
 
-/* the micro label every surface uses for a section name */
+/* the small label every surface uses for a section name: micro, spaced, tertiary */
 .overline {
-  font: var(--type-label);
-  letter-spacing: 0.12em;
+  font: var(--type-micro);
+  letter-spacing: 0.08em;
   color: var(--color-ink-tertiary);
 }
 
@@ -121,7 +134,9 @@ kbd { font: inherit; }
 .stagger > *:nth-child(4) { animation-delay: 120ms; }
 .stagger > *:nth-child(n + 5) { animation-delay: 160ms; }
 
-/* reduced motion collapses every movement to a short crossfade; nothing loops */
+/* Reduced motion collapses every movement to a short crossfade and nothing loops. The system
+   preference and the launcher's own 움직임 줄이기 setting (data-motion on the root) say the same
+   thing, so both blocks are the one rule. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: var(--dur-reduced) !important;
@@ -131,3 +146,10 @@ kbd { font: inherit; }
   }
   .stagger > *, .screen-enter { animation-name: fade-in !important; }
 }
+[data-motion="reduced"] *, [data-motion="reduced"] *::before, [data-motion="reduced"] *::after {
+  animation-duration: var(--dur-reduced) !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0ms !important;
+  transition-duration: var(--dur-reduced) !important;
+}
+[data-motion="reduced"] .stagger > *, [data-motion="reduced"] .screen-enter { animation-name: fade-in !important; }

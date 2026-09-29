@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Icon } from "../components/Icon";
 import { Empty, IconButton, Segmented } from "../components/ui";
-import { Dancheong, Marker } from "../components/Palace";
 import Skin3D from "../widgets/Skin3D";
 import type { Cosmetic, CosmeticSlot } from "../core/bindings";
 import { useStore } from "../state/store";
@@ -55,8 +54,8 @@ export function CosmeticsScreen() {
       <div className="cos-layout">
         <section className="cos-side">
           {/* preview stage — the real skinview3d viewer, same one the HUD ships */}
-          <div className="cos-stage pf-frame">
-            <div className="cos-stage-band pf-band">
+          <div className="cos-stage glass">
+            <div className="cos-stage-band">
               <span>{activeAccount.username}</span>
               <Segmented
                 options={[
@@ -67,7 +66,6 @@ export function CosmeticsScreen() {
                 onChange={(v) => setWalk(v === "walk")}
               />
             </div>
-            <Dancheong />
             <div className="cos-figure">
               {/* three-quarters from behind: a cape stage that spins the cape
                   out of view half the time is a stage that shows nothing */}
@@ -88,18 +86,17 @@ export function CosmeticsScreen() {
             </div>
           </div>
 
-          <h3 className="pf-section-head cos-col-title">{t("cosmetics.loadout")}</h3>
+          <h3 className="section-head cos-col-title">{t("cosmetics.loadout")}</h3>
           <div className="cos-slots">
             {slots.map((slot) => {
               const item = cosmetics.find((c) => c.id === loadout?.[slot]) ?? null;
               return (
-                <div key={slot} className={`cos-slot pf-tile ${slotFilter === slot ? "is-current" : ""}`}>
+                <div key={slot} className={`cos-slot tile ${slotFilter === slot ? "is-chosen" : ""}`}>
                   <button
                     className="cos-slot-pick"
                     aria-pressed={slotFilter === slot}
                     onClick={() => setSlotFilter(slot)}
                   >
-                    <Marker on={slotFilter === slot} />
                     <span className="cos-slot-icon">
                       <Icon name={SLOT_ICON[slot]} size={16} />
                     </span>
@@ -150,7 +147,7 @@ export function CosmeticsScreen() {
               return (
                 <button
                   key={item.id}
-                  className={`cos-item pf-tile ${equipped ? "is-chosen" : ""} ${renders ? "" : "is-unbuilt"}`}
+                  className={`cos-item tile ${equipped ? "is-chosen" : ""} ${renders ? "" : "is-unbuilt"}`}
                   aria-pressed={renders ? equipped : undefined}
                   onClick={() => equipItem(item)}
                 >

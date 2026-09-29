@@ -10,8 +10,13 @@ import {
   type ReactNode,
 } from "react";
 import { Icon, type IconName } from "./Icon";
-import { Dancheong } from "./Palace";
 import { useT } from "../i18n";
+
+/* ── Key: a keycap ── */
+
+export function Key({ children }: { children: ReactNode }) {
+  return <kbd className="key">{children}</kbd>;
+}
 
 /* ── Button ── */
 
@@ -225,12 +230,11 @@ export function Modal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="modal pf-frame" style={{ width }} ref={ref} role="dialog" aria-modal aria-label={typeof title === "string" ? title : undefined}>
-        <div className="modal-head pf-band">
+      <div className="modal glass" style={{ width }} ref={ref} role="dialog" aria-modal aria-label={typeof title === "string" ? title : undefined}>
+        <div className="modal-head">
           <h3>{title}</h3>
           <IconButton icon="x" label={t("common.close")} onClick={onClose} />
         </div>
-        <Dancheong />
         <div className="modal-body">{children}</div>
       </div>
     </div>

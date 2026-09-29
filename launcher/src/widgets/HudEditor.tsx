@@ -15,7 +15,7 @@ import { core } from "../core/client";
 import type { HudConfig, HudElementState } from "../core/bindings";
 import { Icon } from "../components/Icon";
 import { Button, Segmented, Toggle } from "../components/ui";
-import { MoonDisc } from "../components/Palace";
+import { MoonDisc } from "../components/Moon";
 import { moonAt } from "../core/moonPhase";
 import { useT } from "../i18n";
 import { useStore } from "../state/store";

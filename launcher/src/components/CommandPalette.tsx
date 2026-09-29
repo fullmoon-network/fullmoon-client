@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, type IconName } from "./Icon";
-import { Key, Marker } from "./Palace";
+import { Key } from "./ui";
 import { useStore, type Screen } from "../state/store";
 import { useT } from "../i18n";
 
@@ -119,7 +119,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="cmdk pf-frame" role="dialog" aria-modal aria-label={t("palette.placeholder")}>
+      <div className="cmdk" role="dialog" aria-modal aria-label={t("palette.placeholder")}>
         <div className="cmdk-search">
           <Icon name="search" size={16} />
           <input
@@ -151,7 +151,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             if (items.length === 0) return null;
             return (
               <div key={key} className="cmdk-section">
-                <div className="cmdk-group pf-section-head">{label}</div>
+                <div className="cmdk-group section-head">{label}</div>
                 {items.map((a) => {
                   const idx = shown.indexOf(a);
                   return (
@@ -161,7 +161,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                       onMouseEnter={() => setCursor(idx)}
                       onClick={() => pick(a)}
                     >
-                      <Marker on={idx === cursor} tone="cinnabar" />
                       <span className="cmdk-ic">
                         <Icon name={a.icon} size={15} />
                       </span>

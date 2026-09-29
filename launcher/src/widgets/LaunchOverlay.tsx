@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Icon } from "../components/Icon";
 import { Button } from "../components/ui";
-import { Dancheong, Marker, MoonDial } from "../components/Palace";
+import { Moon } from "../components/Moon";
 import { useStore } from "../state/store";
 import { launchProgress } from "../core/launchSteps";
 import { useT } from "../i18n";
@@ -53,8 +53,8 @@ export function LaunchOverlay({ onHide }: { onHide: () => void }) {
 
   return (
     <div className="lov-backdrop">
-      <div className="lov pf-frame" role="dialog" aria-modal aria-label={headline}>
-        <header className="lov-head pf-band">
+      <div className="lov glass" role="dialog" aria-modal aria-label={headline}>
+        <header className="lov-head">
           <div className="lov-title">
             <strong>{headline}</strong>
             <span className="num">
@@ -66,7 +66,6 @@ export function LaunchOverlay({ onHide }: { onHide: () => void }) {
             <Icon name="x" size={16} />
           </button>
         </header>
-        <Dancheong />
 
         <div className="lov-body">
           <div
@@ -77,7 +76,7 @@ export function LaunchOverlay({ onHide }: { onHide: () => void }) {
             aria-valuenow={done}
             aria-valuetext={t("launchov.progressLabel", { done, total: steps.length })}
           >
-            <MoonDial r={50} lit={done / steps.length} complete={complete} steps={steps.length} reached={done} spin={!complete} />
+            <Moon r={44} lit={done / steps.length} waxing />
             <span className="lov-count num">{t("launchov.progress", { done, total: steps.length })}</span>
           </div>
 
@@ -86,7 +85,6 @@ export function LaunchOverlay({ onHide }: { onHide: () => void }) {
               const state = i < done ? "done" : i === done ? "now" : "todo";
               return (
                 <li key={s} className={`lov-step is-${state}`}>
-                  <Marker on={state !== "todo"} tone={state === "now" ? "cinnabar" : "accent"} />
                   <span>{t(`launchov.steps.${s}`)}</span>
                   {state === "now" && <span className="lov-step-dots" aria-hidden>···</span>}
                 </li>
@@ -98,7 +96,7 @@ export function LaunchOverlay({ onHide }: { onHide: () => void }) {
         {session.length === 0 && <p className="lov-note">{t("launchov.waiting")}</p>}
         {complete && <p className="lov-note lov-note-live">{t("launchov.handoff")}</p>}
 
-        <div className="lov-rule pf-rule-dashed" />
+        <div className="lov-rule rule" />
 
         <footer className="lov-actions">
           <button

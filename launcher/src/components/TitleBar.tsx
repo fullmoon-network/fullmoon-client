@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
-import { Seal } from "./Palace";
 import { useStore } from "../state/store";
 import { isRealCore } from "../core/client";
 import { useT } from "../i18n";
@@ -8,6 +7,15 @@ import BRAND from "../brand";
 
 declare const __APP_VERSION__: string;
 const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev";
+
+/** The seal: 月 on its square, the one mark the launcher keeps. */
+export function Seal() {
+  return (
+    <span className="seal" aria-hidden>
+      月
+    </span>
+  );
+}
 
 /* In the shell the buttons drive the real window; in the browser they fall
    back to fullscreen so the same chrome stays usable in vite dev. */
@@ -53,22 +61,18 @@ export function TitleBar() {
 
   return (
     <header className="titlebar" data-tauri-drag-region>
-      <div className="titlebar-left" data-tauri-drag-region>
-        <Seal size={16} />
-        <span className="titlebar-name" data-tauri-drag-region>{BRAND.name}</span>
-        <span className="titlebar-tag num" data-tauri-drag-region>
-          {APP_VERSION} · {isRealCore ? "core" : "mock core"}
-        </span>
-      </div>
+      <Seal />
+      <span className="titlebar-name" data-tauri-drag-region>{BRAND.name}</span>
+      <span className="titlebar-tag num" data-tauri-drag-region>{APP_VERSION}</span>
       <div className="titlebar-controls">
         <button className="winbtn" aria-label={t("titlebar.minimize")} onClick={minimize}>
-          <Icon name="minus" size={14} strokeWidth={1.5} />
+          <Icon name="minus" size={12} strokeWidth={1.4} />
         </button>
         <button className="winbtn" aria-label={t(maximized ? "titlebar.restore" : "titlebar.maximize")} onClick={toggleMax}>
-          <Icon name={maximized ? "restore" : "maximize"} size={13} strokeWidth={1.5} />
+          <Icon name={maximized ? "restore" : "maximize"} size={11} strokeWidth={1.4} />
         </button>
         <button className="winbtn winbtn-close" aria-label={t("titlebar.close")} onClick={close}>
-          <Icon name="x" size={14} strokeWidth={1.5} />
+          <Icon name="x" size={12} strokeWidth={1.4} />
         </button>
       </div>
     </header>

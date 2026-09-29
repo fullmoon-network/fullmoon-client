@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../components/Icon";
 import { Badge, Button, Empty, Toggle } from "../components/ui";
-import { Dancheong, Marker, Seal } from "../components/Palace";
 import { core } from "../core/client";
 import type { InstalledMod } from "../core/bindings";
 import { useStore } from "../state/store";
@@ -72,11 +71,10 @@ export function ModsScreen() {
         {instances.map((i) => (
           <button
             key={i.id}
-            className={`mod-inst-chip pf-tile ${i.id === selectedInstanceId ? "is-current" : ""}`}
+            className={`mod-inst-chip tile ${i.id === selectedInstanceId ? "is-chosen" : ""}`}
             aria-pressed={i.id === selectedInstanceId}
             onClick={() => selectInstance(i.id)}
           >
-            <Marker on={i.id === selectedInstanceId} />
             <span>{i.name}</span>
             <em className="num">{i.versionId}</em>
           </button>
@@ -142,14 +140,10 @@ export function ModsScreen() {
                   {(loading ? [] : shown).map((m) => (
                     <article
                       key={m.id}
-                      className={`mod-card pf-tile ${m.ours ? "is-ours" : ""} ${!m.enabled ? "is-off" : ""}`}
+                      className={`mod-card tile ${m.ours ? "is-ours" : ""} ${!m.enabled ? "is-off" : ""}`}
                     >
                       <div className="mod-card-head">
-                        {m.ours ? (
-                          <Seal size={34} />
-                        ) : (
-                          <span className="mod-glyph" aria-hidden>{m.name.slice(0, 1)}</span>
-                        )}
+                        <span className={`mod-glyph ${m.ours ? "is-ours" : ""}`} aria-hidden>{m.ours ? "月" : m.name.slice(0, 1)}</span>
                         <div className="mod-card-title">
                           <strong>{m.name}</strong>
                           {/* the version of the jar that is actually there, not the
@@ -189,7 +183,7 @@ export function ModsScreen() {
                   ))}
                   {loading &&
                     [0, 1, 2, 3].map((i) => (
-                      <div key={i} className="mod-card pf-tile mod-skeleton" style={{ animationDelay: `${i * 70}ms` }} />
+                      <div key={i} className="mod-card tile mod-skeleton" style={{ animationDelay: `${i * 70}ms` }} />
                     ))}
                 </div>
               )}
@@ -199,9 +193,8 @@ export function ModsScreen() {
               </p>
             </div>
 
-            <aside className="mod-side pf-frame">
-              <h3 className="mod-side-title pf-band">{t("mods.sideTitle")}</h3>
-              <Dancheong />
+            <aside className="mod-side glass">
+              <h3 className="mod-side-title">{t("mods.sideTitle")}</h3>
 
               <div className="mod-side-body">
                 <div className="mod-mix" role="img" aria-label={t("mods.sideMix")}>

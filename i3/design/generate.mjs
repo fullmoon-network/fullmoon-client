@@ -213,7 +213,7 @@ for (const [k, v] of Object.entries(tokens.motion.easing))
 c('');
 for (const [k, v] of plain(tokens.layer)) c(`  --layer-${CSSVAR(k)}: ${v};`);
 c('');
-c("  --font-display: 'Fullmoon Serif', 'Hahmlet', serif;");
+c("  --font-display: 'Hahmlet', serif;");
 c("  --font-body: 'Pretendard', system-ui, sans-serif;");
 const typeVars = (name, v) => {
   const size = px(v.px, density.type);

@@ -1,21 +1,19 @@
 import { useEffect, useState } from "react";
-import { TitleBar } from "./components/TitleBar";
+import { Seal, TitleBar } from "./components/TitleBar";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { CommandPalette } from "./components/CommandPalette";
-import { PlayDock } from "./components/PlayDock";
+import { Dock } from "./components/Dock";
 import { ProgressDock, Toasts } from "./components/Docks";
 import { LaunchOverlay } from "./widgets/LaunchOverlay";
-import { AtmosphericBackdrop } from "./widgets/AtmosphericBackdrop";
-import { Seal } from "./components/Palace";
 import { PlayScreen } from "./screens/Play";
 import { DashboardScreen } from "./screens/Dashboard";
-import { HomeScreen } from "./screens/Home";
 import { ModsScreen } from "./screens/Mods";
 import { CosmeticsScreen } from "./screens/Cosmetics";
 import { AccountsScreen } from "./screens/Accounts";
 import { SettingsScreen } from "./screens/Settings";
 import { useStore } from "./state/store";
+import { play as cue } from "./core/uiSounds";
 import { useT } from "./i18n";
 
 const SCREENS = {
@@ -48,7 +46,10 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setPaletteOpen((v) => !v);
+        setPaletteOpen((v) => {
+          cue(v ? "close" : "open");
+          return !v;
+        });
       }
     };
     window.addEventListener("keydown", onKey);
@@ -58,32 +59,46 @@ export default function App() {
   if (!ready) {
     return (
       <div className="app-splash">
-        <Seal size={44} />
+        <Seal />
       </div>
     );
   }
 
   const Screen = SCREENS[screen];
+  const onPlay = screen === "play" || screen === "home";
 
   return (
     <div className="app">
       <TitleBar />
-      <AtmosphericBackdrop />
       <div className="shell">
         <Sidebar />
         <div className="main">
-          <TopBar onPalette={() => setPaletteOpen(true)} />
+          {/* the play screen's hero is its own heading; every other screen names itself here */}
+          {!onPlay && (
+            <TopBar
+              onPalette={() => {
+                cue("open");
+                setPaletteOpen(true);
+              }}
+            />
+          )}
           <main className="content">
             <div className="content-inner screen-enter" key={screen}>
               <Screen />
             </div>
           </main>
-          <PlayDock />
+          <Dock />
         </div>
       </div>
       <Toasts />
       <ProgressDock />
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => {
+          cue("close");
+          setPaletteOpen(false);
+        }}
+      />
       {overlayOn && <LaunchOverlay onHide={() => setOverlayHidden(game.sessionId)} />}
     </div>
   );
