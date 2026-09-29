@@ -3,7 +3,9 @@ package dev.fullmoon.client.ui;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Predicate;
 
+import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.sound.UiSounds;
 
@@ -31,6 +33,10 @@ public final class Surface {
     /** The widget the pointer is over, as of the last {@link #hover}. */
     private Widget hovered;
 
+    /** Where the pointer can reach the widgets {@link #clipped} accepts; null = everywhere. */
+    private Box window;
+    private Predicate<Widget> clipped = widget -> false;
+
     /** Registration order is Tab order, and later arrivals sit on top when the pointer lands. */
     public <W extends Widget> W add(W widget) {
         widgets.add(widget);
@@ -48,12 +54,34 @@ public final class Surface {
 
     /** Draws the normal pass in registration order, then every open overlay above it. */
     public void draw(Painter painter) {
+        drawNormal(painter, widget -> true);
+        drawOverlays(painter);
+    }
+
+    /** The normal pass for the widgets {@code which} accepts, in registration order. */
+    public void drawNormal(Painter painter, Predicate<Widget> which) {
         for (Widget widget : widgets) {
-            widget.draw(painter, state(widget));
+            if (which.test(widget)) {
+                widget.draw(painter, state(widget));
+            }
         }
+    }
+
+    /** Every open overlay, above everything else. */
+    public void drawOverlays(Painter painter) {
         for (Widget widget : widgets) {
             widget.drawOverlay(painter, state(widget));
         }
+    }
+
+    /**
+     * Confines the pointer to {@code window} for the widgets {@code which} accepts: a page that
+     * scrolls draws only inside its window, and a control scrolled out of it must not answer a
+     * press or show a hint from under the chrome. An open overlay is never confined. Null lifts it.
+     */
+    public void window(Box window, Predicate<Widget> which) {
+        this.window = window;
+        this.clipped = which == null ? widget -> false : which;
     }
 
     /** The widget holding the keyboard, or null. */
@@ -115,7 +143,8 @@ public final class Surface {
     private Widget under(double mx, double my, boolean overlaying) {
         for (int i = widgets.size() - 1; i >= 0; i--) {
             Widget widget = widgets.get(i);
-            if (widget.overlaying() == overlaying && widget.reach().holds(mx, my)) {
+            if (widget.overlaying() == overlaying && widget.reach().holds(mx, my)
+                    && (window == null || overlaying || !clipped.test(widget) || window.holds(mx, my))) {
                 return widget;
             }
         }

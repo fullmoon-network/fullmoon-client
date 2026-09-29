@@ -58,8 +58,13 @@ public abstract class SurfaceScreen extends Screen {
     @Override
     public final boolean mouseScrolled(double mouseX, double mouseY, double scrollX,
             double scrollY) {
-        return surface.scroll(mouseX, mouseY, scrollY)
+        return surface.scroll(mouseX, mouseY, scrollY) || scrolled(mouseX, mouseY, scrollY)
             || super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    /** A wheel turn no control took; the screen's own, if it scrolls. */
+    protected boolean scrolled(double mouseX, double mouseY, double amount) {
+        return false;
     }
 
     @Override

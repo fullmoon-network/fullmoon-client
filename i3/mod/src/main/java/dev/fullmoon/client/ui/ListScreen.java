@@ -39,6 +39,7 @@ public final class ListScreen extends DevScreen {
     private final ListPanel tokens = new ListPanel("색 토큰", rows(), "토큰이 없다", this::picked);
 
     private int picked = -1;
+    private int top;
     private int spine;
     private int hintTop;
     private int wellTop;
@@ -55,6 +56,7 @@ public final class ListScreen extends DevScreen {
 
     @Override
     protected void lay(Box body) {
+        top = body.y();
         spine = spine();
         hintTop = body.y() + sweepHeight() + Tokens.Space.GUTTER;
 
@@ -65,6 +67,12 @@ public final class ListScreen extends DevScreen {
         wellTop = line + Button.HEIGHT + Tokens.Space.GUTTER;
         tokens.place(new Box(body.x(), wellTop + DevChrome.sectionHeadHeight(), body.w(),
             ListPanel.heightFor(WELL_ROWS)));
+    }
+
+    /** The sweep, the tooltip row and the well. */
+    @Override
+    protected int extent() {
+        return tokens.bounds().bottom() + Tokens.Space.COZY - top;
     }
 
     @Override

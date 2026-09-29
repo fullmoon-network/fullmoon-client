@@ -100,6 +100,12 @@ public final class KitScreen extends DevScreen {
         arm.place(new Box(body.x(), line, arm.measure(), Toggle.HEIGHT));
     }
 
+    /** The matrix, the live band and its last row of buttons. */
+    @Override
+    protected int extent() {
+        return apply.bounds().bottom() + Tokens.Space.COZY - matrixTop;
+    }
+
     @Override
     protected void paint(Painter painter, Box body) {
         matrix(painter, body);
