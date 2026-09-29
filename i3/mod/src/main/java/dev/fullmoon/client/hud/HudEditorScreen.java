@@ -140,11 +140,10 @@ public final class HudEditorScreen extends Screen {
         int right = header.right() - Tokens.Space.LOOSE;
         closeButton.place(new Box(right - IconButton.SIZE + Tokens.Space.BASE, header.y() + (header.h() - IconButton.SIZE) / 2,
             IconButton.SIZE, IconButton.SIZE));
-        right -= IconButton.SIZE + Tokens.Space.COZY + Glass.keycapWidth("Esc") + Tokens.Space.LOOSE;
-        int resetW = resetButton.measure();
-        resetButton.place(new Box(right - resetW, header.y() + (header.h() - Button.HEIGHT) / 2, resetW, Button.HEIGHT));
+        Box dock = layout.dock(HudEditorLayout.chipsWidth(chipWidths()), resetButton.measure(), width);
+        resetButton.place(HudEditorLayout.tail(dock, resetButton.measure(), Button.HEIGHT));
 
-        int x = header.midX() - Tokens.Size.SIDEBAR;
+        int x = header.x() + Tokens.Space.LOOSE + Typeset.width(Tokens.Type.TITLE, tr("title")) + Tokens.Space.GUTTER;
         HudElement current = selectedElement();
         int labelW = current == null ? 0 : Typeset.width(Tokens.Type.ROW, current.label());
         anchorGrid = new Box(x + labelW + Tokens.Space.LOOSE, header.y() + (header.h() - GRID) / 2, GRID, GRID);
@@ -216,7 +215,7 @@ public final class HudEditorScreen extends Screen {
 
     private boolean handleDockClick(int mx, int my) {
         int[] widths = chipWidths();
-        Box dock = layout.dock(HudEditorLayout.chipsWidth(widths), width);
+        Box dock = layout.dock(HudEditorLayout.chipsWidth(widths), resetButton.measure(), width);
         if (!dock.holds(mx, my)) {
             return false;
         }
@@ -383,15 +382,11 @@ public final class HudEditorScreen extends Screen {
         Glass.hair(painter, header.x(), header.bottom() - 1, header.w());
         int x = header.x() + Tokens.Space.LOOSE;
         x += Typeset.draw(painter, Tokens.Type.TITLE, tr("title"), x, Typeset.centred(Tokens.Type.TITLE, header.y(), header.h()),
-            Tokens.Color.INK_PRIMARY);
+            Tokens.Color.INK_PRIMARY) + Tokens.Space.GUTTER;
         int bodyY = Typeset.centred(Tokens.Type.BODY, header.y(), header.h());
-        if (width >= NOTE_MIN_WIDTH) {
-            Typeset.draw(painter, Tokens.Type.BODY, tr("snap", HudElementRegistry.getInstance().gridSnap()),
-                x + Tokens.Space.COZY, bodyY, Tokens.Color.INK_TERTIARY);
-        }
         HudElement elem = selectedElement();
         if (elem != null) {
-            Typeset.draw(painter, Tokens.Type.ROW, elem.label(), header.midX() - Tokens.Size.SIDEBAR,
+            Typeset.draw(painter, Tokens.Type.ROW, elem.label(), x,
                 Typeset.centred(Tokens.Type.ROW, header.y(), header.h()), Tokens.Color.INK_PRIMARY);
             for (int r = 0; r < 3; r++) {
                 for (int c = 0; c < 3; c++) {
@@ -407,14 +402,16 @@ public final class HudEditorScreen extends Screen {
             Typeset.draw(painter, Tokens.Type.BODY, elem.anchor().label(), anchorGrid.right() + Tokens.Space.COZY, bodyY,
                 Tokens.Color.INK_SECONDARY);
         }
-        int capX = closeButton.bounds().x() - Tokens.Space.COZY - Glass.keycapWidth("Esc");
-        Glass.keycap(painter, capX, header.y() + (header.h() - Tokens.Size.KEYCAP) / 2, "Esc");
+        if (width >= NOTE_MIN_WIDTH) {
+            Typeset.drawRight(painter, Tokens.Type.BODY, tr("snap", HudElementRegistry.getInstance().gridSnap()),
+                closeButton.bounds().x() - Tokens.Space.LOOSE, bodyY, Tokens.Color.INK_TERTIARY);
+        }
     }
 
     /** One chip per element on a glass strip; the gold bar glides to the chosen one. */
     private void dock(Painter painter, int mx, int my) {
         int[] widths = chipWidths();
-        Box dock = layout.dock(HudEditorLayout.chipsWidth(widths), width);
+        Box dock = layout.dock(HudEditorLayout.chipsWidth(widths), resetButton.measure(), width);
         painter.fill(dock.x(), dock.y(), dock.w(), dock.h(), Tokens.Color.SURFACE_GLASS);
         painter.hRule(dock.x(), dock.y(), dock.w(), Tokens.Color.SURFACE_HIGHLIGHT);
         for (int i = 0; i < elements.size(); i++) {
