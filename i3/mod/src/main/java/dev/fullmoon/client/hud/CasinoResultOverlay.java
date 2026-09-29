@@ -1,6 +1,7 @@
 package dev.fullmoon.client.hud;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -271,8 +272,11 @@ public final class CasinoResultOverlay {
         };
     }
 
+    /** Two decimals, cut rather than rounded: the server sends dice payouts as raw quotients such as 1.9607843137254901. */
     static String multiplier(double value) {
-        return "×" + BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
+        BigDecimal exact = BigDecimal.valueOf(value);
+        BigDecimal shown = exact.setScale(2, RoundingMode.DOWN);
+        return "×" + (shown.signum() == 0 ? exact : shown).stripTrailingZeros().toPlainString();
     }
 
     static String gameName(CasinoProtocol.Game game) {

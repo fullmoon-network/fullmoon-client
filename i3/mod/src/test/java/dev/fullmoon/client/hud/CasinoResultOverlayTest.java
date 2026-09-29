@@ -53,6 +53,8 @@ final class CasinoResultOverlayTest {
         assertEquals("×12", CasinoResultOverlay.multiplier(12.0));
         assertEquals("×1.98", CasinoResultOverlay.multiplier(1.98));
         assertEquals("×2.5", CasinoResultOverlay.multiplier(2.50));
+        assertEquals("×1.96", CasinoResultOverlay.multiplier(1.9607843137254901));
+        assertEquals("×12", CasinoResultOverlay.multiplier(12.004));
     }
 
     @Test
