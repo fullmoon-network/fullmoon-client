@@ -3,6 +3,7 @@ package dev.fullmoon.client.hud;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.layout.Box;
@@ -38,6 +39,7 @@ public final class ScoreboardSidebar {
     private static final int MAX_LINES = 15;
     private static final int PAD = Tokens.Space.COZY;
     private static final int TICK = 4;
+    private static final Pattern LEGACY_CODE = Pattern.compile("§[0-9a-fk-orA-FK-OR]");
     private static final Comparator<PlayerScoreEntry> ORDER =
         Comparator.comparingInt(PlayerScoreEntry::value).reversed()
             .thenComparing(PlayerScoreEntry::owner, String.CASE_INSENSITIVE_ORDER);
@@ -143,10 +145,11 @@ public final class ScoreboardSidebar {
 
     /**
      * A line that is only a drawn rule. Servers draw them with box-drawing dashes, which the
-     * palace faces do not carry, so the frame draws its own rule instead.
+     * palace faces do not carry, so the frame draws its own rule instead. A line's text carries the
+     * team entry's {@code §} code after the prefix, so those codes are not part of what it says.
      */
     static boolean isRule(String text) {
-        String stripped = text.strip();
+        String stripped = LEGACY_CODE.matcher(text).replaceAll("").strip();
         return !stripped.isEmpty() && stripped.chars().allMatch(c ->
             c == '-' || c == '_' || c == '=' || c == '—' || c == '―' || (c >= 0x2500 && c <= 0x257F));
     }

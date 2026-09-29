@@ -38,7 +38,11 @@ final class ScoreboardSidebarTest {
     void ruleLinesAreRecognisedAndWordsAreNot() {
         assertTrue(ScoreboardSidebar.isRule("────────"));
         assertTrue(ScoreboardSidebar.isRule(" ---- "));
+        assertTrue(ScoreboardSidebar.isRule("────────§0"));
+        assertTrue(ScoreboardSidebar.isRule("§8────────§r"));
         assertFalse(ScoreboardSidebar.isRule("소지금 미연동"));
         assertFalse(ScoreboardSidebar.isRule(" "));
+        assertFalse(ScoreboardSidebar.isRule("§0"));
+        assertFalse(ScoreboardSidebar.isRule("도움말§1"));
     }
 }
