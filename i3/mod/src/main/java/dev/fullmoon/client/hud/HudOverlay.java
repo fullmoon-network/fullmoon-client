@@ -31,6 +31,12 @@ public final class HudOverlay {
     }
 
     private static void render(GuiGraphicsExtractor gfx, DeltaTracker deltaTracker) {
+        // A server menu is one pane of glass over the world; the client's own chips and sidebar
+        // would bleed through it as dark blocks, so they wait until it closes.
+        if (net.minecraft.client.Minecraft.getInstance().screen
+                instanceof dev.fullmoon.client.menu.ServerMenuScreen) {
+            return;
+        }
         Minecraft client = Minecraft.getInstance();
         if (client.options.hideGui || client.screen != null) {
             return;

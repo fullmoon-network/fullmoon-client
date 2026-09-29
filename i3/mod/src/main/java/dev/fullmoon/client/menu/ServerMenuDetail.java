@@ -99,14 +99,15 @@ final class ServerMenuDetail {
         boolean first = true;
         for (MenuLore.Fact figure : figures) {
             int keyW = Typeset.width(Tokens.Type.BODY, figure.key());
-            int valueW = Typeset.tabularWidth(Tokens.Type.FIGURE, figure.value());
+            int valueW = Typeset.width(Tokens.Type.FIGURE, figure.value());
             int w = Math.max(keyW, valueW);
             if (cursor + w > x + width && cursor > x) {
                 break;
             }
             Typeset.draw(painter, Tokens.Type.BODY, figure.key(), cursor, top, Tokens.Color.INK_TERTIARY);
             int ink = first && entry.item().chance().isPresent() ? Tokens.Color.ACCENT : Tokens.Color.INK_PRIMARY;
-            Typeset.tabular(painter, Tokens.Type.FIGURE, figure.value(), cursor,
+            // A still figure keeps the face's own spacing; the tabular cell is for values that change.
+            Typeset.draw(painter, Tokens.Type.FIGURE, figure.value(), cursor,
                 top + Tokens.Type.BODY.leading(), ink);
             cursor += w + Tokens.Space.LOOSE;
             first = false;

@@ -85,7 +85,7 @@ final class ServerMenuEntry {
     String count() {
         String held = lore.fact("보유");
         if (!held.isEmpty()) {
-            return held;
+            return held.startsWith("0개") ? "" : held;
         }
         return item.count() > 1 ? item.count() + "개" : "";
     }
