@@ -27,7 +27,7 @@ public final class HudOverlay {
         // reads as a bug, not as depth, so the hotbar waits with the rest of the HUD.
         HudElementRegistry.replaceElement(VanillaHudElements.HOTBAR, vanilla -> (gfx, delta) -> {
             if (!underGlass()) {
-                vanilla.render(gfx, delta);
+                vanilla.extractRenderState(gfx, delta);
             }
         });
         ScoreboardSidebar.init();
