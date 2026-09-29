@@ -12,11 +12,12 @@ import dev.fullmoon.client.text.Typeset;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.input.KeyEvent;
 
 /**
- * What every development surface in this client has in common: the scrim over the world, the
- * masthead, the rail of pages under it, the footer, and the one path every pointer and key takes
- * into a {@link Surface}.
+ * What every development surface in this client has in common: the scrim over the world, one
+ * glass pane, the masthead, the rail of pages under it, the foot, and the one path every pointer
+ * and key takes into a {@link Surface}.
  *
  * <p>The pages are one document rather than three screens that happen to share tokens, which is
  * the whole reason this class exists. It also means the plumbing is written once: a screen that
@@ -52,6 +53,8 @@ public abstract class DevScreen extends SurfaceScreen {
     }
 
     protected static final int MAX_CONTENT = 520;
+    private static final int PANE = Tokens.Space.LOOSE;
+    private static final float SCRIM = 0.52f;
 
     private final Page page;
     private final TabRail rail;
@@ -64,6 +67,7 @@ public abstract class DevScreen extends SurfaceScreen {
 
     /** Whether the keyboard should arrive on the rail with the ring up. See {@link #go}. */
     private boolean ringed;
+    private boolean keyboard;
 
     protected DevScreen(Page page) {
         super(Typeset.say(Tokens.Type.ROW, page.title()));
@@ -107,7 +111,7 @@ public abstract class DevScreen extends SurfaceScreen {
     /** The page's own drawing. Its surface widgets are drawn after this, by the chrome. */
     protected abstract void paint(Painter painter, Box body);
 
-    /** The right-hand end of the footer rule, which is the page's to fill. */
+    /** The right-hand end of the foot, which is the page's to fill. */
     protected abstract String status();
 
     @Override
@@ -125,12 +129,24 @@ public abstract class DevScreen extends SurfaceScreen {
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        keyboard = true;
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public void mouseMoved(double mouseX, double mouseY) {
+        keyboard = false;
+        super.mouseMoved(mouseX, mouseY);
+    }
+
+    @Override
     public final void extractBackground(GuiGraphicsExtractor gfx, int mouseX, int mouseY,
             float partialTick) {
         Painter painter = new Painter(gfx);
         painter.blurredStratum();
         painter.fill(0, 0, painter.width(), painter.height(),
-            Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.82f));
+            Rgb.alpha(Tokens.Color.SURFACE_VOID, SCRIM));
     }
 
     @Override
@@ -141,14 +157,15 @@ public abstract class DevScreen extends SurfaceScreen {
         surface.hover(mouseX, mouseY);
 
         Painter painter = new Painter(gfx);
-        DevChrome.header(painter, content.x(), content.y(), content.w(),
-            "클라이언트 i3 · " + page.title());
+        int footerY = DevChrome.footerY(height);
+        Glass.panel(painter, Box.between(content.x() - PANE, content.y() - PANE, content.right() + PANE,
+            footerY + DevChrome.footerHeight()));
+        DevChrome.header(painter, content.x(), content.y(), content.w(), page.title(), "클라이언트 i3 · 개발 표면");
         paint(painter, body);
 
         surface.draw(painter);
 
-        DevChrome.footer(painter, content.x(), DevChrome.footerY(height), content.w(), keys(),
-            status());
+        DevChrome.footer(painter, content, footerY, hints(), keyboard, status());
 
         Widget tipped = surface.tipped();
         if (tipped != null) {
@@ -158,12 +175,12 @@ public abstract class DevScreen extends SurfaceScreen {
 
     /** The masthead, the rail beneath its rule, and the gutter between the rail and the page. */
     static int chromeHeight() {
-        return DevChrome.headerHeight() + TabRail.HEIGHT + Tokens.Stroke.HAIR;
+        return DevChrome.headerHeight() + TabRail.HEIGHT + Tokens.Space.COZY;
     }
 
     /** Directly under the masthead rule, so the two rules read as one bar with the tabs in it. */
     private static int railY(int contentY) {
-        return contentY + DevChrome.headerHeight() - Tokens.Space.GUTTER + Tokens.Stroke.HAIR;
+        return contentY + DevChrome.headerHeight() - Tokens.Space.GUTTER + Tokens.Space.SNUG + Tokens.Stroke.HAIR;
     }
 
     private static List<String> tabs() {
@@ -181,11 +198,12 @@ public abstract class DevScreen extends SurfaceScreen {
     private void go(int tab) {
         DevScreen next = open(Page.values()[tab]);
         next.ringed = surface.focus().rings(rail);
+        next.rail.from(page.ordinal());
         Minecraft.getInstance().setScreen(next);
     }
 
-    private String keys() {
-        return "Esc 닫기 · Tab 이동 · " + FullmoonClient.pageKey(page) + " 다시 열기";
+    private List<Glass.Hint> hints() {
+        return List.of(new Glass.Hint("Tab", "이동"), new Glass.Hint(FullmoonClient.pageKey(page), "다시 열기"),
+            new Glass.Hint("Esc", "닫기"));
     }
-
 }

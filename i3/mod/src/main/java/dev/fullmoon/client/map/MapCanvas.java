@@ -126,11 +126,12 @@ public final class MapCanvas {
         }
         int x = MapLayout.plot(raster.x(), player.column(), cellSize);
         int y = MapLayout.plot(raster.y(), player.row(), cellSize);
+        // Ink, not gold: the one gold on the map is the chosen route.
         painter.ring(x, y, Tokens.Space.SNUG,
-            Tokens.Stroke.FOCUS, Tokens.Color.ACCENT);
+            Tokens.Stroke.FOCUS, Tokens.Color.INK_PRIMARY);
         painter.hRule(x - Tokens.Space.COZY, y,
-            Tokens.Space.GUTTER, Tokens.Color.ACCENT);
+            Tokens.Space.GUTTER, Tokens.Color.INK_PRIMARY);
         painter.vRule(x, y - Tokens.Space.COZY,
-            Tokens.Space.GUTTER, Tokens.Color.ACCENT);
+            Tokens.Space.GUTTER, Tokens.Color.INK_PRIMARY);
     }
 }

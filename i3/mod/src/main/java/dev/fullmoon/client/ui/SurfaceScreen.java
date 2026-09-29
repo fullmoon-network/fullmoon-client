@@ -8,12 +8,24 @@ import net.minecraft.network.chat.Component;
 
 import com.mojang.blaze3d.platform.InputConstants;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /** A screen whose pointer, keyboard, text and wheel events all enter through one surface. */
 public abstract class SurfaceScreen extends Screen {
+    private static final Logger LOG = LoggerFactory.getLogger("Fullmoon/Screen");
+
     protected final Surface surface = new Surface();
 
     protected SurfaceScreen(Component title) {
         super(title);
+    }
+
+    /** One line per opening, so a capture can be paired with the screen it shows. */
+    @Override
+    public void added() {
+        super.added();
+        LOG.info("Opened {} screen", getClass().getSimpleName());
     }
 
     @Override
