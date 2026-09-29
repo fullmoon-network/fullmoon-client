@@ -258,13 +258,16 @@
   box-shadow: inset 0 1px 0 var(--color-surface-highlight), 0 0 0 1px var(--color-surface-edge);
   text-align: left;
 }
+/* one pixel lower than this face lands in its 16 px line, as mock g has it (run 3); the title's
+   margin gives the pixel back */
 .hero-news-kicker {
+  padding-top: 1px;
   font: 600 11px/16px var(--font-body);
   letter-spacing: 0.08em;
   color: var(--color-accent);
 }
 .hero-news h2 {
-  margin: 6px 0 4px;
+  margin: 5px 0 4px;
   font: 600 20px/26px var(--font-display);
   color: var(--color-ink-primary);
 }
