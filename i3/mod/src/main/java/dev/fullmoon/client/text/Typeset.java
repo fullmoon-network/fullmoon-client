@@ -46,7 +46,15 @@ public final class Typeset {
     private static final int[] SCALES = {2, 3, 4};
 
     private static final Map<String, Style> STYLES = new HashMap<>();
-    private static final Map<String, Integer> DIGIT_CELLS = new HashMap<>();
+    private static final Map<String, Float> DIGIT_CELLS = new HashMap<>();
+    /**
+     * How far under the middle of its line box a face's baseline sits, as a share of the em:
+     * (ascender − descender) / 2 in the face's own metrics, which is where the mockups' CSS line
+     * boxes put it. Measured on the title, the menus and the route against their renders:
+     * 0.34–0.36 em for Pretendard, 0.39–0.43 em for Hahmlet.
+     */
+    private static final float SANS_BASELINE_DROP = 0.35f;
+    private static final float SERIF_BASELINE_DROP = 0.41f;
 
     private Typeset() {}
 
@@ -232,12 +240,18 @@ public final class Typeset {
     }
 
     /**
-     * The draw origin that puts a role's ink in the optical middle of a band {@code h} tall,
-     * starting at {@code top}. A text face carries about a quarter of its size below the
-     * baseline, so its middle sits that far above it.
+     * The draw origin that puts a role's text where a CSS line box centred in a band {@code h}
+     * tall, starting at {@code top}, would put it: the baseline {@link #baselineDrop} under the
+     * band's middle.
      */
     public static int centred(Tokens.Type.Role role, int top, int h) {
-        return top + h / 2 + role.px() / 4 - ASCENT;
+        return top + h / 2 + baselineDrop(role) - ASCENT;
+    }
+
+    /** Whole GUI pixels from the middle of a role's line box down to its baseline. */
+    static int baselineDrop(Tokens.Type.Role role) {
+        boolean serif = role == Tokens.Type.MARK || role == Tokens.Type.DISPLAY || role == Tokens.Type.TITLE;
+        return Math.round(role.px() * (serif ? SERIF_BASELINE_DROP : SANS_BASELINE_DROP));
     }
 
     /** The origin to draw at so the glyphs sit on {@code baseline}, whatever the face. */
@@ -264,11 +278,11 @@ public final class Typeset {
     }
 
     /** The advance of the widest digit in the role — one column of a tabular figure. */
-    public static int digitCell(Tokens.Type.Role role) {
+    public static float digitCell(Tokens.Type.Role role) {
         return DIGIT_CELLS.computeIfAbsent(fontId(role), id -> {
-            int widest = 0;
+            float widest = 0;
             for (char digit = '0'; digit <= '9'; digit++) {
-                widest = Math.max(widest, width(role, String.valueOf(digit)));
+                widest = Math.max(widest, advance(role, String.valueOf(digit)));
             }
             return widest;
         });
@@ -276,14 +290,7 @@ public final class Typeset {
 
     /** Advance of {@code text} once digits are forced onto the tabular cell. */
     public static int tabularWidth(Tokens.Type.Role role, String text) {
-        Tokens.Type.Role set = roleFor(role, text);
-        int cell = digitCell(set);
-        int total = 0;
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            total += isDigit(c) ? cell : width(set, String.valueOf(c));
-        }
-        return total;
+        return Math.round(tabular(null, role, text, 0f, 0, 0));
     }
 
     /**
@@ -291,24 +298,59 @@ public final class Typeset {
      * figures — a narrow 1 pushed to one side of the cell reads as a word space. Use this
      * for anything that changes while the player is looking at it: counters, coordinates,
      * timers, ping.
+     *
+     * <p>The letters between the digits are drawn as runs on fractional advances: one glyph
+     * per draw call would round every advance up to a whole pixel and track a thirty-letter
+     * line a dozen pixels wide.
      */
     public static int tabular(Painter painter, Tokens.Type.Role role, String text, int x, int y, int color) {
+        return Math.round(tabular(painter, role, text, (float) x, y, color));
+    }
+
+    /** The tabular layout, drawn when {@code painter} is given and only measured when it is null. */
+    private static float tabular(Painter painter, Tokens.Type.Role role, String text, float x, int y, int color) {
         Tokens.Type.Role set = roleFor(role, text);
-        int cell = digitCell(set);
-        int cursor = x;
-        painter.gfx().nextStratum();
-        for (int i = 0; i < text.length(); i++) {
-            String glyph = String.valueOf(text.charAt(i));
-            if (isDigit(text.charAt(i))) {
-                drawRaw(painter, set, glyph, cursor + (cell - width(set, glyph)) / 2, y, color);
-                cursor += cell;
-            } else {
-                drawRaw(painter, set, glyph, cursor, y, color);
-                cursor += width(set, glyph);
-            }
+        float cell = digitCell(set);
+        float cursor = x;
+        if (painter != null) {
+            painter.gfx().nextStratum();
         }
-        painter.gfx().nextStratum();
+        int i = 0;
+        while (i < text.length()) {
+            if (isDigit(text.charAt(i))) {
+                String glyph = String.valueOf(text.charAt(i));
+                if (painter != null) {
+                    drawIn(painter, set, glyph, Math.round(cursor + (cell - advance(set, glyph)) / 2), y, color);
+                }
+                cursor += cell;
+                i++;
+                continue;
+            }
+            int end = i;
+            while (end < text.length() && !isDigit(text.charAt(end))) {
+                end++;
+            }
+            String run = text.substring(i, end);
+            if (painter != null) {
+                drawIn(painter, set, run, Math.round(cursor), y, color);
+            }
+            cursor += advance(set, run);
+            i = end;
+        }
+        if (painter != null) {
+            painter.gfx().nextStratum();
+        }
         return cursor - x;
+    }
+
+    /** The unrounded advance of {@code text} in a role already settled by {@link #roleFor}. */
+    private static float advance(Tokens.Type.Role set, String text) {
+        return font().getSplitter().stringWidth(Component.literal(text).withStyle(style(set)));
+    }
+
+    /** Draws in a role already settled by {@link #roleFor}, so a run without Hangul keeps the line's face. */
+    private static void drawIn(Painter painter, Tokens.Type.Role set, String text, int x, int y, int color) {
+        painter.gfx().text(font(), Component.literal(text).withStyle(style(set)), x, y, painter.tint(color), false);
     }
 
     /** As {@link #tabular}, ending at {@code right}. Keeps a changing value's last digit still. */

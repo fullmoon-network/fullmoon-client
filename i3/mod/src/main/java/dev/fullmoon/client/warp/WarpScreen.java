@@ -199,10 +199,13 @@ public final class WarpScreen extends SurfaceScreen {
                 Tokens.Color.INK_TERTIARY);
             return;
         }
+        // Every line here sits in its role's line box, as the mockup's flex rows place theirs.
         int y = d.y();
-        int titleW = Typeset.draw(painter, Tokens.Type.TITLE, route.name(), d.x(), y, Tokens.Color.INK_PRIMARY);
+        int titleW = Typeset.draw(painter, Tokens.Type.TITLE, route.name(), d.x(),
+            Typeset.centred(Tokens.Type.TITLE, y, Tokens.Type.TITLE.leading()), Tokens.Color.INK_PRIMARY);
+        int groupTop = y + Tokens.Type.TITLE.leading() - Tokens.Type.BODY.leading();
         Typeset.draw(painter, Tokens.Type.BODY, route.group(), d.x() + titleW + Tokens.Space.COZY,
-            y + Tokens.Type.TITLE.leading() - Tokens.Type.BODY.leading(), Tokens.Color.INK_TERTIARY);
+            Typeset.centred(Tokens.Type.BODY, groupTop, Tokens.Type.BODY.leading()), Tokens.Color.INK_TERTIARY);
         y += Tokens.Type.TITLE.leading() + Tokens.Space.LOOSE;
 
         Entity eye = eye();
@@ -219,14 +222,17 @@ public final class WarpScreen extends SurfaceScreen {
         };
         int valueRoom = layout.compass().x() - Tokens.Space.COZY - layout.factValueX();
         for (String[] fact : facts) {
-            Typeset.draw(painter, Tokens.Type.BODY, fact[0], d.x(), y, Tokens.Color.INK_TERTIARY);
+            Typeset.draw(painter, Tokens.Type.BODY, fact[0], d.x(),
+                Typeset.centred(Tokens.Type.BODY, y, Tokens.Type.BODY.leading()), Tokens.Color.INK_TERTIARY);
             Typeset.tabular(painter, Tokens.Type.STRONG, Typeset.ellipsized(Tokens.Type.STRONG, fact[1], valueRoom),
-                layout.factValueX(), y, Tokens.Color.INK_PRIMARY);
+                layout.factValueX(), Typeset.centred(Tokens.Type.STRONG, y, Tokens.Type.STRONG.leading()),
+                Tokens.Color.INK_PRIMARY);
             y += FACT_PITCH;
         }
         compass(painter, layout.compass(), bearing, eye != null);
         y += Tokens.Space.LOOSE + Tokens.Space.TIGHT - FACT_PITCH + Tokens.Type.BODY.leading();
-        Typeset.drawWrapped(painter, Tokens.Type.BODY, tr("detail.note"), d.x(), y, d.w(), 3, Tokens.Color.INK_SECONDARY);
+        Typeset.drawWrapped(painter, Tokens.Type.BODY, tr("detail.note"), d.x(),
+            Typeset.centred(Tokens.Type.BODY, y, Tokens.Type.BODY.leading()), d.w(), 3, Tokens.Color.INK_SECONDARY);
     }
 
     /** A ring with north marked, and a gold needle on the destination's bearing. */

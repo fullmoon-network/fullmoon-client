@@ -68,6 +68,19 @@ final class TypesetTest {
     }
 
     @Test
+    void centredDropsTheBaselineByTheFacesShareOfTheEm() {
+        // Measured against the mockups' CSS line boxes: the sans faces sit 0.35 em, the serif
+        // faces 0.41 em under the middle. Whole pixels, because the origin is one.
+        assertEquals(3, Typeset.baselineDrop(Tokens.Type.BODY));
+        assertEquals(4, Typeset.baselineDrop(Tokens.Type.ROW));
+        assertEquals(5, Typeset.baselineDrop(Tokens.Type.FIGURE));
+        assertEquals(6, Typeset.baselineDrop(Tokens.Type.TITLE));
+        assertEquals(8, Typeset.baselineDrop(Tokens.Type.DISPLAY));
+        assertEquals(20 / 2 + 4 - 7, Typeset.centred(Tokens.Type.ROW, 0, 20), "a row label in a 20 px row");
+        assertEquals(182 + 20 / 2 + 4 - 7, Typeset.centred(Tokens.Type.ROW, 182, 20), "the title's first quiet row");
+    }
+
+    @Test
     void centringPutsTheInkInTheMiddleAndNotTheLineBox() {
         // One model read two ways: centred() centres the whole ink band, cap band plus the quarter
         // below the baseline, so the two agree to within the rounding they each do.
