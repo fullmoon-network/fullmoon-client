@@ -26,7 +26,7 @@ public final class MenuLore {
     static final String SEPARATOR = " · ";
 
     private static final Pattern BAR = Pattern.compile("^[■□]{3,}$");
-    private static final Pattern FIGURE = Pattern.compile("^(약 )?[0-9][0-9,.]*([천만억]( [0-9][0-9,.]*[천만억]?)?)?(원|%|x|배|개|장|초|분|명|HP)?$");
+    private static final Pattern FIGURE = Pattern.compile("^(약 )?[0-9][0-9,.]*([천만억]( [0-9][0-9,.]*[천만억]?)?)?(원|%|x|배|개|장|초|분|명| ?HP)?$");
     private static final int FACT_KEY_MAX = 14;
     private static final int FACT_VALUE_MAX = 28;
 
@@ -136,24 +136,12 @@ public final class MenuLore {
     }
 
     /**
-     * A typed command split from what follows it: {@code /지갑 으로 오늘 번 돈을 볼 수 있어요}
-     * is the chip {@code /지갑} and the rest as body. A command runs to the first space that is
-     * not inside an angle-bracket placeholder.
+     * The command a typed line names. The server sends the command and nothing after it
+     * ({@code /link}, {@code /길드 가입 <이름>}), so the whole line is the chip; a placeholder in
+     * angle brackets is part of the command, not a sentence after it.
      */
-    public static String[] command(String typed) {
-        String text = typed.strip();
-        int depth = 0;
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c == '<') {
-                depth++;
-            } else if (c == '>') {
-                depth = Math.max(0, depth - 1);
-            } else if (c == ' ' && depth == 0 && i > 0 && looksLikeCommandEnd(text, i)) {
-                return new String[] {text.substring(0, i), text.substring(i + 1).strip()};
-            }
-        }
-        return new String[] {text, ""};
+    public static String command(String typed) {
+        return typed.strip();
     }
 
     /** Whether {@code line} is {@code key · value} with a short key and a short value. */
@@ -172,14 +160,6 @@ public final class MenuLore {
     /** Whether a value is a number a player reads: {@code 8천원}, {@code 52.4%}, {@code 1.98x}, {@code 64개}. */
     static boolean looksLikeFigure(String value) {
         return FIGURE.matcher(value.strip()).matches();
-    }
-
-    private static boolean looksLikeCommandEnd(String text, int space) {
-        // A command's arguments are placeholders or short words; a sentence after it starts with
-        // a particle glued to the command (으로, 을) or a verb, which is why the split is at the
-        // first space after any run of bracketed arguments.
-        String rest = text.substring(space + 1);
-        return !rest.startsWith("<");
     }
 
     private static String after(String line, String mark) {

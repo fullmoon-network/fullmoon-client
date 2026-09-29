@@ -16,6 +16,8 @@ public final class IconButton extends Widget {
 
     public static final int SIZE = 20;
     private static final float GLYPH = 8.0f;
+    /** Where back's name starts: the chevron, then the mockup's four-pixel gap. */
+    private static final int LABEL_X = 16;
 
     private final Glyph glyph;
     private final Runnable action;
@@ -31,7 +33,7 @@ public final class IconButton extends Widget {
         if (glyph == Glyph.CLOSE || label().isEmpty()) {
             return SIZE;
         }
-        return SIZE + Typeset.width(Tokens.Type.BODY, label()) + Tokens.Space.SNUG;
+        return LABEL_X + Typeset.width(Tokens.Type.BODY, label()) + Tokens.Space.SNUG;
     }
 
     @Override
@@ -52,9 +54,9 @@ public final class IconButton extends Widget {
         if (glyph == Glyph.CLOSE) {
             Glass.close(painter, cx, cy, GLYPH - 1, ink);
         } else {
-            Glass.back(painter, cx - 2, cy, GLYPH, ink);
+            Glass.back(painter, b.x() + 9 + nudgeOffset(), cy, GLYPH, ink);
             if (!label().isEmpty()) {
-                Typeset.draw(painter, Tokens.Type.BODY, label(), b.x() + SIZE - Tokens.Space.TIGHT,
+                Typeset.draw(painter, Tokens.Type.BODY, label(), b.x() + LABEL_X,
                     Typeset.centred(Tokens.Type.BODY, b.y(), b.h()), ink);
             }
         }

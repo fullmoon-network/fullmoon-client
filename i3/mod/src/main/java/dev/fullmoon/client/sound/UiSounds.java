@@ -52,7 +52,7 @@ public final class UiSounds {
      * arguments, so the rule can be checked in a test to the millisecond.
      */
     public static final class Gate {
-        private long lastFocusMs = Long.MIN_VALUE;
+        private long lastFocusMs = Long.MIN_VALUE / 4;
 
         /** The note to play for {@code cue} at {@code nowMs}, or null when the gate holds it back. */
         public Note admit(Cue cue, long nowMs, Random random) {

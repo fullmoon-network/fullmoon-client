@@ -229,9 +229,9 @@ final class MenuBoard extends Widget {
         }
     }
 
-    /** The hover lift: five percent of white on the row the pointer is on, crossfaded in. */
+    /** The hover lift: five percent of white on the row the pointer is on, over the wash if it is the cursor's. */
     private void hoverLift(Painter painter, int i, Box b, boolean atCursor) {
-        if (i == over && !atCursor) {
+        if (i == over) {
             painter.fill(b.x(), b.y(), b.w(), b.h(), Tokens.Color.SURFACE_RAISED);
         }
     }

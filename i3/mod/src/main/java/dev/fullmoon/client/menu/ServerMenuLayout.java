@@ -52,7 +52,7 @@ public record ServerMenuLayout(
     /** The detail column starts this far inside the list's right edge plus the hairline gap. */
     private static final int DETAIL_GAP = Tokens.Space.LOOSE;
     private static final int STRIP_H = 92;
-    private static final int HINT_GAP = 6;
+    private static final int HINT_GAP = 8;
 
     public static Mode modeFor(int choices) {
         if (choices <= LIST_CHOICES_MAX) {

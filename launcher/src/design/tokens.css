@@ -133,6 +133,7 @@
   --color-accent: #E8C56C; /* #E8C56C · selection bar, the one primary action, live values */
   --color-accent-pressed: #C9A44F; /* #C9A44F · gold fill while held */
   --color-accent-wash: rgb(232 197 108 / 0.1); /* #E8C56C @ 0.1 · selected-row ground behind the bar */
+  --color-accent-wash-lift: rgb(232 197 108 / 0.15); /* #E8C56C @ 0.15 · the chosen row under the pointer: its wash, lifted */
   --color-accent-glow: rgb(232 197 108 / 0.22); /* #E8C56C @ 0.22 · the soft light a focused row wears, faded in */
   --color-status-live: #6FCFA8; /* #6FCFA8 · ✔ possible, connected, here */
   --color-status-idle: #5E616A; /* #5E616A · server unreachable, module off */
@@ -178,6 +179,7 @@
   --color-accent: oklch(0.52 0.105 78); /* oklch(0.52 0.105 78) · selection, one primary action per surface, live values */
   --color-accent-pressed: oklch(0.46 0.1 76); /* oklch(0.46 0.1 76) · accent fill while held */
   --color-accent-wash: rgb(138 106 30 / 0.12); /* #8A6A1E @ 0.12 · selected-row tint behind ink */
+  --color-accent-wash-lift: rgb(138 106 30 / 0.17); /* #8A6A1E @ 0.17 · the chosen row under the pointer */
   --color-accent-glow: rgb(138 106 30 / 0.2); /* #8A6A1E @ 0.2 · focus light */
   --color-status-live: oklch(0.52 0.1 168); /* oklch(0.52 0.1 168) · server reachable, module enabled */
   --color-status-idle: oklch(0.6 0.015 275); /* oklch(0.6 0.015 275) · server unreachable, module off */
@@ -200,6 +202,7 @@
   --color-accent: oklch(0.85 0.03 250); /* oklch(0.85 0.03 250) */
   --color-accent-pressed: oklch(0.735 0.03 250); /* oklch(0.735 0.03 250) */
   --color-accent-wash: rgb(201 211 232 / 0.1); /* #C9D3E8 @ 0.1 */
+  --color-accent-wash-lift: rgb(201 211 232 / 0.15); /* #C9D3E8 @ 0.15 */
   --color-accent-glow: rgb(201 211 232 / 0.22); /* #C9D3E8 @ 0.22 */
 }
 
@@ -208,6 +211,7 @@
   --color-accent: oklch(0.5 0.04 255); /* oklch(0.5 0.04 255) */
   --color-accent-pressed: oklch(0.44 0.04 255); /* oklch(0.44 0.04 255) */
   --color-accent-wash: rgb(58 74 106 / 0.12); /* #3A4A6A @ 0.12 */
+  --color-accent-wash-lift: rgb(58 74 106 / 0.17); /* #3A4A6A @ 0.17 */
   --color-accent-glow: rgb(58 74 106 / 0.2); /* #3A4A6A @ 0.2 */
 }
 
@@ -216,6 +220,7 @@
   --color-accent: oklch(0.77 0.08 42); /* oklch(0.77 0.08 42) */
   --color-accent-pressed: oklch(0.665 0.08 40); /* oklch(0.665 0.08 40) */
   --color-accent-wash: rgb(217 149 106 / 0.1); /* #D9956A @ 0.1 */
+  --color-accent-wash-lift: rgb(217 149 106 / 0.15); /* #D9956A @ 0.15 */
   --color-accent-glow: rgb(217 149 106 / 0.22); /* #D9956A @ 0.22 */
 }
 
@@ -224,6 +229,7 @@
   --color-accent: oklch(0.52 0.095 40); /* oklch(0.52 0.095 40) */
   --color-accent-pressed: oklch(0.46 0.09 38); /* oklch(0.46 0.09 38) */
   --color-accent-wash: rgb(138 74 42 / 0.12); /* #8A4A2A @ 0.12 */
+  --color-accent-wash-lift: rgb(138 74 42 / 0.17); /* #8A4A2A @ 0.17 */
   --color-accent-glow: rgb(138 74 42 / 0.2); /* #8A4A2A @ 0.2 */
 }
 

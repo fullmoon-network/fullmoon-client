@@ -10,6 +10,8 @@ import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.text.Typeset;
 
+import net.minecraft.client.Minecraft;
+
 /**
  * The design specimen: every token this client owns, drawn by the client's own renderer.
  *
@@ -57,6 +59,7 @@ public final class SpecimenScreen extends DevScreen {
         int rightBottom = figures(painter, rightX,
             colorBands(painter, rightX, body.y(), rightW) + Tokens.Space.SECTION, rightW);
         rightBottom = glass(painter, rightX, rightBottom + Tokens.Space.SECTION, rightW);
+        leftBottom = raster(painter, body.x(), leftBottom + Tokens.Space.SECTION, leftW);
 
         painter.vRule(body.x() + leftW + Tokens.Space.GUTTER / 2, body.y(),
             Math.max(leftBottom, rightBottom) - body.y(), Tokens.Color.LINE_HAIRLINE);
@@ -199,6 +202,30 @@ public final class SpecimenScreen extends DevScreen {
                 Math.round(cx), (int) (cursor + r * 2 + Tokens.Space.SNUG), Tokens.Color.INK_TERTIARY);
         }
         return (int) (cursor + r * 2 + Tokens.Space.SNUG + Tokens.Type.MICRO.leading());
+    }
+
+    /**
+     * The same body line through each baked atlas. Only the one whose oversample is the window's
+     * GUI scale puts a texel on a pixel; the others are what the text looked like before the
+     * per-scale providers, and the capture rig photographs this at scale 2 and 3.
+     */
+    private static int raster(Painter painter, int x, int y, int w) {
+        int cursor = DevChrome.sectionHead(painter, "래스터 · 오버샘플 2 · 3 · 4 (창 배율 "
+            + Minecraft.getInstance().getWindow().getGuiScale() + ")", x, y);
+        String line = "세 릴이 맞으면 크게 받아요. 만월 3개면 팟을 가져가요. 52.4% 128,450원";
+        for (int scale = 2; scale <= 4; scale++) {
+            Typeset.draw(painter, Tokens.Type.MICRO, "x" + scale, x, cursor + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
+            painter.pushClip(x + Tokens.Space.GUTTER, 0, w - Tokens.Space.GUTTER, painter.height());
+            painter.gfx().nextStratum();
+            painter.gfx().text(Minecraft.getInstance().font, Typeset.sayAt(Tokens.Type.BODY, scale, line),
+                x + Tokens.Space.GUTTER, cursor, Tokens.Color.INK_PRIMARY, false);
+            painter.gfx().text(Minecraft.getInstance().font, Typeset.sayAt(Tokens.Type.ROW, scale, "동전 · 주사위 · 룰렛 · 슬롯 · 0 · 64"),
+                x + Tokens.Space.GUTTER, cursor + Tokens.Type.BODY.leading(), Tokens.Color.INK_PRIMARY, false);
+            painter.gfx().nextStratum();
+            painter.popClip();
+            cursor += Tokens.Type.BODY.leading() + Tokens.Type.ROW.leading() + Tokens.Space.SNUG;
+        }
+        return cursor;
     }
 
     private static int colorBands(Painter painter, int x, int y, int w) {

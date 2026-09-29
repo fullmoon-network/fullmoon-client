@@ -157,7 +157,7 @@ public final class ServerMenuScreen extends SurfaceScreen {
         int x = header.right() - Tokens.Space.LOOSE - IconButton.SIZE + Tokens.Space.BASE;
         closeButton.place(new Box(x, header.y() + (header.h() - IconButton.SIZE) / 2, IconButton.SIZE, IconButton.SIZE));
         if (backButton != null) {
-            backButton.place(new Box(header.x() + Tokens.Space.LOOSE - Tokens.Space.SNUG,
+            backButton.place(new Box(header.x() + Tokens.Space.BASE,
                 header.y() + (header.h() - IconButton.SIZE) / 2, backButton.measure(), IconButton.SIZE));
         }
     }

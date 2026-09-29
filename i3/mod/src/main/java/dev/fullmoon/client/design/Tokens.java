@@ -60,6 +60,8 @@ public final class Tokens {
         public static final int ACCENT_PRESSED = 0xFFC9A44F;
         /** selected-row ground behind the bar · #E8C56C @ 0.1 */
         public static final int ACCENT_WASH = 0x1AE8C56C;
+        /** the chosen row under the pointer: its wash, lifted · #E8C56C @ 0.15 */
+        public static final int ACCENT_WASH_LIFT = 0x26E8C56C;
         /** the soft light a focused row wears, faded in · #E8C56C @ 0.22 */
         public static final int ACCENT_GLOW = 0x38E8C56C;
         /** ✔ possible, connected, here · #6FCFA8 */
@@ -272,6 +274,7 @@ public final class Tokens {
             java.util.Map.entry("accent", Color.ACCENT),
             java.util.Map.entry("accent.pressed", Color.ACCENT_PRESSED),
             java.util.Map.entry("accent.wash", Color.ACCENT_WASH),
+            java.util.Map.entry("accent.washLift", Color.ACCENT_WASH_LIFT),
             java.util.Map.entry("accent.glow", Color.ACCENT_GLOW),
             java.util.Map.entry("status.live", Color.STATUS_LIVE),
             java.util.Map.entry("status.idle", Color.STATUS_IDLE),

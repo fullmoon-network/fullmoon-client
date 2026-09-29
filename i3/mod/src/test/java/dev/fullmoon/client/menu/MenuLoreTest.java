@@ -1,6 +1,5 @@
 package dev.fullmoon.client.menu;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -34,10 +33,8 @@ final class MenuLoreTest {
     void aTypedCommandIsSplitFromWhatFollowsIt() {
         MenuLore.Parsed lore = MenuLore.parse(List.of("채팅에 입력: /길드 가입 <이름>"));
         assertEquals(List.of("/길드 가입 <이름>"), lore.typed());
-        assertArrayEquals(new String[] {"/길드 가입 <이름>", ""}, MenuLore.command("/길드 가입 <이름>"));
-        assertArrayEquals(new String[] {"/지갑", "으로 오늘 번 돈을 볼 수 있어요"},
-            MenuLore.command("/지갑 으로 오늘 번 돈을 볼 수 있어요"));
-        assertArrayEquals(new String[] {"/link", ""}, MenuLore.command("/link"));
+        assertEquals("/길드 가입 <이름>", MenuLore.command("/길드 가입 <이름>"));
+        assertEquals("/link", MenuLore.command(" /link "));
     }
 
     @Test

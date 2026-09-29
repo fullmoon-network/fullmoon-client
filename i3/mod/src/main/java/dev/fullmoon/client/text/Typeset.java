@@ -91,8 +91,21 @@ public final class Typeset {
     }
 
     private static Style style(Tokens.Type.Role role) {
-        return STYLES.computeIfAbsent(fontId(role),
+        return styleOf(fontId(role));
+    }
+
+    private static Style styleOf(String fontId) {
+        return STYLES.computeIfAbsent(fontId,
             id -> Style.EMPTY.withFont(new FontDescription.Resource(Identifier.parse(id))));
+    }
+
+    /**
+     * The role's text through the provider baked for {@code guiScale}, whatever scale the window
+     * is at. Only the specimen asks: it draws one line through every atlas so the difference
+     * between a matched oversample and a resampled one can be photographed.
+     */
+    public static Component sayAt(Tokens.Type.Role role, int guiScale, String text) {
+        return Component.literal(text).withStyle(styleOf(fontId(roleFor(role, text), guiScale)));
     }
 
     /** The role's text as a component, for the game's own text and tooltip APIs. */

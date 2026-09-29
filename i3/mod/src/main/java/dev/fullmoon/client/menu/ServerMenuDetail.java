@@ -157,18 +157,14 @@ final class ServerMenuDetail {
         return y == bottom ? bottom : y;
     }
 
-    /** {@code 채팅에 입력: [/지갑] 으로 …}: the command as a chip, the rest as body. */
+    /** {@code 채팅에 입력: [/길드 가입 <이름>]}: the command as a chip after the body words. */
     private static void typed(Painter painter, int x, int y, int width, String typed) {
-        String[] parts = MenuLore.command(typed);
         int cursor = x;
         cursor += Typeset.draw(painter, Tokens.Type.BODY, "채팅에 입력:", cursor, y, Tokens.Color.INK_SECONDARY)
             + Tokens.Space.SNUG + 1;
-        cursor += Glass.codeChip(painter, cursor, y, parts[0]) + Tokens.Space.SNUG + 1;
-        if (!parts[1].isEmpty()) {
-            Typeset.draw(painter, Tokens.Type.BODY,
-                Typeset.ellipsized(Tokens.Type.BODY, parts[1], Math.max(0, x + width - cursor)), cursor, y,
-                Tokens.Color.INK_SECONDARY);
-        }
+        String command = Typeset.ellipsized(Tokens.Type.STRONG, MenuLore.command(typed),
+            Math.max(0, x + width - cursor - Tokens.Space.COZY));
+        Glass.codeChip(painter, cursor, y, command);
     }
 
     /**

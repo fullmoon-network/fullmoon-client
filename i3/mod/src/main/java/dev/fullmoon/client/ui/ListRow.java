@@ -101,14 +101,15 @@ public final class ListRow extends Widget {
 
     /**
      * A hovered row lifts, a pressed one sinks, a chosen one wears the wash whatever else is true
-     * of it, and every other row is the glass showing through — a ground of zero draws nothing.
+     * of it — lifted under the pointer, lit under the keyboard's ring — and every other row is
+     * the glass showing through: a ground of zero draws nothing.
      */
     private int ground(State state) {
         return switch (state) {
-            case HOVER -> selected ? Tokens.Color.ACCENT_WASH : Tokens.Color.SURFACE_RAISED;
+            case HOVER -> selected ? Tokens.Color.ACCENT_WASH_LIFT : Tokens.Color.SURFACE_RAISED;
             case ACTIVE -> Tokens.Color.SURFACE_CONTROL_PRESSED;
-            case REST, FOCUS, FOCUS_VISIBLE, DISABLED, LOADING, ERROR ->
-                selected ? Tokens.Color.ACCENT_WASH : 0;
+            case FOCUS_VISIBLE -> selected ? Tokens.Color.ACCENT_GLOW : 0;
+            case REST, FOCUS, DISABLED, LOADING, ERROR -> selected ? Tokens.Color.ACCENT_WASH : 0;
         };
     }
 
