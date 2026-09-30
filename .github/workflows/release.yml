@@ -1,6 +1,6 @@
 name: Release
 
-# A tag build is the release: the Windows installer, the Linux AppImage and deb,
+# A tag build is the release: the Windows installer, the Linux deb and rpm,
 # the mod jar and one SHA256SUMS land on the GitHub Release this tag creates.
 # The checksum file is what makes "this exe == this commit" verifiable — the
 # workflow publishes its own hashes, so a mirror can be checked against the
@@ -91,7 +91,7 @@ jobs:
           if-no-files-found: error
 
   linux:
-    name: Linux AppImage + deb
+    name: Linux deb + rpm
     # 22.04 on purpose: an AppImage links the build host's glibc, so the oldest
     # supported runner is the one that runs on the most distros.
     runs-on: ubuntu-22.04
@@ -160,10 +160,12 @@ jobs:
       - name: Collect release artifacts
         run: |
           mkdir -p dist
-          cp launcher/src-tauri/target/release/bundle/appimage/*.AppImage dist/
+          # The AppImage is built and smoke-tested above but not shipped yet: on a Fedora 44 /
+          # Wayland / new-Mesa host the first build aborted WebKitWebProcess with EGL_BAD_PARAMETER,
+          # and the host-graphics-stack fix (appimage-host-libs.sh) is proven on Ubuntu only. Add
+          # it back here once someone has launched it on such a host. deb and rpm are the path.
           cp launcher/src-tauri/target/release/bundle/deb/*.deb dist/
           cp launcher/src-tauri/target/release/bundle/rpm/*.rpm dist/
-          cp launcher/src-tauri/target/release/bundle/appimage/*.sig dist/ 2>/dev/null || true
           ls -l dist
 
       - uses: actions/upload-artifact@v4
