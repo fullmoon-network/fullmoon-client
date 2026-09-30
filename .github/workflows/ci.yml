@@ -50,7 +50,7 @@ jobs:
         working-directory: launcher/src-tauri
       # hud.rs tests were already stale against the catalogue defaults (8,8 vs 16,56) before
       # this branch touched Linux; they are not part of this gate until someone owns them.
-      - run: cargo test -- --skip hud::
+      - run: cargo test -- --skip hud
         working-directory: launcher/src-tauri
 
   mod:
