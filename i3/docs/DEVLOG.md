@@ -1189,3 +1189,90 @@ Chromium at 1280×820 (the Tauri default), 1040×680 (the minimum) and 1920×108
 surface, menus, dialogs, empty states, the daylight palace, the metals, English and reduced motion.
 The mock core does not prove Tauri IPC; a live-server lobby status is only what the code says, since
 the browser build reports every server unreachable.
+
+## 2026-09-30 · Phase B · 달빛 유리 M0 + M1 (+ 모션·소리, 높은 행)
+
+컨셉(`~/.local/share/fullmoon-client-redesign/concept/`)의 승인 뒤, 인게임 궁궐 장식을 전부 걷어내고
+유리 한 장 위의 타입·색·간격 시스템과 서버 메뉴를 다시 세웠다. 운영자 추가 지시 두 가지 — PS식
+미끄러지는 선택 전환 + 효과음, 더 높은 행 — 를 M8에서 당겨 넣었다.
+
+- `design/tokens.json`: hex+alpha 색, `game:false` 스코프(장식 토큰은 런처 CSS에만), `size`·`spring`·
+  `sound` 그룹, 배율별 폰트 프로바이더 24개 생성. 인게임 색은 컨셉 값 그대로(유리 void@.86, 금 #E8C56C,
+  호버 white@.05, 선택 gold@.10). 대비 검사 전부 통과.
+- 타입 롤 8개(mark/display/title = 함렛 700/700/600, figure = Pretendard 700 tnum, row 11, body 9,
+  strong 9, micro 8 라틴 전용). `Typeset.roleFor`가 micro의 한글을 strong으로 올려 한글 9px 아래가
+  없다. **배율별 프로바이더**: `FontTexture`는 `FilterMode.NEAREST`로 샘플링하므로(26.1.2 jar를 javap로
+  확인) 오버샘플이 창 배율과 다르면 최근접 리샘플이 된다. 그래서 `<role>_x{2,3,4}.json`을 굽고
+  `Typeset.fontId`가 창 배율의 아틀라스를 고른다. 표본 화면의 "래스터" 절이 세 아틀라스를 한 줄씩 그려
+  두 배율 캡처로 증거를 남기게 했다.
+- `ui/Glass`(패널·키캡·힌트·행동 행·✖✔ 줄·명령 칩·바), `ui/IconButton`(‹ ✕), `Palace` 삭제. HUD·타이틀·
+  항로·지도·개발 크롬은 장식만 빠지고 레이아웃은 M3–M7 몫으로 남았다.
+- 모션: `render/Spring`(임계감쇠, 닫힌 해 → 프레임 독립), `Glide`, 위젯 상태 크로스페이드, 비활성 누름
+  넛지, 메뉴 열림 160ms 페이드+8px 상승 / 닫힘 90ms, "움직임 줄이기" 설정.
+- 소리: `design/make-ui-sounds.py`가 만든 원작 7종(`fullmoon:ui.*`), 포커스 틱 45ms 게이트 + ±4% 피치,
+  "메뉴 소리" 설정. main 엔트리포인트에서 등록(클라이언트 엔트리포인트는 레지스트리 동결 뒤라 예외).
+- 메뉴: `MenuLore`(#314 규약 파서) · `ServerMenuLayout`(LIST ≤8 / COLUMNS ≤18 / GRID >18, 밀도
+  SHIPPED|MOCK) · `GridCursor` · `MenuBoard` · `ServerMenuDetail` · `ServerMenuScreen`. 행 40/28,
+  패널 316(목업 36/24/300)을 채택했다 — 640×360에서 카지노 6줄이 스크롤 없이 들어가는 가장 높은 값.
+
+### 증거
+
+- `gradlew build`(러너, run 36593790424): 테스트 340개, 실패 0. jar `fullmoon-client-3.1.0.jar`.
+- 목업 재렌더(서버가 실제로 보내는 문자열, 채택 밀도/목업 밀도 × GUI 2/3): `evidence/phaseB/mock-*.png`.
+- 인게임 캡처: run 36593818752는 클라이언트가 `Player###`로 접속해(당시 `runClient`에 `client_username`이
+  매핑되지 않았다) 계정 미연동·허공 낙사로 사망 화면만 찍혔다. 매핑을 넣은 뒤 다시 돌린 캡처는
+  `~/.local/share/fullmoon-client-redesign/phaseB/captures/`에 쌓이고, 비교 이미지는 `phaseB/review/img/`.
+
+## 2026-09-30 · Phase B · M1 마감 + M2 결과 카드 · M3 HUD · M4 항로 (코드, 캡처 전)
+
+- M1 후속: 풀문 패널이 떠 있는 동안 바닐라 핫바·HUD 칩·사이드바를 그리지 않는다
+  (`HudOverlay.underGlass`) — 힌트 바 뒤로 핫바가 비치던 것의 답. 상세 열은 행의 설명을 반복하지
+  않고 다른 사실 항목이 이 선택지에 대해 말하는 줄(`하우스 몫 · 1.0%`)을 덧붙인다. ✕ 5.5px, 표본의
+  래스터 절을 위로, 카지노 테이블의 칩·지갑·오늘·확률·돌리기·팟·티켓·선택 마크.
+- M2 `hud/CasinoResultOverlay`: 핫바 위 220×44 배너. 연출 중 row, 판정은 display — 당첨은 금 +
+  워시 + 윗선 + 글로우 + 260ms 플래시, 낙첨은 재. 릴은 10×10 픽셀 심볼 7종이 14px 타일에서 220ms
+  간격으로 멈춘다. 소리 `ui.reel/win/lose`(원작, `make-ui-sounds.py`). 큐 타이밍은 순수 함수로 테스트.
+- M3: 16px 유리 칩(값 row + 단위 body), 정수 좌표 + 방향, fps·tps, 핑 점, 시계 + 달, 14px 키캡,
+  사이드바 132폭·위 100·라벨/값 분할·서버 색을 팔레트로 번역·도움말 줄.
+- M4 `warp/`: `WarpLayout`(640×360 = 목업 e 좌표, 테스트) · `RouteBoard`(그룹 캡션 + 24px 행,
+  글라이드, 소리) · `WarpScreen`(스크림 위, 상세 사실 4줄, 나침반, 상태 줄, 이동 [Enter], M = 지도) ·
+  `WarpRoutes`(방위·회전·16방위 이름). 서버가 남은 초를 보내지 않아 쿨다운 카운트다운은 없다.
+- 토큰: `wheel.*`, `chat.*`, `size.card/cardH/hotbar/hudChip/hudKey/sidebar/sidebarTop/routeRow/compass/
+  reel/pocket`, `duration.flash/verdict`. 프로토콜 불변.
+
+### 증거
+
+- 목업 재렌더(서버 진실, 태그 없음): `evidence/phaseB/mock-{c-result-win,c-result-lose,d-hud,e-route-rest}-x3.png`.
+- 실캡처는 아직 없다. 4차 캡처의 `casino-card`·`route`가 일시정지 메뉴였던 원인은 하네스(`/guild` 뒤의
+  Esc)였고 고쳤다. 다음 실행이 네 게임의 카드(연출 중·정착), HUD(휴식·키 눌림), 항로(선택·요청·응답)를
+  찍는다. 러너 빌드 이력과 다음 단계는 `~/.local/share/fullmoon-client-redesign/phaseB/HANDOFF.md`.
+
+## 2026-09-30 — phase B round 3: run 5 pairs, two fixes, the title screen in code
+
+Run 36607805509 photographed M1–M4 for real at 1280×720 GUI 2: the result card in all twelve
+states (four games, spin / win / lose — the rig re-bets until both outcomes are seen), the HUD with
+keys held, the route screen at rest, pending and accepted, and the M1 re-shots. The 1080p pass was
+lost to the tutorial prompt arriving as a chest before the handshake; the rig now escapes past it.
+The pairs matched the mockups apart from two things, both fixed in `cb68209`: the lobby's labelled
+help line was being split as label/value, and the route list sorted a group alphabetically instead
+of keeping the server's order. The 매입소 strip keeps 전량 판매가 (the mock was changed to agree).
+The title screen (`8cca445`) now follows mock (f): veil, wordmark, one gliding list with the live
+lobby answer, tonight's moon, the foot with real versions; its captures come with the next run.
+Evidence: `i3/docs/evidence/phaseB/sheet-*.jpg`, `*-720p-pair.jpg`, `glide-route-720p.gif`.
+
+## 2026-09-30 — phase B round 4: the title measured, the text layer corrected, 1080p pairs
+
+Run 36611431734 photographed the title at both geometries; `harness/inkmeasure.py` measured the
+ink of every part against the mock render instead of eyeballing it. The wordmark, the gold bar
+and the moon were the mock's to the pixel; every line placed with `Typeset.centred()` sat 1.7 px
+above it, the more the larger the face, and the same offset was then found in run 5's menu header
+(2.5), 매입소 rows (1.5–2) and route rows (1). The cause was the text layer, not any screen:
+`centred()` dropped the baseline a quarter of the em under the band's middle where a CSS line box
+drops it (ascender − descender)/2 — 0.35 em for Pretendard, 0.41 em for Hahmlet. `115611a` makes
+that the rule, draws `tabular()` letter runs on fractional advances (one glyph per call had
+tracked the title's version line 18 px wide) and puts the route detail's lines in their line
+boxes (name 8 px, facts 3 px high). Run 36617844770 re-shot everything after it: the title within
+±0.67 px at both geometries, and the 1080p pairs for M1–M4 that run 5 had lost, with the
+`cb68209` checks (help line, 궁궐 order) passing. The server menu now rises and falls through
+`render/Fade` like the route screen; `CHANGELOG.md` carries the v0.3.0 notes. Evidence:
+`i3/docs/evidence/phaseB/title-*-pair.jpg`, `*-1080p-pair.jpg`, `glide-title-1080p.gif`.

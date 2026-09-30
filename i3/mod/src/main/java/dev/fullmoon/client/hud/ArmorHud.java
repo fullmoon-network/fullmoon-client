@@ -84,12 +84,12 @@ public final class ArmorHud extends BaseHudElement {
                 painter.fill(slotBox.x() + 2, slotBox.y() + slotBox.h() - 3, barW, 2, 0, barColor);
             }
 
-            int textW = Typeset.width(Tokens.Type.LABEL, text);
+            int textW = Typeset.width(Tokens.Type.MICRO, text);
             int textX = slotBox.x() + (slotBox.w() - textW) / 2;
             int textY = slotBox.y() + (slotBox.h() - 3 - 9) / 2;
             int ink = pct > 0 ? Tokens.Color.INK_PRIMARY : Tokens.Color.INK_TERTIARY;
 
-            Typeset.draw(painter, Tokens.Type.LABEL, text, textX, textY, ink);
+            Typeset.draw(painter, Tokens.Type.MICRO, text, textX, textY, ink);
         }
     }
 }

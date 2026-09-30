@@ -93,8 +93,8 @@ public final class Slider extends Widget {
         if (readout && state == State.LOADING) {
             Dots.draw(painter, b.right() - cell() / 2.0f, b.midY(), chrome.ink());
         } else if (readout) {
-            Typeset.tabularRight(painter, Tokens.Type.BODY_STRONG, say(value), b.right(),
-                Typeset.centred(Tokens.Type.BODY_STRONG, b.y(), b.h()), chrome.ink());
+            Typeset.tabularRight(painter, Tokens.Type.STRONG, say(value), b.right(),
+                Typeset.centred(Tokens.Type.STRONG, b.y(), b.h()), chrome.ink());
         }
         ring(painter, state, Tokens.Radius.MD);
     }
@@ -211,7 +211,7 @@ public final class Slider extends Widget {
         String low = say(min);
         String high = say(max);
         return Math.max(Dots.width(),
-            Typeset.tabularWidth(Tokens.Type.BODY_STRONG,
+            Typeset.tabularWidth(Tokens.Type.STRONG,
                 low.length() >= high.length() ? low : high));
     }
 

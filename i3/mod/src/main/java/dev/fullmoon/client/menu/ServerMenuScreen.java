@@ -8,55 +8,118 @@ import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.network.FullmoonChannel;
 import dev.fullmoon.client.network.MenuProtocol;
+import dev.fullmoon.client.render.Fade;
 import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.render.Rgb;
+import dev.fullmoon.client.sound.UiSounds;
 import dev.fullmoon.client.text.Typeset;
-import dev.fullmoon.client.ui.Button;
-import dev.fullmoon.client.ui.Palace;
+import dev.fullmoon.client.ui.Glass;
+import dev.fullmoon.client.ui.IconButton;
 import dev.fullmoon.client.ui.SurfaceScreen;
-import dev.fullmoon.client.ui.Voice;
-import dev.fullmoon.client.ui.Widget;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 
+import com.mojang.blaze3d.platform.InputConstants;
+
+/**
+ * A server-owned menu as one pane of glass: a header with the way back and the way out, the
+ * choices as rows the keyboard walks and the pointer lifts, the chosen one's detail beside them,
+ * and the menu's facts along the foot. Every click is still the server's: the screen sends the
+ * slot and the click the snapshot advertised and draws whatever comes back.
+ */
 public final class ServerMenuScreen extends SurfaceScreen {
     private static final long REQUEST_TIMEOUT_MILLIS = 5_000;
-    private static final int FACT_VALUE_LINES = 2;
-    private static final int DETAIL_LINES = 3;
+    private static final int RISE = Tokens.Space.COZY;
 
     private final Screen parent;
     private final MenuProtocol.Open menu;
-    private final List<ServerMenuTile> tiles;
+    private final String parentTitle;
+    private final List<ServerMenuEntry> choices;
     private final List<ServerMenuEntry> facts;
-    private final Button close;
+    private final ServerMenuEntry back;
+    private final ServerMenuEntry closeItem;
+    private final MenuBoard board;
+    private final IconButton backButton;
+    private final IconButton closeButton;
+    private final Fade fade;
 
     private ServerMenuLayout layout;
     private long requestedAt;
+    private int busySlot = -1;
     private boolean closingFromServer;
+    private boolean keyboard;
 
     public ServerMenuScreen(Screen parent, MenuProtocol.Open menu) {
+        this(parent, menu, "", -1, true);
+    }
+
+    private ServerMenuScreen(Screen parent, MenuProtocol.Open menu, String parentTitle, int wantedSlot,
+            boolean opening) {
         super(Component.literal(menu.title()));
         this.parent = parent;
         this.menu = menu;
-        this.tiles = createTiles(menu.items());
-        this.facts = createFacts(menu.items());
-        this.tiles.forEach(surface::add);
-        this.close = surface.add(new Button(Voice.QUIET, "닫기", this::onClose));
+        this.parentTitle = parentTitle;
+        List<ServerMenuEntry> entries = menu.items().stream()
+            .sorted(Comparator.comparingInt(MenuProtocol.Item::slot))
+            .map(ServerMenuEntry::new)
+            .toList();
+        this.choices = entries.stream().filter(e -> e.kind() == ServerMenuEntry.Kind.CHOICE).toList();
+        this.facts = entries.stream().filter(e -> e.kind() == ServerMenuEntry.Kind.FACT).toList();
+        this.back = entries.stream().filter(e -> e.kind() == ServerMenuEntry.Kind.BACK).findFirst().orElse(null);
+        this.closeItem = entries.stream().filter(e -> e.kind() == ServerMenuEntry.Kind.CLOSE).findFirst().orElse(null);
+        this.board = surface.add(new MenuBoard(choices, wantedSlot, new MenuBoard.Listener() {
+            @Override
+            public void picked(ServerMenuEntry entry) {
+                UiSounds.play(UiSounds.Cue.CONFIRM);
+                request(entry.item());
+            }
+
+            @Override
+            public void moved(ServerMenuEntry entry) {
+                UiSounds.play(UiSounds.Cue.FOCUS);
+            }
+
+            @Override
+            public void refused(ServerMenuEntry entry) {
+                UiSounds.play(UiSounds.Cue.ERROR);
+            }
+        }));
+        String backLabel = parentTitle.isEmpty() ? I18n.get("fullmoon.menu.back") : parentTitle;
+        this.backButton = back == null ? null
+            : surface.add(new IconButton(IconButton.Glyph.BACK, backLabel, () -> request(back.item())));
+        this.closeButton = surface.add(new IconButton(IconButton.Glyph.CLOSE, "", this::onClose));
+        this.fade = opening ? Fade.opening() : Fade.settled();
+        if (opening) {
+            UiSounds.play(UiSounds.Cue.OPEN);
+        }
+        surface.focus().point(board);
     }
 
     public String menuId() {
         return menu.id();
     }
 
+    public String title() {
+        return menu.title();
+    }
+
     public Screen parentScreen() {
         return parent;
     }
 
+    /** The same menu, a newer snapshot: the cursor stays on the slot it was on. */
     public ServerMenuScreen refreshed(MenuProtocol.Open next) {
-        return new ServerMenuScreen(parent, next);
+        return new ServerMenuScreen(parent, next, parentTitle, board.currentSlot(), false);
+    }
+
+    /** Another menu opened over this one: it remembers this one's name for its way back. */
+    public ServerMenuScreen replacedBy(MenuProtocol.Open next) {
+        return new ServerMenuScreen(parent, next, menu.title(), -1, false);
     }
 
     public void closeFromServer() {
@@ -71,260 +134,218 @@ public final class ServerMenuScreen extends SurfaceScreen {
 
     @Override
     public void onClose() {
+        if (fade.closing()) {
+            return;
+        }
         if (!closingFromServer) {
             FullmoonChannel.closeMenu(menu.id(), menu.revision());
+            UiSounds.play(UiSounds.Cue.CLOSE);
         }
-        Minecraft.getInstance().setScreen(parent);
+        fade.close();
+        if (fade.gone()) {
+            Minecraft.getInstance().setScreen(parent);
+        }
     }
 
     @Override
     protected void init() {
-        layout = ServerMenuLayout.fit(new Box(0, 0, width, height), tiles.size());
-        for (int index = 0; index < tiles.size(); index++) {
-            tiles.get(index).place(layout.action(index));
+        layout = ServerMenuLayout.fit(new Box(0, 0, width, height), choices.size(), !facts.isEmpty());
+        board.layout(layout);
+        Box header = layout.header();
+        int x = header.right() - Tokens.Space.LOOSE - IconButton.SIZE + Tokens.Space.BASE;
+        closeButton.place(new Box(x, header.y() + (header.h() - IconButton.SIZE) / 2, IconButton.SIZE, IconButton.SIZE));
+        if (backButton != null) {
+            backButton.place(new Box(header.x() + Tokens.Space.BASE,
+                header.y() + (header.h() - IconButton.SIZE) / 2, backButton.measure(), IconButton.SIZE));
         }
-        int closeWidth = Math.max(close.measure(), 58);
-        close.place(new Box(layout.header().right() - closeWidth,
-            layout.header().y() + Tokens.Space.COZY, closeWidth, Button.HEIGHT));
     }
 
     @Override
     public void tick() {
         if (requestedAt > 0 && System.currentTimeMillis() - requestedAt >= REQUEST_TIMEOUT_MILLIS) {
             requestedAt = 0;
-            tiles.forEach(tile -> tile.busy(false));
+            board.busy(-1);
+        }
+        if (fade.gone()) {
+            Minecraft.getInstance().setScreen(parent);
         }
     }
 
     @Override
-    public void extractBackground(GuiGraphicsExtractor gfx, int mouseX, int mouseY,
-            float partialTick) {
-        Painter painter = new Painter(gfx);
-        painter.blurredStratum();
-        painter.fill(0, 0, painter.width(), painter.height(),
-            Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.62f));
+    public boolean keyPressed(KeyEvent event) {
+        if (fade.closing()) {
+            return true;
+        }
+        keyboard = true;
+        if (event.key() == InputConstants.KEY_BACKSPACE && back != null && requestedAt == 0) {
+            UiSounds.play(UiSounds.Cue.BACK);
+            request(back.item());
+            return true;
+        }
+        return super.keyPressed(event);
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY,
-            float partialTick) {
-        surface.hover(mouseX, mouseY);
+    public void extractBackground(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
         Painter painter = new Painter(gfx);
-        panel(painter);
+        painter.blurredStratum();
+        painter.fill(0, 0, painter.width(), painter.height(),
+            Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.52f * fade.appearance()));
+    }
+
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
+        if (!fade.closing()) {
+            surface.hover(mouseX, mouseY);
+        }
+        Painter painter = new Painter(gfx);
+        float t = fade.appearance();
+        painter.opacity(t);
+        float rise = (1.0f - t) * RISE;
+        gfx.pose().pushMatrix();
+        gfx.pose().translate(0.0f, rise);
+        Glass.panel(painter, layout.panel());
         header(painter);
-        sectionHead(painter);
-        context(painter);
-        footer(painter);
+        divider(painter);
+        detail(painter);
+        factsStrip(painter);
         surface.draw(painter);
-    }
-
-    private void panel(Painter painter) {
-        Box frame = layout.frame();
-        Palace.panel(painter, frame.x(), frame.y(), frame.w(), frame.h());
-        int band = bandBottom() - frame.y() - 1;
-        painter.fill(frame.x() + 1, frame.y() + 1, frame.w() - 2, band, Tokens.Color.SURFACE_RAISED);
-        Palace.lattice(painter, frame.x() + 1, frame.y() + 1, frame.w() - 2, band);
-        Palace.dancheong(painter, frame.x() + 1, bandBottom(), frame.w() - 2);
-    }
-
-    /** The header band ends just under the title; the dancheong band runs along its foot. */
-    private int bandBottom() {
-        return layout.header().bottom() + Tokens.Space.TIGHT;
+        gfx.pose().popMatrix();
+        hints(painter);
     }
 
     private void header(Painter painter) {
         Box header = layout.header();
-        Typeset.draw(painter, Tokens.Type.LABEL, "FULLMOON  ·  서버 메뉴", header.x(),
-            header.y() + Tokens.Space.TIGHT, Tokens.Color.ACCENT);
-        int titleBandTop = header.y() + Tokens.Type.LABEL.leading() + Tokens.Space.TIGHT;
-        int titleBand = header.bottom() - titleBandTop;
-        int seal = Math.min(22, titleBand - Tokens.Space.SNUG);
-        Palace.seal(painter, header.x(), titleBandTop + (titleBand - seal) / 2.0f, seal);
-        Typeset.draw(painter, Tokens.Type.DISPLAY, menu.title(), header.x() + seal + Tokens.Space.COZY,
-            Typeset.centred(Tokens.Type.DISPLAY, titleBandTop, titleBand), Tokens.Color.INK_PRIMARY);
+        int x = header.x() + Tokens.Space.LOOSE;
+        if (backButton != null) {
+            x = backButton.bounds().right() + Tokens.Space.COZY;
+        }
+        int right = closeButton.bounds().x() - Tokens.Space.COZY;
+        int capW = Glass.keycapWidth("Esc");
+        Glass.keycap(painter, right - capW, header.y() + (header.h() - Tokens.Size.KEYCAP) / 2, "Esc");
+        right -= capW + Tokens.Space.COZY;
+        String context = contextLine();
+        if (!context.isEmpty()) {
+            right -= Typeset.tabularRight(painter, Tokens.Type.BODY, context, right,
+                Typeset.centred(Tokens.Type.BODY, header.y(), header.h()), Tokens.Color.INK_TERTIARY)
+                + Tokens.Space.COZY;
+        }
+        Typeset.draw(painter, Tokens.Type.TITLE, Typeset.ellipsized(Tokens.Type.TITLE, menu.title(), right - x),
+            x, Typeset.centred(Tokens.Type.TITLE, header.y(), header.h()), Tokens.Color.INK_PRIMARY);
+        Glass.hair(painter, header.x(), header.bottom() - 1, header.w());
     }
 
-    private void sectionHead(Painter painter) {
-        int y = layout.sectionHeadY();
-        Typeset.draw(painter, Tokens.Type.LABEL, "메뉴", layout.actions().x(), y,
-            Tokens.Color.INK_TERTIARY);
-        Typeset.tabularRight(painter, Tokens.Type.LABEL, Integer.toString(tiles.size()),
-            layout.actions().right(), y, Tokens.Color.INK_TERTIARY);
+    /** The menu's context figure: the wallet balance, the remaining daily limit. */
+    private String contextLine() {
+        for (ServerMenuEntry fact : facts) {
+            String line = fact.contextLine();
+            if (!line.isEmpty()) {
+                return line;
+            }
+        }
+        return "";
     }
 
-    /** The detail pane reads like an unrolled scroll: gilt rods along its top and foot. */
-    private void context(Painter painter) {
-        Box context = layout.context();
-        painter.fill(context.x(), context.y(), context.w(), context.h(), Tokens.Color.SURFACE_SUNKEN);
-        painter.vRule(context.x(), context.y(), context.h(), Tokens.Color.LINE_GILT_FAINT);
-        painter.vRule(context.right() - 1, context.y(), context.h(), Tokens.Color.LINE_GILT_FAINT);
-        painter.fill(context.x(), context.y(), context.w(), Tokens.Stroke.FOCUS, Tokens.Color.LINE_GILT);
-        painter.fill(context.x(), context.bottom() - Tokens.Stroke.FOCUS, context.w(),
-            Tokens.Stroke.FOCUS, Tokens.Color.LINE_GILT);
-
-        ServerMenuEntry entry = currentEntry();
-        int left = context.x() + Tokens.Space.LOOSE;
-        int right = context.right() - Tokens.Space.LOOSE;
-        int y = context.y() + Tokens.Space.LOOSE;
-        if (entry == null) {
-            Typeset.drawWrapped(painter, Tokens.Type.BODY, "실행할 수 있는 항목이 없어요.",
-                left, y, right - left, 2, Tokens.Color.INK_TERTIARY);
-            return;
-        }
-
-        painter.dot(left + 14f, y + 14f, 14f, Tokens.Color.SURFACE_RAISED);
-        painter.ring(left + 14f, y + 14f, 14f - Tokens.Stroke.HAIR / 2f,
-            Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT);
-        entry.drawIcon(painter, left, y, 28);
-        int copyX = left + 28 + Tokens.Space.COZY;
-        int clipTop = Typeset.capTop(Tokens.Type.HEADING, y);
-        painter.pushClip(copyX, clipTop, right - copyX, y + 30 - clipTop);
-        Typeset.draw(painter, Tokens.Type.HEADING,
-            Typeset.ellipsized(Tokens.Type.HEADING, entry.label(), right - copyX), copyX, y,
-            Tokens.Color.INK_PRIMARY);
-        Typeset.draw(painter, Tokens.Type.LABEL, actionHint(entry.item()), copyX,
-            y + Tokens.Type.HEADING.leading(), Tokens.Color.ACCENT);
-        painter.popClip();
-        y += 28 + Tokens.Space.COZY;
-
-        if (entry.item().chance().isPresent()) {
-            y = chance(painter, left, right, y, (float) entry.item().chance().getAsDouble());
-        }
-
-        int budget = DETAIL_LINES;
-        for (String detail : entry.details()) {
-            if (budget == 0) {
-                break;
-            }
-            List<String> lines = Typeset.lines(Tokens.Type.BODY, detail, right - left, budget);
-            for (String line : lines) {
-                Typeset.draw(painter, Tokens.Type.BODY, line, left, y, Tokens.Color.INK_SECONDARY);
-                y += Tokens.Type.BODY.leading();
-            }
-            budget -= lines.size();
-        }
-
-        if (!facts.isEmpty()) {
-            y += Tokens.Space.COZY;
-            Palace.dashedRule(painter, left, y, right - left);
-            y += Tokens.Space.COZY;
-            Typeset.draw(painter, Tokens.Type.LABEL, "현재 정보", left, y,
-                Tokens.Color.INK_TERTIARY);
-            int headY = y;
-            y += Tokens.Type.LABEL.leading() + Tokens.Space.SNUG;
-            int shown = drawFacts(painter, left, right, y, context.bottom() - Tokens.Space.COZY);
-            if (shown < facts.size()) {
-                Typeset.drawRight(painter, Tokens.Type.LABEL, "외 " + (facts.size() - shown) + "개", right,
-                    headY, Tokens.Color.INK_TERTIARY);
-            }
+    private void divider(Painter painter) {
+        int x = layout.divider();
+        if (x >= 0) {
+            Glass.vhair(painter, x, layout.detail().y(), layout.detail().h());
         }
     }
 
-    /** The chosen game's odds as a moon filled that far, beside the figure itself. */
-    private static int chance(Painter painter, int left, int right, int y, float chance) {
-        Palace.dashedRule(painter, left, y, right - left);
-        y += Tokens.Space.COZY;
-        float r = 11.0f;
-        painter.moon(left + r, y + r, r, chance, true, Tokens.Color.MOON_LIT, Tokens.Color.MOON_SHADOW);
-        painter.ring(left + r, y + r, r + 2.0f, Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT);
-        int textX = left + Math.round(r * 2) + Tokens.Space.COZY;
-        Typeset.draw(painter, Tokens.Type.LABEL, "이길 확률", textX, y, Tokens.Color.INK_TERTIARY);
-        Typeset.tabular(painter, Tokens.Type.TITLE, ServerMenuCopy.percent(chance), textX,
-            y + Tokens.Type.LABEL.leading(), Tokens.Color.ACCENT);
-        return y + Math.round(r * 2) + Tokens.Space.COZY;
+    private void detail(Painter painter) {
+        ServerMenuEntry current = board.current();
+        boolean busy = requestedAt > 0 && current != null && current.slot() == busySlot;
+        if (layout.mode() == ServerMenuLayout.Mode.COLUMNS) {
+            ServerMenuDetail.strip(painter, layout.detail(), current, clock(), busy);
+        } else {
+            ServerMenuDetail.column(painter, layout.detail(), current, about(current), busy);
+        }
     }
 
     /**
-     * The facts, each its name and its value (the first detail). A value short enough to share
-     * the line sits on the right; a longer one, which a server sends as a sentence, goes under
-     * its name on as many of {@link #FACT_VALUE_LINES} lines as the panel has left, and whatever
-     * still does not fit ends in an ellipsis. Returns how many facts it drew; the rest did not
-     * fit even as a name and one line.
+     * What the menu's fact items say about one choice: a {@code key · value} line whose key is the
+     * choice's name, as 하우스 몫 lists 동전 · 1.0%. Returned as {@code fact name · value}.
      */
-    private int drawFacts(Painter painter, int left, int right, int top, int bottom) {
-        int width = right - left;
-        int y = top;
-        int shown = 0;
+    private List<MenuLore.Fact> about(ServerMenuEntry choice) {
+        List<MenuLore.Fact> out = new ArrayList<>();
+        if (choice == null) {
+            return out;
+        }
         for (ServerMenuEntry fact : facts) {
-            String value = fact.details().isEmpty() ? "" : fact.details().getFirst();
-            int labelW = Typeset.width(Tokens.Type.BODY, fact.label());
-            int valueW = Typeset.width(Tokens.Type.BODY_STRONG, value);
-            boolean shared = value.isEmpty() || labelW + Tokens.Space.COZY + valueW <= width;
-            int room = (bottom - y - Tokens.Type.BODY.leading()) / Tokens.Type.BODY_STRONG.leading();
-            if (room < 0 || !shared && room < 1) {
-                break;
-            }
-            Typeset.draw(painter, Tokens.Type.BODY, Typeset.ellipsized(Tokens.Type.BODY, fact.label(), width),
-                left, y, Tokens.Color.INK_SECONDARY);
-            y += Tokens.Type.BODY.leading();
-            if (shared) {
-                Typeset.drawRight(painter, Tokens.Type.BODY_STRONG, value, right,
-                    y - Tokens.Type.BODY.leading(), Tokens.Color.INK_PRIMARY);
-            } else {
-                for (String line : Typeset.lines(Tokens.Type.BODY_STRONG, value, width,
-                        Math.min(FACT_VALUE_LINES, room))) {
-                    Typeset.draw(painter, Tokens.Type.BODY_STRONG, line, left, y, Tokens.Color.INK_PRIMARY);
-                    y += Tokens.Type.BODY_STRONG.leading();
+            for (MenuLore.Fact line : fact.lore().facts()) {
+                if (line.key().equals(choice.label())) {
+                    out.add(new MenuLore.Fact(fact.label(), line.value()));
                 }
             }
-            y += Tokens.Space.TIGHT;
-            shown++;
         }
-        return shown;
+        return out;
     }
 
-    private void footer(Painter painter) {
-        Box footer = layout.footer();
-        painter.hRule(footer.x(), footer.y(), footer.w(), Tokens.Color.LINE_GILT_FAINT);
-        int y = footer.y() + Tokens.Space.SNUG;
-        int x = footer.x();
-        String[][] keys = {{"Tab", "이동"}, {"Enter", "실행"}, {"Esc", "닫기"}};
-        for (String[] key : keys) {
-            x += Palace.key(painter, x, y - 1, key[0]) + Tokens.Space.SNUG;
-            x += Typeset.draw(painter, Tokens.Type.LABEL, key[1], x, y + 1, Tokens.Color.INK_TERTIARY)
-                + Tokens.Space.LOOSE;
+    /** The fact item that carries a bar, if any: the sell menu's limit clock. */
+    private ServerMenuEntry clock() {
+        for (ServerMenuEntry fact : facts) {
+            if (!fact.lore().bars().isEmpty()) {
+                return fact;
+            }
         }
-        String status = requestedAt > 0 ? "서버 응답 대기" : "서버가 결과를 확정해요";
-        Typeset.drawRight(painter, Tokens.Type.LABEL, status, footer.right(), y + 1,
-            requestedAt > 0 ? Tokens.Color.STATUS_WARN : Tokens.Color.STATUS_LIVE);
+        return null;
     }
 
-    private List<ServerMenuTile> createTiles(List<MenuProtocol.Item> items) {
-        List<ServerMenuTile> created = new ArrayList<>();
-        items.stream()
-            .filter(item -> !item.actions().isEmpty())
-            .filter(item -> !isClose(item))
-            .sorted(Comparator.comparingInt(MenuProtocol.Item::slot))
-            .map(ServerMenuEntry::new)
-            .forEach(entry -> created.add(new ServerMenuTile(entry,
-                () -> request(entry.item()))));
-        return List.copyOf(created);
-    }
-
-    private static List<ServerMenuEntry> createFacts(List<MenuProtocol.Item> items) {
-        return items.stream()
-            .filter(item -> item.actions().isEmpty())
-            .sorted(Comparator.comparingInt(MenuProtocol.Item::slot))
-            .map(ServerMenuEntry::new)
-            .toList();
-    }
-
-    private ServerMenuEntry currentEntry() {
-        Widget widget = surface.hovered() != null ? surface.hovered() : surface.held();
-        if (widget instanceof ServerMenuTile tile) {
-            return tile.entry();
+    /** The facts strip along the foot of a list: each fact's name over its first line. */
+    private void factsStrip(Painter painter) {
+        Box strip = layout.facts();
+        if (strip.empty()) {
+            return;
         }
-        return tiles.isEmpty() ? facts.stream().findFirst().orElse(null) : tiles.getFirst().entry();
+        Glass.hair(painter, strip.x(), strip.y(), strip.w());
+        int x = strip.x() + Tokens.Space.LOOSE;
+        int block = Tokens.Type.BODY.leading() + Tokens.Type.STRONG.leading() - Tokens.Space.TIGHT;
+        int top = strip.y() + (strip.h() - block) / 2;
+        int right = strip.right() - Tokens.Space.LOOSE;
+        for (ServerMenuEntry fact : facts) {
+            if (!fact.contextLine().isEmpty()) {
+                continue;
+            }
+            String value = fact.factValue();
+            int w = Math.max(Typeset.width(Tokens.Type.BODY, fact.label()), Typeset.tabularWidth(Tokens.Type.STRONG, value));
+            if (x + w > right) {
+                break;
+            }
+            Typeset.draw(painter, Tokens.Type.BODY, fact.label(), x, top, Tokens.Color.INK_TERTIARY);
+            int ink = fact.blocked() ? Tokens.Color.STATUS_DANGER : Tokens.Color.INK_PRIMARY;
+            Typeset.tabular(painter, Tokens.Type.STRONG, value, x, top + Tokens.Type.BODY.leading() - Tokens.Space.TIGHT, ink);
+            x += w + Tokens.Space.GUTTER;
+        }
+    }
+
+    private void hints(Painter painter) {
+        List<Glass.Hint> hints = new ArrayList<>();
+        hints.add(new Glass.Hint(layout.mode() == ServerMenuLayout.Mode.LIST ? "↑↓" : "←→↑↓",
+            I18n.get("fullmoon.menu.hint.move")));
+        hints.add(new Glass.Hint("Enter", I18n.get("fullmoon.menu.hint.select")));
+        if (back != null) {
+            hints.add(new Glass.Hint("Backspace", I18n.get("fullmoon.menu.hint.back")));
+        }
+        hints.add(new Glass.Hint("Esc", I18n.get("fullmoon.menu.hint.close")));
+        Glass.hints(painter, layout.panel().midX(), layout.hintY(), hints, keyboard);
+    }
+
+    @Override
+    public void mouseMoved(double mouseX, double mouseY) {
+        keyboard = false;
+        super.mouseMoved(mouseX, mouseY);
     }
 
     private void request(MenuProtocol.Item item) {
-        if (requestedAt > 0 || item.actions().isEmpty()) {
+        if (requestedAt > 0 || item.actions().isEmpty() || fade.closing()) {
             return;
         }
         MenuProtocol.Click click = requestedClick(item);
         if (FullmoonChannel.requestMenuAction(menu.id(), menu.revision(), item.slot(), click)) {
             requestedAt = System.currentTimeMillis();
-            tiles.forEach(tile -> tile.busy(true));
+            busySlot = item.slot();
+            board.busy(item.slot());
         }
     }
 
@@ -335,25 +356,5 @@ public final class ServerMenuScreen extends SurfaceScreen {
         }
         return item.actions().contains(MenuProtocol.Click.LEFT)
             ? MenuProtocol.Click.LEFT : item.actions().getFirst();
-    }
-
-    private static String actionHint(MenuProtocol.Item item) {
-        boolean left = item.actions().contains(MenuProtocol.Click.LEFT);
-        boolean shift = item.actions().contains(MenuProtocol.Click.SHIFT_LEFT);
-        if (left && shift) {
-            return "클릭  ·  Shift+클릭 보조 동작";
-        }
-        if (left) {
-            return "클릭하면 실행돼요";
-        }
-        if (shift) {
-            return "Shift+클릭하면 실행돼요";
-        }
-        return "읽기 전용";
-    }
-
-    private static boolean isClose(MenuProtocol.Item item) {
-        return item.material().equals("minecraft:barrier")
-            && ServerMenuCopy.label(item.label()).equals("닫기");
     }
 }

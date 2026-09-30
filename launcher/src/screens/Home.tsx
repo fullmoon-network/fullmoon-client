@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Icon } from "../components/Icon";
 import { Badge, Button, Empty, IconButton } from "../components/ui";
-import { Marker } from "../components/Palace";
 import { useStore } from "../state/store";
 import { isRealCore } from "../core/client";
 import { useT } from "../i18n";
@@ -115,7 +114,7 @@ export function HomeScreen() {
                 const online = st?.online === true;
                 const state = !st ? "checking" : online ? "live" : "idle";
                 return (
-                  <article key={s.id} className="srv pf-tile">
+                  <article key={s.id} className="srv tile">
                     <div className="srv-main">
                       <div className="srv-head">
                         <h3>{s.name}</h3>
@@ -191,7 +190,7 @@ export function HomeScreen() {
           {tab === "wallet" &&
             (wallet ? (
               <section className="ledger">
-                <div className="ledger-top">
+                <div className="ledger-top tile">
                   <div className="ledger-balance">
                     <span className="overline">{t("home.balance")}</span>
                     <strong className="num">
@@ -211,11 +210,11 @@ export function HomeScreen() {
                     </div>
                   </dl>
                 </div>
-                <div className="pf-section-head">
+                <div className="section-head">
                   {t("home.ledger")}
                   <em className="num">{t("home.ledgerCount", { n: walletTxs.length })}</em>
                 </div>
-                <ul className="ledger-rows">
+                <ul className="ledger-rows tile">
                   {walletTxs.map((tx, idx) => (
                     <li key={tx.at + tx.reason + idx} className="ledger-row">
                       <span className="ledger-when num">{fmtWhen(tx.at)}</span>
@@ -241,10 +240,9 @@ export function HomeScreen() {
             ))}
 
           {tab === "news" && (
-            <ul className="news-list">
+            <ul className="news-list tile">
               {news.map((n) => (
-                <li key={n.id} className="news-row">
-                  <Marker on={n.featured} />
+                <li key={n.id} className={`news-row ${n.featured ? "is-featured" : ""}`}>
                   <div className="news-meta">
                     <div className="news-top">
                       <Badge tone={TAG_TONE[n.tag] ?? "dim"}>{t(`news.tag.${n.tag}`)}</Badge>
@@ -261,9 +259,9 @@ export function HomeScreen() {
         </div>
 
         <aside className="dash-side">
-          <section className="side-card side-player pf-tile">
+          <section className="side-card side-player tile">
             <div className="side-head">
-              <span className="pf-section-head">{t("home.playerTitle")}</span>
+              <span className="section-head">{t("home.playerTitle")}</span>
               <button className="section-act" onClick={() => setScreen("cosmetics")}>
                 <Icon name="feather" size={13} />
                 {t("home.changeLook")}
@@ -284,9 +282,9 @@ export function HomeScreen() {
             </div>
           </section>
 
-          <section className="side-card pf-tile">
+          <section className="side-card tile">
             <div className="side-head">
-              <span className="pf-section-head">{t("home.balance")}</span>
+              <span className="section-head">{t("home.balance")}</span>
               <button className="section-act" onClick={() => setTab("wallet")}>
                 {t("home.walletStats")}
                 <Icon name="arrowRight" size={13} />
@@ -299,9 +297,9 @@ export function HomeScreen() {
             {!wallet && <p className="dash-note">{t("home.walletEmpty")}</p>}
           </section>
 
-          <section className="side-card pf-tile">
+          <section className="side-card tile">
             <div className="side-head">
-              <span className="pf-section-head">{t("home.instanceTitle")}</span>
+              <span className="section-head">{t("home.instanceTitle")}</span>
               <button className="section-act" onClick={() => setScreen("settings")}>
                 <Icon name="gear" size={13} />
                 {t("nav.settings")}

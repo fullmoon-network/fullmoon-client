@@ -172,21 +172,42 @@ test("the default grid step is the client's own", () => {
   assert.equal(Number(step?.[1]), DEFAULT_GRID_SNAP);
 });
 
+/* A default offset is a literal or arithmetic over the design's spacing and size tokens
+   (FpsHud stands one chip and a gap under the coordinates: Tokens.Space.COZY + Tokens.Size.HUD_CHIP
+   + Tokens.Space.SNUG); every token's value comes from tokens.json, the source Tokens.java is
+   generated from. */
+const DESIGN = JSON.parse(readFileSync(new URL("../../i3/design/tokens.json", import.meta.url), "utf8"));
+const CONST = (name: string) => name.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toUpperCase();
+const TOKEN: Record<string, number> = {};
+for (const group of ["space", "size"] as const) {
+  for (const [k, v] of Object.entries(DESIGN[group] as Record<string, unknown>)) {
+    if (typeof v === "number") TOKEN[`Tokens.${group === "space" ? "Space" : "Size"}.${CONST(k)}`] = v;
+  }
+}
+const offset = (expr: string): number => {
+  const plain = expr.trim().replace(/Tokens\.(Space|Size)\.[A-Z_]+/g, (t) => {
+    assert.ok(t in TOKEN, `${t} is not a design token`);
+    return String(TOKEN[t]);
+  });
+  assert.match(plain, /^[\d\s+\-*()]+$/, `offset "${expr}" is not token arithmetic`);
+  return Function(`"use strict"; return (${plain});`)() as number;
+};
+
 /** id, enabled, anchor and offsets as each element's constructor states them. */
 function registryDefaults() {
   const registry = java("HudElementRegistry.java");
   const classes = [...registry.matchAll(/register\(new (\w+)\(\)\);/g)].map((m) => m[1]);
   return classes.map((cls) => {
     const ctor = java(`${cls}.java`).match(
-      /super\("(\w+)", "[^"]*", "[^"]*", (true|false), Anchor\.([A-Z_]+), (-?\d+), (-?\d+)\)/,
+      /super\(\s*"(\w+)",\s*"[^"]*",\s*"[^"]*",\s*(true|false),\s*Anchor\.([A-Z_]+),\s*([^,]+?),\s*([\s\S]+?)\);/,
     );
     assert.ok(ctor, `${cls} does not state its defaults where this test can read them`);
     return {
       id: ctor[1],
       enabled: ctor[2] === "true",
       anchor: ctor[3],
-      offsetX: Number(ctor[4]),
-      offsetY: Number(ctor[5]),
+      offsetX: offset(ctor[4]),
+      offsetY: offset(ctor[5]),
       scale: 1,
     };
   });

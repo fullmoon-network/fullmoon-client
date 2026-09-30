@@ -11,7 +11,6 @@ import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.settings.SettingsScreen;
 import dev.fullmoon.client.text.Typeset;
-import dev.fullmoon.client.ui.Palace;
 import dev.fullmoon.client.ui.SurfaceScreen;
 
 import net.fabricmc.loader.api.FabricLoader;
@@ -31,8 +30,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.network.EventLoopGroupHolder;
 
 /**
- * The first thing the game shows: a palace plaque over the night panorama, tonight's real moon,
- * and one loud way into the lobby.
+ * The first thing the game shows: the lobby's own panorama under a veil that deepens to the
+ * left, the wordmark and its line, the vertical list with the way into the lobby first, tonight's
+ * real moon in the sky with one line under it, and the foot with the player and the versions.
+ * No panel, no plaque; the one gold on the screen is the selection.
  *
  * <p>It replaces the vanilla title screen whenever that one opens, including on the way back from
  * a disconnect, so every route the game takes to its menu lands here. Everything the vanilla
@@ -42,45 +43,70 @@ import net.minecraft.server.network.EventLoopGroupHolder;
 public final class FullmoonTitleScreen extends SurfaceScreen {
     /** Capture and rehearsal rigs point this at their own server so they never ping production. */
     private static final String LOBBY = System.getProperty("fullmoon.lobby", "play.fullmoon.ink");
-    private static final int WIDE = 800;
     /** A lobby that has not answered by now is reported as not answering. */
     private static final long PING_PATIENCE_MILLIS = 8_000;
+    /** The veil over the panorama: deepest on the left where the words are, and along the foot. */
+    private static final float VEIL_LEFT = 0.82f;
+    private static final float VEIL_MID = 0.55f;
+    private static final float VEIL_RIGHT = 0.10f;
+    private static final float VEIL_MID_AT = 0.38f;
+    private static final float VEIL_RIGHT_AT = 0.70f;
+    private static final float VEIL_FOOT = 0.70f;
+    private static final float VEIL_FOOT_FROM = 0.78f;
+    /** The moon's halo: four soft steps standing in for a ten-pixel blur. */
+    private static final float[] HALO_REACH = {9.0f, 6.0f, 3.5f, 1.5f};
+    private static final float[] HALO_ALPHA = {0.03f, 0.05f, 0.07f, 0.10f};
+    private static final String SEPARATOR = " · ";
 
     private final ServerStatusPinger pinger = new ServerStatusPinger();
     private final ServerData lobby;
     private final MoonPhase moon = MoonPhase.at(Instant.now());
-    private final LobbyButton play;
-    private final List<TitleRow> rows;
-    private final TitleRow language;
-    private final TitleRow accessibility;
-    private final String version;
+    private final TitleMenu menu;
+    private final FootLink language;
+    private final FootLink accessibility;
+    private final String versions;
 
     private boolean pinged;
     private long pingedAt;
-    private Box plaque = Box.EMPTY;
-    private int band;
+    private TitleLayout layout;
 
     public FullmoonTitleScreen() {
         super(Component.translatable("fullmoon.title.screen"));
         lobby = new ServerData(I18n.get("fullmoon.title.screen"), LOBBY, ServerData.Type.OTHER);
-        play = surface.add(new LobbyButton(I18n.get("fullmoon.title.play"), this::status, this::reachable, this::join));
         Minecraft client = Minecraft.getInstance();
-        rows = List.of(
-            surface.add(new TitleRow(I18n.get("fullmoon.title.singleplayer"), "",
-                () -> client.setScreen(new SelectWorldScreen(this)))),
-            surface.add(new TitleRow(I18n.get("fullmoon.title.multiplayer"), "",
-                () -> client.setScreen(new JoinMultiplayerScreen(this)))),
-            surface.add(new TitleRow(I18n.get("fullmoon.title.fullmoon_settings"), "F9",
-                () -> client.setScreen(new SettingsScreen(this)))),
-            surface.add(new TitleRow(I18n.get("fullmoon.title.options"), "",
-                () -> client.setScreen(new OptionsScreen(this, client.options, false)))),
-            surface.add(new TitleRow(I18n.get("fullmoon.title.quit"), "", client::stop)));
-        language = surface.add(new TitleRow(I18n.get("fullmoon.title.language"), "",
+        menu = surface.add(new TitleMenu(List.of(
+            new TitleMenu.Entry(I18n.get("fullmoon.title.play"), "", this::join),
+            new TitleMenu.Entry(I18n.get("fullmoon.title.singleplayer"), "",
+                () -> client.setScreen(new SelectWorldScreen(this))),
+            new TitleMenu.Entry(I18n.get("fullmoon.title.multiplayer"), "",
+                () -> client.setScreen(new JoinMultiplayerScreen(this))),
+            new TitleMenu.Entry(I18n.get("fullmoon.title.fullmoon_settings"), "F9",
+                () -> client.setScreen(new SettingsScreen(this))),
+            new TitleMenu.Entry(I18n.get("fullmoon.title.options"), "",
+                () -> client.setScreen(new OptionsScreen(this, client.options, false))),
+            new TitleMenu.Entry(I18n.get("fullmoon.title.quit"), "", client::stop)),
+            new TitleMenu.Status() {
+                @Override
+                public String text() {
+                    return status();
+                }
+
+                @Override
+                public boolean live() {
+                    return reachable();
+                }
+            }, () -> true));
+        language = surface.add(new FootLink(I18n.get("fullmoon.title.language"),
             () -> client.setScreen(new LanguageSelectScreen(this, client.options, client.getLanguageManager()))));
-        accessibility = surface.add(new TitleRow(I18n.get("fullmoon.title.accessibility"), "",
+        accessibility = surface.add(new FootLink(I18n.get("fullmoon.title.accessibility"),
             () -> client.setScreen(new AccessibilityOptionsScreen(this, client.options))));
-        version = FabricLoader.getInstance().getModContainer("fullmoon")
-            .map(mod -> mod.getMetadata().getVersion().getFriendlyString()).orElse("");
+        versions = "Fullmoon " + version("fullmoon") + SEPARATOR + "Minecraft " + version("minecraft");
+        surface.focus().point(menu);
+    }
+
+    private static String version(String mod) {
+        return FabricLoader.getInstance().getModContainer(mod)
+            .map(container -> container.getMetadata().getVersion().getFriendlyString()).orElse("");
     }
 
     @Override
@@ -95,35 +121,15 @@ public final class FullmoonTitleScreen extends SurfaceScreen {
 
     @Override
     protected void init() {
-        boolean wide = width >= WIDE;
-        int margin = wide ? Tokens.Space.FIELD + Tokens.Space.COZY : Tokens.Space.SECTION;
-        int plaqueW = Math.min(320, width * 42 / 100);
-        band = wide ? 86 : 60;
-        int pad = wide ? Tokens.Space.GUTTER : Tokens.Space.LOOSE;
-        int today = wide ? 30 : 24;
-        int playH = wide ? 44 : 32;
-        int rowH = wide ? 24 : 19;
-        int plaqueH = band + Palace.DANCHEONG_HEIGHT + pad + today + Tokens.Space.LOOSE
-            + playH + Tokens.Space.COZY + rowH * rows.size() + pad;
-        plaque = new Box(margin, Math.max(Tokens.Space.SECTION, (height - plaqueH) / 2 - Tokens.Space.COZY),
-            plaqueW, plaqueH);
-
-        int x = plaque.x() + pad;
-        int w = plaque.w() - pad * 2;
-        int y = plaque.y() + band + Palace.DANCHEONG_HEIGHT + pad + today + Tokens.Space.LOOSE;
-        play.place(new Box(x, y, w, playH));
-        y += playH + Tokens.Space.COZY;
-        for (TitleRow row : rows) {
-            row.place(new Box(x, y, w, rowH));
-            y += rowH;
-        }
-
-        int barY = height - Tokens.Space.SECTION;
-        int small = Typeset.width(Tokens.Type.BODY_STRONG, language.label()) + Tokens.Space.GUTTER + Tokens.Space.SNUG;
-        int smallA = Typeset.width(Tokens.Type.BODY_STRONG, accessibility.label()) + Tokens.Space.GUTTER + Tokens.Space.SNUG;
-        accessibility.place(new Box(width - margin - smallA, barY - rowH / 2, smallA, rowH));
-        language.place(new Box(width - margin - smallA - Tokens.Space.LOOSE - small, barY - rowH / 2, small, rowH));
-
+        layout = TitleLayout.fit(new Box(0, 0, width, height));
+        menu.layout(layout);
+        int h = Tokens.Type.BODY.leading();
+        int right = width - layout.margin();
+        int accessibilityW = accessibility.width();
+        int languageW = language.width();
+        int gap = Typeset.width(Tokens.Type.BODY, SEPARATOR);
+        accessibility.place(new Box(right - accessibilityW, layout.footY(), accessibilityW, h));
+        language.place(new Box(right - accessibilityW - gap - languageW, layout.footY(), languageW, h));
         if (!pinged) {
             pinged = true;
             ping();
@@ -184,92 +190,72 @@ public final class FullmoonTitleScreen extends SurfaceScreen {
     public void extractBackground(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
         extractPanorama(gfx, partialTick);
         Painter painter = new Painter(gfx);
-        painter.fillGradient(0, 0, width, height,
-            Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.28f), Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.66f));
-        skyMoon(painter);
+        veil(painter);
+        sky(painter);
     }
 
-    /** Tonight's moon over the palace, ringed like the dial of an instrument. */
-    private void skyMoon(Painter painter) {
-        boolean wide = width >= WIDE;
-        float r = wide ? 40.0f : 26.0f;
-        float cx = width - (wide ? 150.0f : 90.0f);
-        float cy = height * 0.27f;
-        painter.moon(cx, cy, r, moon.lit(), moon.waxing(), Tokens.Color.MOON_LIT, Tokens.Color.MOON_SHADOW);
-        int dial = moon.full() ? Tokens.Color.ACCENT : Tokens.Color.LINE_GILT;
-        painter.ring(cx, cy, r + 9.0f, Tokens.Stroke.HAIR, dial);
-        for (int tick = 0; tick < 60; tick++) {
-            double a = tick / 60.0 * Math.PI * 2.0;
-            boolean major = tick % 5 == 0;
-            float d = r + (major ? 15.0f : 13.0f);
-            painter.dot(cx + (float) Math.cos(a) * d, cy + (float) Math.sin(a) * d,
-                major ? 1.0f : 0.5f, major ? dial : Tokens.Color.LINE_GILT_FAINT);
+    /** Two gradients, as the mockup lays them: across from the words, and up from the foot. */
+    private void veil(Painter painter) {
+        int ground = Tokens.Color.SURFACE_VOID;
+        float footFrom = height * VEIL_FOOT_FROM;
+        painter.fillGradient(0, footFrom, width, height - footFrom, Rgb.alpha(ground, 0.0f), Rgb.alpha(ground, VEIL_FOOT));
+        float mid = width * VEIL_MID_AT;
+        float far = width * VEIL_RIGHT_AT;
+        painter.fillGradientAcross(0, 0, mid, height, Rgb.alpha(ground, VEIL_LEFT), Rgb.alpha(ground, VEIL_MID));
+        painter.fillGradientAcross(mid, 0, far - mid, height, Rgb.alpha(ground, VEIL_MID), Rgb.alpha(ground, VEIL_RIGHT));
+        painter.fill(far, 0, width - far, height, Rgb.alpha(ground, VEIL_RIGHT));
+    }
+
+    /** Tonight's moon in the sky, haloed, with its name and the days to the full under it. */
+    private void sky(Painter painter) {
+        String line = skyLine();
+        int textW = Typeset.width(Tokens.Type.BODY, line);
+        int column = Math.max(TitleLayout.MOON_R * 2, textW);
+        float cx = layout.skyRight() - column / 2.0f;
+        float cy = layout.skyTop() + TitleLayout.MOON_R;
+        for (int i = 0; i < HALO_REACH.length; i++) {
+            painter.dot(cx, cy, TitleLayout.MOON_R + HALO_REACH[i], Rgb.alpha(Tokens.Color.MOON_LIT, HALO_ALPHA[i]));
         }
+        painter.moon(cx, cy, TitleLayout.MOON_R, moon.lit(), moon.waxing(), Tokens.Color.MOON_LIT, Tokens.Color.MOON_SHADOW);
+        int textTop = layout.skyTop() + TitleLayout.MOON_R * 2 + Tokens.Space.BASE;
+        Typeset.drawCentered(painter, Tokens.Type.BODY, line, Math.round(cx),
+            Typeset.centred(Tokens.Type.BODY, textTop, Tokens.Type.BODY.leading()), Tokens.Color.INK_SECONDARY);
+    }
+
+    private String skyLine() {
+        String name = I18n.get("fullmoon.title.moon." + moon.name().name().toLowerCase(Locale.ROOT));
+        String until = moon.full()
+            ? I18n.get("fullmoon.title.moon.next", moon.daysToNextFull())
+            : I18n.get("fullmoon.title.moon.until", moon.daysToFull());
+        return name + SEPARATOR + until;
     }
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
         surface.hover(mouseX, mouseY);
         Painter painter = new Painter(gfx);
-        plaque(painter);
-        today(painter);
-        bar(painter);
+        brand(painter);
+        foot(painter);
         surface.draw(painter);
     }
 
-    private void plaque(Painter painter) {
-        Box p = plaque;
-        Palace.panel(painter, p.x(), p.y(), p.w(), p.h());
-        painter.fill(p.x() + 1, p.y() + 1, p.w() - 2, band - 1, Tokens.Color.SURFACE_RAISED);
-        Palace.lattice(painter, p.x() + 1, p.y() + 1, p.w() - 2, band - 1);
-        Palace.dancheong(painter, p.x() + 1, p.y() + band, p.w() - 2);
-
-        boolean wide = width >= WIDE;
-        int pad = wide ? Tokens.Space.GUTTER : Tokens.Space.LOOSE;
-        Typeset.draw(painter, Tokens.Type.LABEL, I18n.get("fullmoon.title.tagline"), p.x() + pad,
-            p.y() + pad - Tokens.Space.TIGHT, Tokens.Color.ACCENT);
-        Tokens.Type.Role mark = wide ? Tokens.Type.WORDMARK : Tokens.Type.DISPLAY;
-        int sealSize = wide ? 34 : 24;
-        int rowTop = p.y() + pad + Tokens.Type.LABEL.leading();
-        int rowH = band - (rowTop - p.y()) - Tokens.Space.COZY;
-        Palace.seal(painter, p.x() + pad, rowTop + (rowH - sealSize) / 2.0f, sealSize);
-        Typeset.draw(painter, mark, "Fullmoon", p.x() + pad + sealSize + Tokens.Space.LOOSE,
-            Typeset.centred(mark, rowTop, rowH), Tokens.Color.INK_PRIMARY);
+    private void brand(Painter painter) {
+        int x = layout.margin();
+        Typeset.draw(painter, Tokens.Type.MARK, "Fullmoon", x, Typeset.originFor(layout.markBaseline()),
+            Tokens.Color.INK_PRIMARY);
+        Typeset.draw(painter, Tokens.Type.BODY, I18n.get("fullmoon.title.tagline"), x,
+            Typeset.centred(Tokens.Type.BODY, layout.taglineY(), Tokens.Type.BODY.leading()), Tokens.Color.INK_SECONDARY);
     }
 
-    private void today(Painter painter) {
-        boolean wide = width >= WIDE;
-        int pad = wide ? Tokens.Space.GUTTER : Tokens.Space.LOOSE;
-        int top = plaque.y() + band + Palace.DANCHEONG_HEIGHT + pad;
-        int h = wide ? 30 : 24;
-        float r = wide ? 7.0f : 5.5f;
-        float cx = plaque.x() + pad + r + 1.0f;
-        float cy = top + h / 2.0f - 1.0f;
-        painter.moon(cx, cy, r, moon.lit(), moon.waxing(), Tokens.Color.MOON_LIT, Tokens.Color.MOON_SHADOW);
-        painter.ring(cx, cy, r + 2.5f, Tokens.Stroke.HAIR, moon.full() ? Tokens.Color.ACCENT : Tokens.Color.LINE_GILT);
-
-        int textX = (int) (cx + r + Tokens.Space.LOOSE);
-        String headline = I18n.get("fullmoon.title.moon." + moon.name().name().toLowerCase(Locale.ROOT));
-        String detail = moon.full()
-            ? I18n.get("fullmoon.title.moon.next", moon.daysToNextFull())
-            : I18n.get("fullmoon.title.moon.until", moon.daysToFull());
-        Typeset.draw(painter, Tokens.Type.HEADING, headline, textX, top, Tokens.Color.ACCENT);
-        Typeset.draw(painter, Tokens.Type.LABEL, detail, textX, top + Tokens.Type.HEADING.leading() - 1,
-            Tokens.Color.INK_TERTIARY);
-        Palace.dashedRule(painter, plaque.x() + pad, top + h + Tokens.Space.SNUG, plaque.w() - pad * 2);
-    }
-
-    private void bar(Painter painter) {
-        boolean wide = width >= WIDE;
-        int margin = wide ? Tokens.Space.FIELD + Tokens.Space.COZY : Tokens.Space.SECTION;
-        int y = height - Tokens.Space.SECTION;
-        String name = Minecraft.getInstance().getUser().getName();
-        int nameY = Typeset.centred(Tokens.Type.BODY_STRONG, y - 9, 18);
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG, name, margin, nameY, Tokens.Color.INK_SECONDARY);
-        String meta = (version.isEmpty() ? "Fullmoon" : "Fullmoon " + version)
-            + "  ·  " + I18n.get("fullmoon.title.copyright");
-        int metaRight = language.bounds().x() - Tokens.Space.GUTTER;
-        Typeset.drawRight(painter, Tokens.Type.LABEL, meta, metaRight,
-            Typeset.centred(Tokens.Type.LABEL, y - 9, 18), Tokens.Color.INK_TERTIARY);
+    /** The player on the left; on the right the versions, then the two words that open screens. */
+    private void foot(Painter painter) {
+        int y = Typeset.centred(Tokens.Type.BODY, layout.footY(), Tokens.Type.BODY.leading());
+        Typeset.draw(painter, Tokens.Type.BODY, Minecraft.getInstance().getUser().getName(), layout.margin(), y,
+            Tokens.Color.INK_SECONDARY);
+        int gap = Typeset.width(Tokens.Type.BODY, SEPARATOR);
+        int x = language.bounds().x() - gap;
+        Typeset.draw(painter, Tokens.Type.BODY, SEPARATOR, x, y, Tokens.Color.INK_DISABLED);
+        Typeset.draw(painter, Tokens.Type.BODY, SEPARATOR, accessibility.bounds().x() - gap, y, Tokens.Color.INK_DISABLED);
+        Typeset.tabularRight(painter, Tokens.Type.BODY, versions, x, y, Tokens.Color.INK_TERTIARY);
     }
 }

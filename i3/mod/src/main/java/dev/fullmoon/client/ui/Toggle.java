@@ -38,6 +38,11 @@ public final class Toggle extends Widget {
         return on;
     }
 
+    /** Throws the switch from outside, for a page whose subject changed under it. */
+    public void on(boolean value) {
+        on = value;
+    }
+
     /** Label, gutter and track. An unlabelled switch is just the track — the gallery wants that. */
     public int measure() {
         int text = label().isEmpty()

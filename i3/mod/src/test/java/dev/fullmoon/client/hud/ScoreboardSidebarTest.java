@@ -23,9 +23,53 @@ final class ScoreboardSidebarTest {
     }
 
     @Test
-    void withNothingInTheWayItSitsWhereVanillaPutsIt() {
-        Box at = ScoreboardSidebar.place(640, 360, 120, 95, List.of());
-        assertEquals(180 - 95 / 3, at.y());
+    void withNothingInTheWayItSitsWhereTheMockupPutsIt() {
+        Box at = ScoreboardSidebar.place(640, 360, 132, 95, List.of());
+        assertEquals(100, at.y());
+        assertEquals(640 - 8 - 132, at.x());
+    }
+
+    @Test
+    void aShortScreenKeepsTheSidebarOnIt() {
+        Box at = ScoreboardSidebar.place(640, 120, 132, 95, List.of());
+        assertEquals(120 - 95 - 8, at.y());
+    }
+
+    @Test
+    void helpLinesAreCommands() {
+        assertTrue(ScoreboardSidebar.isHelp("/텔레포트 로비 곳곳으로 이동"));
+        assertTrue(ScoreboardSidebar.isHelp("§f/텔레포트 §7로비 곳곳으로 이동"));
+        assertFalse(ScoreboardSidebar.isHelp("소지금 2억원"));
+        assertTrue(ScoreboardSidebar.isHelp("§7도움말 §f/텔레포트 · 로비 곳곳으로 이동"), "the lobby labels its help line");
+        assertEquals("/텔레포트 로비 곳곳으로 이동", ScoreboardSidebar.helpText("§7도움말 §f/텔레포트 · 로비 곳곳으로 이동"));
+        assertEquals("/텔레포트 로비 곳곳으로 이동", ScoreboardSidebar.helpText("/텔레포트 로비 곳곳으로 이동"));
+    }
+
+    @Test
+    void aLineSplitsIntoLabelAndValueAtItsLastSpace() {
+        ScoreboardSidebar.Split split = ScoreboardSidebar.split(List.of(
+            new ScoreboardSidebar.Run("소지금 ", 0), new ScoreboardSidebar.Run("2억원", 0xFF123456)));
+        assertEquals("소지금", split.label());
+        assertEquals("2억원", split.value());
+        assertEquals(0xFF123456, split.valueColor());
+
+        ScoreboardSidebar.Split whole = ScoreboardSidebar.split(List.of(new ScoreboardSidebar.Run("오늘도 즐겁게", 0)));
+        assertEquals("오늘도 즐겁게", whole.label(), "a sentence in one colour is all label");
+        assertEquals("", whole.value());
+
+        ScoreboardSidebar.Split figure = ScoreboardSidebar.split(List.of(new ScoreboardSidebar.Run("접속자 1명", 0)));
+        assertEquals("접속자", figure.label(), "a figure is a value even in the label's colour");
+        assertEquals("1명", figure.value());
+
+        ScoreboardSidebar.Split coloured = ScoreboardSidebar.split(List.of(
+            new ScoreboardSidebar.Run("위치 ", 0xFFAAAAAA), new ScoreboardSidebar.Run("로비", 0xFF7FD8E8)));
+        assertEquals("위치", coloured.label());
+        assertEquals("로비", coloured.value());
+        assertEquals(0xFF7FD8E8, coloured.valueColor());
+
+        ScoreboardSidebar.Split trailing = ScoreboardSidebar.split(List.of(new ScoreboardSidebar.Run("위치 ", 0)));
+        assertEquals("위치", trailing.label());
+        assertEquals("", trailing.value());
     }
 
     @Test

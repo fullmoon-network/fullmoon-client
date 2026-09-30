@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
-import { Dancheong, Key, Marker } from "./Palace";
-import { SkinFace } from "./ui";
+import { Key, SkinFace } from "./ui";
 import { useStore } from "../state/store";
+import { play as cue } from "../core/uiSounds";
 import { useT } from "../i18n";
 
 /* downward-opening chrome menu, same dismissal contract as DockMenu */
@@ -44,12 +44,15 @@ function TopMenu({
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          cue(open ? "close" : "open");
+          setOpen(!open);
+        }}
       >
         {trigger}
       </button>
       {open && (
-        <div className="topmenu-panel pf-frame pf-frame-sm" role="menu" aria-label={label}>
+        <div className="topmenu-panel" role="menu" aria-label={label}>
           {children}
         </div>
       )}
@@ -57,6 +60,8 @@ function TopMenu({
   );
 }
 
+/** The screen's name on a hairline, with search, notifications and the account. The play
+ *  screen has none: its hero is the heading. */
 export function TopBar({ onPalette }: { onPalette: () => void }) {
   const { screen, setScreen, news, accounts, activeAccount, selectAccount, importOfficial } =
     useStore();
@@ -69,7 +74,7 @@ export function TopBar({ onPalette }: { onPalette: () => void }) {
 
   return (
     <div className="masthead">
-      <header className="topbar pf-band">
+      <header className="topbar">
         <div className="topbar-heading">
           <h1>{t(`nav.${screen}`)}</h1>
           <p>{t(`topbar.sub.${screen}`)}</p>
@@ -111,7 +116,6 @@ export function TopBar({ onPalette }: { onPalette: () => void }) {
                     setScreen("dashboard");
                   }}
                 >
-                  <Marker />
                   <span className="topmenu-item-text">
                     <strong>{n.title}</strong>
                     <em className="num">{t(`news.tag.${n.tag}`)} · {n.date}</em>
@@ -177,7 +181,6 @@ export function TopBar({ onPalette }: { onPalette: () => void }) {
                   <strong>{a.username}</strong>
                   <em>{t(`accounts.source.${a.source}`)}</em>
                 </span>
-                <Marker on={a.uuid === activeAccount?.uuid} />
               </button>
             ))}
             <button
@@ -205,7 +208,6 @@ export function TopBar({ onPalette }: { onPalette: () => void }) {
           </TopMenu>
         </div>
       </header>
-      <Dancheong />
     </div>
   );
 }

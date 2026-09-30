@@ -36,6 +36,11 @@ loom {
     // and the capture rig is what knows which: tools/capture.py passes both.
     runs.named("client") {
         programArgs("--width", prop("client_width"), "--height", prop("client_height"))
+        // The capture rig seeds a ledger account for one offline name; a random Player### would
+        // join unlinked and spawn over the void the rig builds a platform for that name.
+        providers.gradleProperty("client_username").orNull?.let { name ->
+            programArgs("--username", name)
+        }
         providers.gradleProperty("quick_play_server").orNull?.let { server ->
             programArgs("--quickPlayMultiplayer", server)
         }
@@ -45,6 +50,14 @@ loom {
         // A screen that is normally server-driven can only be photographed from a fixture.
         providers.gradleProperty("dev_screen").orNull?.let { screen ->
             vmArg("-Dfullmoon.devScreen=$screen")
+        }
+        // The concept mockup's row spacing, for photographing it beside the shipped spacing.
+        providers.gradleProperty("density").orNull?.let { density ->
+            vmArg("-Dfullmoon.density=$density")
+        }
+        // The capture rig re-renders the mockup with what the server actually sent, read from the log.
+        providers.gradleProperty("menu_dump").orNull?.let { dump ->
+            vmArg("-Dfullmoon.menuDump=$dump")
         }
     }
 }

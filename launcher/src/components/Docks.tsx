@@ -32,7 +32,7 @@ export function ProgressDock() {
   return (
     <div className="pdock">
       {downloads.slice(-3).map((d) => (
-        <div key={d.taskId} className="pdock-card pf-tile">
+        <div key={d.taskId} className="pdock-card">
           <div className="pdock-row">
             <Icon name="download" size={13} />
             <span className="pdock-file mono" title={d.file}>

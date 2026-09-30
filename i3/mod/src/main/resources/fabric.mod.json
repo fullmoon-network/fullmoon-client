@@ -4,12 +4,19 @@
   "version": "${version}",
   "name": "Fullmoon Client",
   "description": "만월 아래, 모두가 모이는 정원.",
-  "authors": ["Fullmoon"],
+  "authors": [
+    "Fullmoon"
+  ],
   "contact": {},
   "license": "ARR",
   "environment": "client",
   "entrypoints": {
-    "client": ["dev.fullmoon.client.FullmoonClient"]
+    "main": [
+      "dev.fullmoon.client.sound.GameSounds"
+    ],
+    "client": [
+      "dev.fullmoon.client.FullmoonClient"
+    ]
   },
   "accessWidener": "fullmoon.accesswidener",
   "depends": {

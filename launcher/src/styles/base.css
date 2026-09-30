@@ -2,7 +2,30 @@
    Colours, space, motion and type come from design/tokens.css, generated from
    i3/design/tokens.json. Nothing below writes a colour of its own. */
 
-/* Pretendard carries body and UI, self-hosted like every asset we ship. */
+/* The body face is the game's own: the Pretendard cuts the mod bakes (assets/fullmoon/font), so a
+   launcher label and an in-game label are the same outlines and rasterise the same way. They are
+   a Hangul-and-Latin subset without OpenType features — no tabular figures — so the bold, which
+   sets figures, is the full Pretendard Bold (as mock g sets it), and `.num` asks for the full
+   Pretendard first. */
+@font-face {
+  font-family: 'Fullmoon Sans';
+  src: url('../../../i3/mod/src/main/resources/assets/fullmoon/font/sans-regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Fullmoon Sans';
+  src: url('../../../i3/mod/src/main/resources/assets/fullmoon/font/sans-semibold.ttf') format('truetype');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Fullmoon Sans';
+  src: url('/fonts/Pretendard-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-display: swap;
+}
+/* Pretendard in full, self-hosted like every asset we ship. */
 @font-face {
   font-family: 'Pretendard';
   src: url('/fonts/Pretendard-Regular.otf') format('opentype');
@@ -17,16 +40,22 @@
 }
 @font-face {
   font-family: 'Pretendard';
+  src: url('/fonts/Pretendard-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Pretendard';
   src: url('/fonts/Pretendard-ExtraBold.otf') format('opentype');
   font-weight: 800;
   font-display: swap;
 }
-/* The display face is the one the game bakes: Noto Serif CJK KR frozen at 600, Latin plus the
-   KS X 1001 syllables (i3/design/make-display-font.py). One file for both halves. */
+/* The display face is Hahmlet (OFL), the variable file: the game bakes its 600 and 700 instances,
+   and the launcher, which can set any weight, reads the axis itself. */
 @font-face {
-  font-family: 'Fullmoon Serif';
-  src: url('../../../i3/mod/src/main/resources/assets/fullmoon/font/display.ttf') format('truetype');
-  font-weight: 600;
+  font-family: 'Hahmlet';
+  src: url('/fonts/Hahmlet[wght].ttf') format('truetype');
+  font-weight: 100 900;
   font-display: swap;
 }
 
@@ -74,12 +103,13 @@ kbd { font: inherit; }
   border: 3px solid transparent;
   background-clip: padding-box;
 }
-*::-webkit-scrollbar-thumb:hover { background: var(--color-line-gilt); background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--color-ink-disabled); background-clip: padding-box; }
 
-.num { font-variant-numeric: lining-nums tabular-nums; }
+.num { font-family: 'Pretendard', 'Fullmoon Sans', system-ui, sans-serif; font-variant-numeric: lining-nums tabular-nums; }
+/* a monospace face has no Hangul; the body faces answer those glyphs instead of a system fallback */
 .mono {
-  font-family: "JetBrains Mono", "Cascadia Mono", ui-monospace, monospace;
-  font-size: var(--type-label-size);
+  font-family: "JetBrains Mono", "Cascadia Mono", ui-monospace, monospace, 'Fullmoon Sans', 'Pretendard';
+  font-size: var(--type-micro-size);
 }
 .sr-only {
   position: absolute;
@@ -90,15 +120,24 @@ kbd { font: inherit; }
   white-space: nowrap;
 }
 
-/* the micro label every surface uses for a section name */
+/* the small label every surface uses for a section name: micro, spaced, tertiary */
 .overline {
-  font: var(--type-label);
-  letter-spacing: 0.12em;
+  font: var(--type-micro);
+  letter-spacing: 0.08em;
   color: var(--color-ink-tertiary);
 }
 
-::view-transition-old(root) { animation: fade-out var(--dur-fast) var(--ease-out); }
-::view-transition-new(root) { animation: fade-in var(--dur-base) var(--ease-out); }
+/* A screen change crossfades the content area only. The window around it stays live, so the
+   rail's selection glides in the open instead of under a whole-window crossfade, where the old
+   bar would ghost beside the new one. */
+/* The old screen fades out over the new one, which makes its own entrance (.screen-enter), and
+   the transition lasts exactly that fade: an unfilled fade would end before the transition does
+   and put the old screen back at full strength for its last frames. */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+.content { view-transition-name: screen; }
+::view-transition-group(screen) { animation-duration: var(--dur-fast); }
+::view-transition-old(screen) { animation: fade-out var(--dur-fast) var(--ease-out) both; }
+::view-transition-new(screen) { animation: none; }
 
 /* ── keyframes: transform and opacity only ── */
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -121,7 +160,9 @@ kbd { font: inherit; }
 .stagger > *:nth-child(4) { animation-delay: 120ms; }
 .stagger > *:nth-child(n + 5) { animation-delay: 160ms; }
 
-/* reduced motion collapses every movement to a short crossfade; nothing loops */
+/* Reduced motion collapses every movement to a short crossfade and nothing loops. The system
+   preference and the launcher's own 움직임 줄이기 setting (data-motion on the root) say the same
+   thing, so both blocks are the one rule. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: var(--dur-reduced) !important;
@@ -131,3 +172,10 @@ kbd { font: inherit; }
   }
   .stagger > *, .screen-enter { animation-name: fade-in !important; }
 }
+[data-motion="reduced"] *, [data-motion="reduced"] *::before, [data-motion="reduced"] *::after {
+  animation-duration: var(--dur-reduced) !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0ms !important;
+  transition-duration: var(--dur-reduced) !important;
+}
+[data-motion="reduced"] .stagger > *, [data-motion="reduced"] .screen-enter { animation-name: fade-in !important; }

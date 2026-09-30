@@ -14,12 +14,27 @@ const block = (selector: string) => {
   return css.slice(at, css.indexOf("\n}", at));
 };
 
-const hexOf = (source: string, name: string) => {
-  const m = source.match(new RegExp(`--color-${name}: oklch\\(([\\d.]+) ([\\d.]+) ([\\d.]+)\\)`));
-  assert.ok(m, `--color-${name} is declared`);
-  const [r, g, b] = oklchToRgb(Number(m[1]), Number(m[2]), Number(m[3])) as number[];
-  return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+/* A token is a hex, an oklch triple, or an rgb with an alpha (a translucent ground); the last is
+   composited over the block's own void, the darkest thing it can sit on. */
+const rgbOf = (source: string, name: string): [number, number, number] => {
+  const line = source.match(new RegExp(`--color-${name}: ([^;]+);`));
+  assert.ok(line, `--color-${name} is declared`);
+  const value = line[1].trim();
+  let m = value.match(/^#([0-9a-f]{6})$/i);
+  if (m) return [0, 2, 4].map((i) => parseInt(m![1].slice(i, i + 2), 16)) as [number, number, number];
+  m = value.match(/^oklch\(([\d.]+) ([\d.]+) ([\d.]+)\)$/);
+  if (m) return oklchToRgb(Number(m[1]), Number(m[2]), Number(m[3])) as [number, number, number];
+  m = value.match(/^rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)\)$/);
+  if (m) {
+    const a = Number(m[4]);
+    const top = [Number(m[1]), Number(m[2]), Number(m[3])];
+    const under = name === "surface-void" ? [0, 0, 0] : rgbOf(source, "surface-void");
+    return top.map((v, i) => Math.round(v * a + under[i] * (1 - a))) as [number, number, number];
+  }
+  throw new Error(`--color-${name} has an unexpected form: ${value}`);
 };
+const hexOf = (source: string, name: string) =>
+  `#${rgbOf(source, name).map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 
 for (const [palace, selector] of [["night", '[data-theme="dark"]'], ["day", '[data-theme="light"]']] as const) {
   test(`${palace}: tertiary text clears the small-text floor on every ground it sits on`, () => {

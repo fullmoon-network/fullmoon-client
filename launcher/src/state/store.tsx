@@ -37,6 +37,7 @@ import type {
   WalletTx,
 } from "../core/bindings";
 import { useT } from "../i18n";
+import { setUiSoundsEnabled } from "../core/uiSounds";
 
 export type Screen = "play" | "dashboard" | "home" | "mods" | "cosmetics" | "accounts" | "settings";
 export type SettingsTab = "java" | "perf" | "look" | "hud" | "privacy" | "about";
@@ -64,8 +65,29 @@ export interface LogEntry {
   ts: string;
 }
 
+/** The launcher's own two preferences. They are not the core's Settings: the IPC contract stays
+ *  as it is, and these live in the webview alone. */
+export interface UiPrefs {
+  /** collapses every glide and reveal to a short crossfade, as the system preference does */
+  reduceMotion: boolean;
+  /** the game's UI cues on rail moves, confirms and menus; off until the player asks */
+  sounds: boolean;
+}
+const UI_PREFS_KEY = "pinion.v1.ui";
+const DEFAULT_UI_PREFS: UiPrefs = { reduceMotion: false, sounds: false };
+function loadUiPrefs(): UiPrefs {
+  try {
+    const raw = localStorage.getItem(UI_PREFS_KEY);
+    return raw ? { ...DEFAULT_UI_PREFS, ...(JSON.parse(raw) as Partial<UiPrefs>) } : DEFAULT_UI_PREFS;
+  } catch {
+    return DEFAULT_UI_PREFS;
+  }
+}
+
 interface Store {
   ready: boolean;
+  uiPrefs: UiPrefs;
+  setUiPref: (patch: Partial<UiPrefs>) => void;
   screen: Screen;
   /** `tab` deep-links into a settings section; ignored for every other screen */
   setScreen: (s: Screen, tab?: SettingsTab) => void;
@@ -172,11 +194,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   /** sessionId whose launch overlay the user dismissed — null shows it again */
   const [overlayHiddenFor, setOverlayHiddenFor] = useState<string | null>(null);
 
-  /* screen switches ride the View Transitions API when available */
+  /* screen switches ride the View Transitions API when available and motion is not reduced */
   const setScreen = useCallback((s: Screen, tab?: SettingsTab) => {
     setSettingsTab(tab ?? null);
     const doc = document as Document & { startViewTransition?: (cb: () => void) => void };
-    if (doc.startViewTransition) {
+    const reduced =
+      document.documentElement.dataset.motion === "reduced" ||
+      (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+    if (doc.startViewTransition && !reduced) {
       doc.startViewTransition(() => flushSync(() => setScreenState(s)));
     } else {
       setScreenState(s);
@@ -192,6 +217,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [modCatalog, setModCatalog] = useState<ModCatalog | null>(null);
   const [cosmetics, setCosmetics] = useState<Cosmetic[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [uiPrefs, setUiPrefs] = useState<UiPrefs>(loadUiPrefs);
+  const setUiPref = useCallback((patch: Partial<UiPrefs>) => {
+    setUiPrefs((prev) => {
+      const next = { ...prev, ...patch };
+      try {
+        localStorage.setItem(UI_PREFS_KEY, JSON.stringify(next));
+      } catch {
+        /* private mode: the choice lasts the session */
+      }
+      return next;
+    });
+  }, []);
+  /* motion is an attribute on the root, read by the same rule as prefers-reduced-motion */
+  useEffect(() => {
+    const root = document.documentElement;
+    if (uiPrefs.reduceMotion) root.dataset.motion = "reduced";
+    else delete root.dataset.motion;
+    setUiSoundsEnabled(uiPrefs.sounds);
+  }, [uiPrefs]);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [walletTxs, setWalletTxs] = useState<WalletTx[]>([]);
@@ -582,7 +626,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const value: Store = {
-    ready, screen, setScreen, settingsTab,
+    ready, uiPrefs, setUiPref, screen, setScreen, settingsTab,
     overlayHiddenFor, setOverlayHidden: setOverlayHiddenFor,
     accounts, activeAccount, selectAccount, removeAccount, refreshAccount, importOfficial, syncAccounts,
     versions, instances, selectedInstanceId, selectInstance, selectedInstance,

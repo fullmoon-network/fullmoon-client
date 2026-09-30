@@ -1,9 +1,11 @@
 name: Release
 
-# A tag build is the release: the installer, the mod jar and a signed
-# SHA256SUMS land on the GitHub Release this tag creates. The checksum file
-# is what makes "this exe == this commit" verifiable — the workflow publishes
-# its own hashes, so a mirror can be checked against the release page alone.
+# A tag build is the release: the Windows installer, the Linux deb and rpm,
+# the mod jar and one SHA256SUMS land on the GitHub Release this tag creates.
+# The checksum file is what makes "this exe == this commit" verifiable — the
+# workflow publishes its own hashes, so a mirror can be checked against the
+# release page alone. Windows and Linux build in parallel; the last job hashes
+# everything they produced in one file.
 #
 # Signing the updater manifest requires a Tauri updater keypair; when
 # TAURI_SIGNING_PRIVATE_KEY is absent the workflow still ships the installer
@@ -18,7 +20,7 @@ permissions:
 
 jobs:
   installer:
-    name: Windows installer + checksums
+    name: Windows installer
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -70,7 +72,7 @@ jobs:
         shell: pwsh
         run: ./.github/scripts/windows-smoke.ps1
 
-      - name: Collect release artifacts + SHA256SUMS
+      - name: Collect release artifacts
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
@@ -80,12 +82,116 @@ jobs:
           If (Test-Path launcher/src-tauri/target/release/bundle/nsis/*.sig) {
             Copy-Item launcher/src-tauri/target/release/bundle/nsis/*.sig dist/
           }
-          # sha256sum format (<hash>  <name>) so `sha256sum -c SHA256SUMS` works everywhere
-          Get-ChildItem dist -File | ForEach-Object {
-            $h = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
-            "$h  $($_.Name)"
-          } | Set-Content dist/SHA256SUMS
-          Get-Content dist/SHA256SUMS
+          Get-ChildItem dist -File | Select-Object Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: dist/*
+          if-no-files-found: error
+
+  linux:
+    name: Linux deb + rpm
+    # 22.04 on purpose: an AppImage links the build host's glibc, so the oldest
+    # supported runner is the one that runs on the most distros.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: launcher/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: launcher/src-tauri
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Tauri v2's Linux prerequisites, plus the tools the smoke test drives.
+      # ubuntu-22.04 on purpose: an AppImage links the build host's glibc, so the
+      # oldest supported runner is the one that runs on the most distros.
+      - name: Install Tauri Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+            librsvg2-dev libssl-dev libxdo-dev patchelf file wget \
+            xvfb xdotool x11-utils imagemagick dbus-x11 rpm \
+            fonts-noto-cjk
+
+      - name: Build the bundled mod
+        run: ./gradlew build
+        working-directory: i3/mod
+
+      - name: Stage the bundled mod
+        run: |
+          shopt -s extglob
+          jars=(i3/mod/build/libs/fullmoon-client-!(*-sources).jar)
+          [ "${#jars[@]}" -eq 1 ] || { echo "expected one mod jar, got ${#jars[@]}"; exit 1; }
+          cp "${jars[0]}" launcher/src-tauri/resources/mods/fullmoon-client.jar
+
+      - name: Install launcher dependencies
+        run: npm ci
+        working-directory: launcher
+
+      - name: Bundle the AppImage and deb
+        working-directory: launcher
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npm run bundle -- --bundles appimage,deb,rpm
+
+      - name: Let the AppImage use the host graphics stack
+        run: ./.github/scripts/appimage-host-libs.sh
+
+      - name: Smoke-test the AppImage under Xvfb
+        run: ./.github/scripts/linux-smoke.sh
+
+      - name: Collect release artifacts
+        run: |
+          mkdir -p dist
+          # The AppImage is built and smoke-tested above but not shipped yet: on a Fedora 44 /
+          # Wayland / new-Mesa host the first build aborted WebKitWebProcess with EGL_BAD_PARAMETER,
+          # and the host-graphics-stack fix (appimage-host-libs.sh) is proven on Ubuntu only. Add
+          # it back here once someone has launched it on such a host. deb and rpm are the path.
+          cp launcher/src-tauri/target/release/bundle/deb/*.deb dist/
+          cp launcher/src-tauri/target/release/bundle/rpm/*.rpm dist/
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Checksums + upload to the release
+    needs: [installer, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+
+      # sha256sum format (<hash>  <name>) so `sha256sum -c SHA256SUMS` works everywhere
+      - name: SHA256SUMS over every file
+        working-directory: dist
+        run: |
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | LC_ALL=C sort \
+            | xargs -d '\n' sha256sum > SHA256SUMS
+          cat SHA256SUMS
 
       - name: Upload to the release
         uses: softprops/action-gh-release@v2

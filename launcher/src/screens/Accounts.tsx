@@ -166,7 +166,7 @@ function AddAccountModal({ open, onClose }: { open: boolean; onClose: () => void
     <>
       <Modal open={open && !deviceOpen} onClose={onClose} title={t("accounts.add")} width={440}>
         <div className="add-options">
-          <button className="add-option pf-tile" onClick={() => setDeviceOpen(true)}>
+          <button className="add-option tile" onClick={() => setDeviceOpen(true)}>
             <span className="add-option-icon"><Icon name="zap" size={18} /></span>
             <span className="add-option-meta">
               <strong>{t("accounts.viaDevice")}</strong>
@@ -174,7 +174,7 @@ function AddAccountModal({ open, onClose }: { open: boolean; onClose: () => void
             </span>
             <Icon name="chevronRight" size={16} />
           </button>
-          <button className="add-option pf-tile" onClick={() => void browserLogin()}>
+          <button className="add-option tile" onClick={() => void browserLogin()}>
             <span className="add-option-icon"><Icon name="globe" size={18} /></span>
             <span className="add-option-meta">
               <strong>{t("accounts.viaBrowser")}</strong>
@@ -183,7 +183,7 @@ function AddAccountModal({ open, onClose }: { open: boolean; onClose: () => void
             {busyBrowser ? <span className="spinner" /> : <Icon name="chevronRight" size={16} />}
           </button>
           <button
-            className="add-option pf-tile"
+            className="add-option tile"
             onClick={() => {
               void importOfficial();
               onClose();
@@ -248,7 +248,7 @@ function ActiveHero({ account, onAdd }: { account: Account; onAdd: () => void })
   };
 
   return (
-    <section className="acc-hero pf-frame">
+    <section className="acc-hero glass">
       <div className="acc-hero-stage">
         <Skin3D
           skin={account.skinUrl ?? "/skins/blackcow.png"}
@@ -344,7 +344,7 @@ function AccountCard({ account }: { account: Account }) {
   const isActive = activeAccount?.uuid === account.uuid;
 
   return (
-    <article className={`acc-card pf-tile ${isActive ? "is-chosen" : ""}`}>
+    <article className={`acc-card tile ${isActive ? "is-chosen" : ""}`}>
       {isActive && <span className="acc-ribbon">{t("accounts.current")}</span>}
       <div className="acc-top">
         <div className="acc-face">
@@ -399,7 +399,7 @@ function LocalAccountStart({ onMicrosoft }: { onMicrosoft: () => void }) {
   };
 
   return (
-    <section className="acc-local-start pf-frame">
+    <section className="acc-local-start glass">
       <div className="acc-local-identity" aria-hidden="true">
         <SkinFace hue={45} size={78} />
         <span className="acc-local-name mono">{LOCAL_TEST_USERNAME}</span>
@@ -451,7 +451,7 @@ export function AccountsScreen() {
 
       {(others.length > 0 || activeAccount) && (
         <>
-          <h3 className="pf-section-head">{t("accounts.others")}</h3>
+          <h3 className="section-head">{t("accounts.others")}</h3>
           <div className="acc-grid stagger">
             {others.map((a) => (
               <AccountCard key={a.uuid} account={a} />

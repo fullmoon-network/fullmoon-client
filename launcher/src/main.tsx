@@ -7,7 +7,6 @@ import BRAND from "./brand";
 
 // design/tokens.css is linked from index.html so it is in place before the first paint
 import "./styles/base.css";
-import "./styles/palace.css";
 import "./styles/ui.css";
 import "./styles/shell.css";
 import "./styles/screens.css";

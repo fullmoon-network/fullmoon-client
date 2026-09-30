@@ -1,34 +1,46 @@
 import { useMemo } from "react";
-import { Icon } from "../components/Icon";
-import { Dancheong, Marker, MoonDial, MoonDisc, Wordmark } from "../components/Palace";
-import { PlayLabel } from "../components/PlayDock";
+import { Moon } from "../components/Moon";
+import { PlayLabel } from "../components/Dock";
 import { useStore } from "../state/store";
 import { usePlayAction } from "../state/playAction";
 import { isRealCore } from "../core/client";
+import { play as cue } from "../core/uiSounds";
 import { daysToFull, daysToNextFull, isFull, moonAt, moonName } from "../core/moonPhase";
 import { useT } from "../i18n";
 import BRAND from "../brand";
 import panorama from "../../../i3/mod/src/main/resources/assets/minecraft/textures/gui/title/background/panorama_0.png";
-import { HomeScreen } from "./Home";
 
-declare const __APP_VERSION__: string;
-const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev";
+/** The direction particle a Korean name takes: 로 after a vowel or ㄹ, 으로 after any other final. */
+function particleKey(name: string): "home.particleRo" | "home.particleEuro" {
+  const code = name.charCodeAt(name.length - 1) - 0xac00;
+  if (code < 0 || code > 11171) return "home.particleRo";
+  const final = code % 28;
+  return final === 0 || final === 8 ? "home.particleRo" : "home.particleEuro";
+}
 
-/* The play screen is the game's title screen brought to the launcher: the Fullmoon lobby at night
-   (the panorama the title screen turns behind itself), tonight's real moon on its dial, and the
-   palace plaque with one loud way into the lobby. The dashboard reads on below it. */
+/** The month and day of an ISO date, in the dictionary's form; anything else is shown as it came. */
+function monthDay(iso: string, t: (key: string, vars: Record<string, string | number>) => string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  return t("home.monthDay", { m: Number(m[2]), d: Number(m[3]) });
+}
+
+/* The play screen is the game's title screen brought to the launcher, laid as mock/g-launcher.html
+   lays it: the lobby's panorama under a veil, the wordmark and its line, tonight's real moon, the
+   one gold block that is the way into the lobby with the lobby's live answer beside it, two quiet
+   ways beside that, the latest news, and the three servers as cards under the hero. */
 export function PlayScreen() {
-  const { servers, serverStatus, versions, news, instances, selectedInstance, launch, toast, setScreen } = useStore();
+  const { servers, serverStatus, news, instances, selectedInstance, launch, toast } = useStore();
   const { t } = useT();
 
   const lobby = servers[0] ?? null;
+  const second = servers[1] ?? null;
   const { state, act, busy } = usePlayAction(lobby?.address ?? null);
   const launchOnly = usePlayAction(null);
   const moon = useMemo(() => moonAt(Date.now()), []);
   const full = isFull(moon);
-  const headline = t(`moon.${moonName(moon)}`);
+  const headline = t(`moon.short.${moonName(moon)}`);
   const detail = full ? t("moon.next", { n: daysToNextFull(moon) }) : t("moon.until", { n: daysToFull(moon) });
-  const target = versions.find((v) => v.isTarget)?.id ?? selectedInstance?.versionId ?? "26.1.2";
   const featured = useMemo(() => news.find((n) => n.featured) ?? news[0] ?? null, [news]);
 
   const lobbyStatus = lobby ? serverStatus[lobby.address] : undefined;
@@ -52,135 +64,110 @@ export function PlayScreen() {
       toast("error", t("toast.launchFail", { reason: "no installed instance" }));
       return;
     }
+    cue("confirm");
     void launch(inst.id, address);
   };
 
-  const others = servers.slice(1, 3);
+  const canQuickPlay = launchOnly.state.kind === "ready";
 
   return (
-    <div className="home">
-      <section className="hero" data-theme="dark" aria-label={t("nav.play")}>
+    <div className="play">
+      <section className="hero" aria-label={t("nav.play")}>
         <div className="hero-sky" style={{ backgroundImage: `url(${panorama})` }} aria-hidden />
         <div className="hero-veil" aria-hidden />
+        <Moon className="hero-moon" r={72} lit={moon.lit} waxing={moon.waxing} />
 
-        <MoonDial className="hero-moon" r={46} lit={moon.lit} waxing={moon.waxing} complete={full} label={`${headline} · ${detail}`} />
-
-        <div className="hero-plaque pf-frame">
-          <div className="plaque-band pf-band">
-            <span className="plaque-tagline">{t("settings.aboutDesc")}</span>
-            <Wordmark size="lg" name={BRAND.name} />
+        <div className="hero-col">
+          <h1 className="hero-mark">{BRAND.name}</h1>
+          <p className="hero-tagline">{t("home.tagline")}</p>
+          <div className="hero-tonight" role="img" aria-label={`${headline} · ${detail}`}>
+            <Moon r={14} lit={moon.lit} waxing={moon.waxing} />
+            <span>{headline} · {detail}</span>
           </div>
-          <Dancheong />
-          <div className="plaque-body">
-            <div className="plaque-today">
-              <svg width="26" height="26" viewBox="-13 -13 26 26" aria-hidden className={full ? "is-full" : ""}>
-                <MoonDisc r={8.5} lit={moon.lit} waxing={moon.waxing} />
-                <circle className="plaque-today-ring" r={11.5} fill="none" />
-              </svg>
-              <div>
-                <strong>{headline}</strong>
-                <span className="num">{detail}</span>
-              </div>
-            </div>
-            <div className="pf-rule-dashed" />
 
+          <button
+            className={`hero-play hero-play-${state.kind}`}
+            onClick={() => {
+              cue("confirm");
+              act();
+            }}
+            aria-busy={busy}
+            disabled={state.kind === "preparing"}
+          >
+            {state.kind === "ready" ? (
+              <>
+                <span className="hero-play-word">{t("home.joinLobby")}</span>
+                {status && (
+                  <span className="hero-play-status num" title={status}>
+                    <i className={reachable ? "is-live" : ""} aria-hidden />
+                    <span>{status}</span>
+                  </span>
+                )}
+              </>
+            ) : (
+              <PlayLabel state={state} idleLabel={t("home.joinLobby")} />
+            )}
+          </button>
+
+          <div className="hero-sub">
+            {second && (
+              <button className="hero-sub-btn" onClick={() => quickPlay(second.address)} disabled={!canQuickPlay}>
+                {t("home.quickTo", { name: second.name, ro: t(particleKey(second.name)) })}
+                <span>{second.motd.split(/\s[—·-]\s/)[0]}</span>
+              </button>
+            )}
             <button
-              className={`lobby-btn lobby-btn-${state.kind}`}
-              onClick={act}
-              aria-busy={busy}
-              disabled={state.kind === "preparing"}
+              className="hero-sub-btn"
+              onClick={() => {
+                cue("confirm");
+                launchOnly.act();
+              }}
+              disabled={!canQuickPlay}
             >
-              {state.kind === "ready" ? (
-                <>
-                  <span className="lobby-btn-label">{t("home.joinLobby")}</span>
-                  {status && (
-                    <span className="lobby-btn-status num" title={status}>
-                      <i className={reachable ? "is-live" : ""} aria-hidden />
-                      <span>{status}</span>
-                    </span>
-                  )}
-                </>
-              ) : (
-                <PlayLabel state={state} idleLabel={t("home.joinLobby")} />
-              )}
+              {t("home.launchOnly")}
             </button>
-
-            <ul className="plaque-menu">
-              {others.map((s) => (
-                <li key={s.id}>
-                  <button
-                    className="title-row"
-                    onClick={() => quickPlay(s.address)}
-                    disabled={launchOnly.state.kind !== "ready"}
-                  >
-                    <Marker />
-                    <span>{t("home.joinServer", { name: s.name })}</span>
-                    <em className="mono">{s.address}</em>
-                  </button>
-                </li>
-              ))}
-              <li>
-                <button
-                  className="title-row"
-                  onClick={launchOnly.act}
-                  disabled={launchOnly.state.kind !== "ready"}
-                >
-                  <Marker />
-                  <span>{t("home.launchOnly")}</span>
-                </button>
-              </li>
-              <li>
-                <button
-                  className="title-row"
-                  onClick={() =>
-                    document.getElementById("dash")?.scrollIntoView({
-                      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-                      block: "start",
-                    })
-                  }
-                >
-                  <Marker />
-                  <span>{t("home.serverList")}</span>
-                  <em className="num">{servers.length}</em>
-                </button>
-              </li>
-              <li>
-                <button className="title-row" onClick={() => setScreen("settings", "hud")}>
-                  <Marker />
-                  <span>{t("home.hudLayout")}</span>
-                </button>
-              </li>
-              <li>
-                <button className="title-row" onClick={() => setScreen("cosmetics")}>
-                  <Marker />
-                  <span>{t("home.cosmetics")}</span>
-                </button>
-              </li>
-            </ul>
           </div>
         </div>
 
         {featured && (
           <aside className="hero-news">
-            <div className="hero-news-kicker pf-band">{t("home.newsKicker", { date: featured.date })}</div>
+            <div className="hero-news-kicker">{t("home.newsKicker", { date: monthDay(featured.date, t) })}</div>
             <h2>{featured.title}</h2>
             <p>{featured.summary}</p>
-            <button className="hero-news-more" onClick={() => setScreen("dashboard")}>
-              {t("home.newsMore")}
-              <Icon name="arrowRight" size={13} />
-            </button>
           </aside>
         )}
-
-        <footer className="hero-bar">
-          <span className="hero-meta num">
-            {t("home.footMeta", { version: APP_VERSION, mc: target })}
-          </span>
-        </footer>
       </section>
 
-      <div className="screen-pad" id="dash">
-        <HomeScreen />
+      <div className="play-grid">
+        {servers.slice(0, 3).map((s) => {
+          const st = serverStatus[s.address];
+          const online = st?.online === true;
+          const [meta] = s.motd.split(/\s[—·-]\s/);
+          return (
+            <article key={s.id} className="srv-card">
+              <div className="srv-card-head">
+                <i className={online ? "is-live" : ""} aria-hidden />
+                {s.name}
+              </div>
+              <div className="srv-card-meta">{s.address} · {meta || s.motd}</div>
+              <div className="srv-card-nums">
+                <span>
+                  <b className="num">{online && st ? st.players : "—"}</b>
+                  <span>{t("home.onlineLabel")}</span>
+                </span>
+                {online && st && (
+                  <span>
+                    <b className="num">{st.pingMs}</b>
+                    <span>ms</span>
+                  </span>
+                )}
+              </div>
+              <button className="srv-card-go" onClick={() => quickPlay(s.address)} disabled={!canQuickPlay || (st !== undefined && !online)}>
+                {t("home.join")}
+              </button>
+            </article>
+          );
+        })}
       </div>
     </div>
   );

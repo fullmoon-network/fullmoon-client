@@ -22,7 +22,7 @@ public record MapLayout(Box content, Box map, Box rail, Box band, Box action) {
     /** Below this window width the rail narrows and the page margin tightens. */
     public static final int COMPACT_WIDTH = 700;
 
-    public static final int ROUTE_ROW_HEIGHT = 34;
+    public static final int ROUTE_ROW_HEIGHT = Tokens.Size.ROW_ONE;
 
     /**
      * How near the pointer has to be, in cells, to be on a marker. Two and a half cells is the
@@ -31,8 +31,8 @@ public record MapLayout(Box content, Box map, Box rail, Box band, Box action) {
      */
     public static final double HIT_CELLS = 2.5;
 
-    private static final int HEADER_HEIGHT = 48;
-    private static final int FOOTER_HEIGHT = 24;
+    private static final int HEADER_HEIGHT = Tokens.Size.HEADER + Tokens.Space.COZY;
+    private static final int FOOTER_HEIGHT = Tokens.Size.HINT + Tokens.Space.COZY + Tokens.Space.TIGHT;
     private static final int RAIL_WIDTH = 208;
     private static final int COMPACT_RAIL_WIDTH = 148;
 
@@ -160,12 +160,13 @@ public record MapLayout(Box content, Box map, Box rail, Box band, Box action) {
         return origin + (int) Math.round(cell * cellSize);
     }
 
-    private static int headingHeight() {
-        return Tokens.Type.LABEL.leading() + Tokens.Space.COZY;
+    /** A caption band: the caption in strong ink and the gap under it, as the route list's groups. */
+    public static int headingHeight() {
+        return Tokens.Type.STRONG.leading() + Tokens.Space.COZY;
     }
 
     private static int bandHeight(int actionHeight) {
-        return Tokens.Space.COZY + Tokens.Type.LABEL.leading() + Tokens.Space.SNUG
-            + Tokens.Type.BODY_STRONG.leading() + Tokens.Space.COZY + actionHeight;
+        return Tokens.Space.COZY + Tokens.Type.BODY.leading() + Tokens.Space.SNUG
+            + Tokens.Type.STRONG.leading() + Tokens.Space.COZY + actionHeight;
     }
 }

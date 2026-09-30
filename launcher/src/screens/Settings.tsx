@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Icon } from "../components/Icon";
 import { Badge, Button, Segmented, Slider, Toggle } from "../components/ui";
-import { Dancheong, Marker, Seal } from "../components/Palace";
+import { GlideList } from "../components/Glide";
 import { HudEditor } from "../widgets/HudEditor";
 import { isRealCore } from "../core/client";
 import { ACCENT_METALS, accentMetal, useStore, type SettingsTab } from "../state/store";
@@ -15,14 +15,14 @@ const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "
 
 /* Mirrors java.rs `major_of` — Java 8 reports itself as 1.8.0_x. The floor is
    MIN_MAJOR there; the two have to move together. */
-const JAVA_MIN_MAJOR = 21;
+const JAVA_MIN_MAJOR = 25;
 function javaMajor(version: string): number {
   const head = version.split(/[.\-+]/)[0] ?? "0";
   if (head === "1") return Number(version.split(".")[1] ?? 0) || 0;
   return Number(head) || 0;
 }
 
-/** A settings section: the framed panel with its name in the lattice band. */
+/** A settings section: a glass with its name on a hairline. */
 function Section({ title, action, children, className = "" }: {
   title: ReactNode;
   action?: ReactNode;
@@ -30,12 +30,11 @@ function Section({ title, action, children, className = "" }: {
   className?: string;
 }) {
   return (
-    <section className={`set-section pf-frame ${className}`}>
-      <div className="set-section-head pf-band">
+    <section className={`set-section glass ${className}`}>
+      <div className="set-section-head">
         <h3>{title}</h3>
         {action}
       </div>
-      <Dancheong />
       <div className="set-section-body">{children}</div>
     </section>
   );
@@ -73,7 +72,7 @@ function JavaSection() {
               key={j.path}
               role="radio"
               aria-checked={chosen}
-              className={`java-card pf-tile ${chosen ? "is-chosen" : ""}`}
+              className={`java-card tile ${chosen ? "is-chosen" : ""}`}
               onClick={() => void patchSettings({ javaPath: j.path })}
             >
               <span className="java-icon">
@@ -118,7 +117,7 @@ function JavaSection() {
 }
 
 export function SettingsScreen() {
-  const { settings, patchSettings, selectedInstance, toast, settingsTab, versions, systemMemoryMb } =
+  const { settings, patchSettings, selectedInstance, toast, settingsTab, versions, systemMemoryMb, uiPrefs, setUiPref } =
     useStore();
   const target = versions.find((v) => v.isTarget);
   const { t, setLang } = useT();
@@ -144,20 +143,20 @@ export function SettingsScreen() {
   return (
     <div className="screen-pad">
       <div className={`set-layout ${tab === "hud" ? "is-wide" : ""}`}>
-        <nav className="set-nav" aria-label={t("nav.settings")}>
+        <GlideList current={tab} className="set-nav" role="navigation" label={t("nav.settings")}>
           {tabs.map((x) => (
             <button
               key={x.id}
               className={tab === x.id ? "is-current" : ""}
               aria-current={tab === x.id ? "page" : undefined}
+              data-current={tab === x.id ? "true" : undefined}
               onClick={() => setTab(x.id)}
             >
-              <Marker on={tab === x.id} />
               <Icon name={x.icon} size={16} />
               {x.label}
             </button>
           ))}
-        </nav>
+        </GlideList>
 
         <div className="set-body screen-enter" key={tab}>
           {tab === "java" && <JavaSection />}
@@ -226,7 +225,7 @@ export function SettingsScreen() {
                       key={m}
                       role="radio"
                       aria-checked={metal === m}
-                      className={`metal-chip ${metal === m ? "is-current" : ""}`}
+                      className={`metal-chip ${metal === m ? "is-chosen" : ""}`}
                       onClick={() => void patchSettings({ accent: m })}
                     >
                       <span className={`metal-swatch metal-${m}`} aria-hidden />
@@ -249,6 +248,24 @@ export function SettingsScreen() {
                     setLang(v);
                   }}
                 />
+              </div>
+              <div className="set-row">
+                <div>
+                  <strong>{t("settings.reduceMotion")}</strong>
+                  <p className="set-hint">{t("settings.reduceMotionDesc")}</p>
+                </div>
+                <Toggle
+                  checked={uiPrefs.reduceMotion}
+                  label={t("settings.reduceMotion")}
+                  onChange={(v) => setUiPref({ reduceMotion: v })}
+                />
+              </div>
+              <div className="set-row">
+                <div>
+                  <strong>{t("settings.sounds")}</strong>
+                  <p className="set-hint">{t("settings.soundsDesc")}</p>
+                </div>
+                <Toggle checked={uiPrefs.sounds} label={t("settings.sounds")} onChange={(v) => setUiPref({ sounds: v })} />
               </div>
             </Section>
           )}
@@ -273,8 +290,7 @@ export function SettingsScreen() {
               <ul className="pledge">
                 {(["noAds", "noForced", "noSell"] as const).map((k) => (
                   <li key={k}>
-                    <Marker on />
-                    <div>
+                      <div>
                       <strong>{t(`settings.pledge.${k}`)}</strong>
                       <p className="set-hint">{t(`settings.pledge.${k}Desc`)}</p>
                     </div>
@@ -306,11 +322,8 @@ export function SettingsScreen() {
           {tab === "about" && (
             <Section title={t("settings.about")} className="about">
               <div className="about-mark">
-                <Seal size={64} />
-                <div>
-                  <h3 className="about-name">{brand.name}</h3>
-                  <p className="about-tagline">{brand.tagline}</p>
-                </div>
+                <h3 className="about-name">{brand.name}</h3>
+                <p className="about-tagline">{brand.tagline}</p>
               </div>
               <div className="about-rows">
                 <div><span>{t("settings.version")}</span><b className="num">{APP_VERSION}</b></div>

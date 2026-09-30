@@ -40,7 +40,7 @@ public final class MapCanvas {
         painter.popClip();
         painter.border(raster.x(), raster.y(), raster.w(), raster.h(), Tokens.Radius.NONE,
             Tokens.Stroke.HAIR, Tokens.Color.LINE_STRONG);
-        Typeset.draw(painter, Tokens.Type.LABEL, "N", raster.midX() - Tokens.Space.TIGHT,
+        Typeset.draw(painter, Tokens.Type.MICRO, "N", raster.midX() - Tokens.Space.TIGHT,
             raster.y() + Tokens.Space.SNUG, Tokens.Color.INK_PRIMARY);
     }
 
@@ -85,7 +85,7 @@ public final class MapCanvas {
                 Box plate = labelBox(raster, cellSize, marker);
                 painter.fill(plate.x(), plate.y(), plate.w(), plate.h(),
                     Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.78f));
-                Typeset.draw(painter, Tokens.Type.LABEL, marker.label(),
+                Typeset.draw(painter, Tokens.Type.MICRO, marker.label(),
                     x + Tokens.Space.COZY, y - Tokens.Space.SNUG, ink);
             }
         }
@@ -95,8 +95,8 @@ public final class MapCanvas {
     private static Box labelBox(Box raster, int cellSize, MapMarkers.Placed marker) {
         return new Box(MapLayout.plot(raster.x(), marker.column(), cellSize) + Tokens.Space.COZY,
             MapLayout.plot(raster.y(), marker.row(), cellSize) - Tokens.Space.SNUG,
-            Typeset.width(Tokens.Type.LABEL, marker.label()),
-            Tokens.Type.LABEL.px()).inset(-Tokens.Space.TIGHT);
+            Typeset.width(Tokens.Type.MICRO, marker.label()),
+            Tokens.Type.MICRO.px()).inset(-Tokens.Space.TIGHT);
     }
 
     /**
@@ -126,11 +126,12 @@ public final class MapCanvas {
         }
         int x = MapLayout.plot(raster.x(), player.column(), cellSize);
         int y = MapLayout.plot(raster.y(), player.row(), cellSize);
+        // Ink, not gold: the one gold on the map is the chosen route.
         painter.ring(x, y, Tokens.Space.SNUG,
-            Tokens.Stroke.FOCUS, Tokens.Color.ACCENT);
+            Tokens.Stroke.FOCUS, Tokens.Color.INK_PRIMARY);
         painter.hRule(x - Tokens.Space.COZY, y,
-            Tokens.Space.GUTTER, Tokens.Color.ACCENT);
+            Tokens.Space.GUTTER, Tokens.Color.INK_PRIMARY);
         painter.vRule(x, y - Tokens.Space.COZY,
-            Tokens.Space.GUTTER, Tokens.Color.ACCENT);
+            Tokens.Space.GUTTER, Tokens.Color.INK_PRIMARY);
     }
 }

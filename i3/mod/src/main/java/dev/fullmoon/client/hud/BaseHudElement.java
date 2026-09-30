@@ -1,18 +1,27 @@
 package dev.fullmoon.client.hud;
 
+import java.util.List;
+
 import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.render.Painter;
-import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.text.Typeset;
-import dev.fullmoon.client.ui.Palace;
 
-/** Base class for HUD elements providing common anchor state and chip styling. */
+/**
+ * Base class for HUD elements: anchor state, and the chip every readout is drawn as — sixteen
+ * pixels of HUD glass with no border, the value large in the row face and its unit small in
+ * tertiary ink after it. A label that shouts before the value is what the chips used to do; a
+ * unit that follows it is what they do now.
+ */
 public abstract class BaseHudElement implements HudElement {
-    protected static final int PADDING_H = Tokens.Space.COZY;
-    protected static final int PADDING_V = Tokens.Space.SNUG;
-    protected static final int CHIP_HEIGHT = 20;
-    private static final int TICK = 4;
+    protected static final int PADDING_H = Tokens.Space.BASE;
+    protected static final int CHIP_HEIGHT = Tokens.Size.HUD_CHIP;
+    /** Between a dot or a moon and the value, between a value and its unit, and around a separator. */
+    protected static final int GAP = Tokens.Space.BASE;
+    protected static final float DOT = Tokens.Space.TIGHT;
+
+    /** One reading on a chip: a value that changes, and the unit it is in, which may be empty. */
+    protected record Part(String value, String unit) {}
 
     private final String id;
     private final String label;
@@ -99,42 +108,68 @@ public abstract class BaseHudElement implements HudElement {
         this.scale = scale;
     }
 
-    /** Draws a chip: night glass inside a gilt hairline, with the frame's ticks on two corners. */
+    /** The chip's ground: HUD glass, nothing around it. */
     protected void drawContainer(Painter painter, Box bounds) {
         painter.fill(bounds.x(), bounds.y(), bounds.w(), bounds.h(),
-            Tokens.Radius.NONE, Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.82f));
-        painter.border(bounds.x(), bounds.y(), bounds.w(), bounds.h(),
-            Tokens.Radius.NONE, Tokens.Stroke.HAIR, Tokens.Color.LINE_GILT_FAINT);
-        Palace.ticks(painter, bounds.x() - 1, bounds.y() - 1, bounds.w() + 2, bounds.h() + 2, TICK);
+            Tokens.Radius.NONE, Tokens.Color.SURFACE_GLASS_HUD);
     }
 
     /**
-     * Something drawn before the key, such as the clock's moon. Returns the width it took; the
-     * element's {@link #measureWidth} has to count the same width.
+     * Something drawn before the first value, such as the clock's moon. Returns the width it
+     * took, including the gap after it; {@link #chipWidth} has to be given the same width.
      */
     protected int drawLeadingMark(Painter painter, int x, float cy) {
         return 0;
     }
 
-    /** Draws a standard single-line key-value chip with shared baseline centering. */
-    protected void drawChip(Painter painter, Box bounds, String key, String val, int dotColor) {
+    /** The width of a chip holding {@code parts}, after {@code lead} pixels of dot or moon. */
+    protected static int chipWidth(int lead, List<Part> parts) {
+        int w = PADDING_H * 2 + lead;
+        for (int i = 0; i < parts.size(); i++) {
+            Part part = parts.get(i);
+            if (i > 0) {
+                w += GAP + Typeset.width(Tokens.Type.BODY, "·") + GAP;
+            }
+            w += Typeset.tabularWidth(Tokens.Type.ROW, part.value());
+            if (!part.unit().isEmpty()) {
+                w += GAP + Typeset.width(Tokens.Type.BODY, part.unit());
+            }
+        }
+        return w;
+    }
+
+    /** The width a status dot takes before the value. */
+    protected static int dotWidth() {
+        return Math.round(DOT * 2) + GAP;
+    }
+
+    /** Draws the chip: a dot when {@code dotColor} is not zero, the leading mark, then each part. */
+    protected void drawChip(Painter painter, Box bounds, int dotColor, List<Part> parts) {
         drawContainer(painter, bounds);
-
-        int textY = bounds.y() + (bounds.h() - 9) / 2;
-        int currentX = bounds.x() + PADDING_H;
-
+        int valueY = Typeset.centred(Tokens.Type.ROW, bounds.y(), bounds.h());
+        int unitY = Typeset.centred(Tokens.Type.BODY, bounds.y(), bounds.h());
+        int x = bounds.x() + PADDING_H;
         if (dotColor != 0) {
-            int dotCenterY = bounds.y() + bounds.h() / 2;
-            painter.dot(currentX + Tokens.Space.TIGHT, dotCenterY, Tokens.Space.TIGHT, dotColor);
-            currentX += Tokens.Space.COZY;
+            painter.dot(x + DOT, bounds.y() + bounds.h() / 2.0f, DOT, dotColor);
+            x += dotWidth();
         }
-        currentX += drawLeadingMark(painter, currentX, bounds.y() + bounds.h() / 2.0f);
-
-        if (key != null && !key.isEmpty()) {
-            Typeset.draw(painter, Tokens.Type.LABEL, key, currentX, textY, Tokens.Color.ACCENT);
-            currentX += Typeset.width(Tokens.Type.LABEL, key) + Tokens.Space.SNUG;
+        x += drawLeadingMark(painter, x, bounds.y() + bounds.h() / 2.0f);
+        for (int i = 0; i < parts.size(); i++) {
+            Part part = parts.get(i);
+            if (i > 0) {
+                x += GAP;
+                x += Typeset.draw(painter, Tokens.Type.BODY, "·", x, unitY, Tokens.Color.INK_DISABLED) + GAP;
+            }
+            x += Typeset.tabular(painter, Tokens.Type.ROW, part.value(), x, valueY, Tokens.Color.INK_PRIMARY);
+            if (!part.unit().isEmpty()) {
+                x += GAP;
+                x += Typeset.draw(painter, Tokens.Type.BODY, part.unit(), x, unitY, Tokens.Color.INK_TERTIARY);
+            }
         }
+    }
 
-        Typeset.tabular(painter, Tokens.Type.BODY_STRONG, val, currentX, textY, Tokens.Color.INK_PRIMARY);
+    /** A one-reading chip: the value, then {@code unit} after it. */
+    protected void drawChip(Painter painter, Box bounds, String unit, String value, int dotColor) {
+        drawChip(painter, bounds, dotColor, List.of(new Part(value, unit == null ? "" : unit)));
     }
 }

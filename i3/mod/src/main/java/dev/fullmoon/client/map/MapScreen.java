@@ -1,5 +1,6 @@
 package dev.fullmoon.client.map;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -11,12 +12,15 @@ import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.network.BridgeProtocol;
 import dev.fullmoon.client.network.BridgeState;
 import dev.fullmoon.client.network.FullmoonChannel;
+import dev.fullmoon.client.render.Glide;
 import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.render.Rgb;
+import dev.fullmoon.client.sound.UiSounds;
 import dev.fullmoon.client.text.Typeset;
 import dev.fullmoon.client.ui.Button;
 import dev.fullmoon.client.ui.Chord;
-import dev.fullmoon.client.ui.Palace;
+import dev.fullmoon.client.ui.Glass;
+import dev.fullmoon.client.ui.IconButton;
 import dev.fullmoon.client.ui.Surface;
 import dev.fullmoon.client.ui.Tooltip;
 import dev.fullmoon.client.ui.Voice;
@@ -38,7 +42,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * North-up map of client-loaded terrain, and the way a player asks to be moved along one of the
- * routes it marks.
+ * routes it marks. The rail on the right lists the routes as one-line rows with the gold bar
+ * gliding to the chosen one; the band under them names the choice and carries the one action.
  *
  * <p>It is not a {@link dev.fullmoon.client.ui.SurfaceScreen}: cursor-anchored zoom needs
  * {@code mouseScrolled}, and every pointer entry point there is final. So the surface is a field
@@ -46,11 +51,16 @@ import org.slf4j.LoggerFactory;
  */
 public final class MapScreen extends Screen {
     private static final Logger LOG = LoggerFactory.getLogger("Fullmoon/Map");
+    private static final Logger SCREENS = LoggerFactory.getLogger("Fullmoon/Screen");
     private static final int PAN_CELLS = 12;
+    private static final float SCRIM = 0.62f;
+    private static final int ROW_PAD = Tokens.Space.LOOSE;
 
     private final Screen parent;
     private final Surface surface = new Surface();
     private final Button request;
+    private final IconButton closeButton;
+    private final Glide glide = new Glide(Tokens.Spring.GLIDE);
     private MapViewport viewport;
     private TerrainSample terrain;
     private MapLayout layout = MapLayout.NONE;
@@ -59,6 +69,7 @@ public final class MapScreen extends Screen {
     private String selectedId = "";
     private int ticksUntilRefresh;
     private boolean sampleFailed;
+    private boolean keyboard;
 
     public MapScreen(Screen parent) {
         super(Component.translatable("fullmoon.map.title"));
@@ -70,6 +81,7 @@ public final class MapScreen extends Screen {
         terrain = blank(1, 1);
         request = surface.add(new Button(Voice.LOUD, warp("action.request"), this::requested));
         request.enabled(false);
+        closeButton = surface.add(new IconButton(IconButton.Glyph.CLOSE, "", this::onClose));
     }
 
     @Override
@@ -78,7 +90,14 @@ public final class MapScreen extends Screen {
     }
 
     @Override
+    public void added() {
+        super.added();
+        SCREENS.info("Opened {} screen", getClass().getSimpleName());
+    }
+
+    @Override
     public void onClose() {
+        UiSounds.play(UiSounds.Cue.CLOSE);
         Minecraft.getInstance().setScreen(parent);
     }
 
@@ -86,6 +105,9 @@ public final class MapScreen extends Screen {
     protected void init() {
         layout = MapLayout.of(width, height, request.measure(), Button.HEIGHT);
         request.place(layout.action());
+        Box content = layout.content();
+        closeButton.place(new Box(content.right() - IconButton.SIZE + Tokens.Space.BASE,
+            content.y() + (Tokens.Size.HEADER - IconButton.SIZE) / 2, IconButton.SIZE, IconButton.SIZE));
         refreshTerrain();
         // The map sends one packet and only when a player asks for it, so this line is what pairs a
         // capture with the server that published the routes the frame is marking.
@@ -110,7 +132,7 @@ public final class MapScreen extends Screen {
         Painter painter = new Painter(gfx);
         painter.blurredStratum();
         painter.fill(0, 0, painter.width(), painter.height(),
-            Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.91f));
+            Rgb.alpha(Tokens.Color.SURFACE_VOID, SCRIM));
     }
 
     @Override
@@ -126,7 +148,7 @@ public final class MapScreen extends Screen {
         MapCanvas.draw(painter, layout.map(), MapLayout.CELL_SIZE, terrain, viewport,
             new MapCanvas.Marks(placed, selectedId,
                 under.map(MapMarkers.Placed::id).orElse(""), true), playerPoint());
-        rail(painter);
+        rail(painter, mouseX, mouseY);
         actionBand(painter);
         surface.draw(painter);
         footer(painter);
@@ -135,6 +157,7 @@ public final class MapScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        keyboard = true;
         if (FullmoonClient.opensMap(event)) {
             onClose();
             return true;
@@ -183,6 +206,7 @@ public final class MapScreen extends Screen {
 
     @Override
     public void mouseMoved(double mouseX, double mouseY) {
+        keyboard = false;
         surface.pointer(mouseX, mouseY);
     }
 
@@ -234,37 +258,43 @@ public final class MapScreen extends Screen {
         return true;
     }
 
+    /** The map's name and what it shows on the left; how much of it is real, Esc and ✕ on the right. */
     private void header(Painter painter) {
         Box content = layout.content();
-        int brandY = content.y() + Palace.brandRise(Tokens.Type.DISPLAY);
-        int textX = Palace.brand(painter, Tokens.Type.DISPLAY, content.x(), brandY);
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("subtitle"), textX,
-            brandY + Tokens.Type.LABEL.leading() + Tokens.Space.TIGHT, Tokens.Color.INK_TERTIARY);
-        Typeset.drawRight(painter, Tokens.Type.LABEL, tr("authority"), content.right(), brandY,
-            Tokens.Color.INK_TERTIARY);
-        Palace.dancheong(painter, content.x(), layout.headerBottom() - Tokens.Space.COZY, content.w());
+        Box header = new Box(content.x(), content.y(), content.w(), Tokens.Size.HEADER);
+        int titleY = Typeset.centred(Tokens.Type.TITLE, header.y(), header.h());
+        int bodyY = Typeset.centred(Tokens.Type.BODY, header.y(), header.h());
+        int x = header.x();
+        x += Typeset.draw(painter, Tokens.Type.TITLE, tr("title"), x, titleY, Tokens.Color.INK_PRIMARY) + Tokens.Space.COZY;
+        Typeset.draw(painter, Tokens.Type.BODY, tr("subtitle") + " · " + tr("authority"), x, bodyY, Tokens.Color.INK_TERTIARY);
+        int right = closeButton.bounds().x() - Tokens.Space.COZY - Glass.keycapWidth("Esc");
+        Glass.keycap(painter, right, header.y() + (header.h() - Tokens.Size.KEYCAP) / 2, "Esc");
+        right -= Tokens.Space.LOOSE;
+        String status = sampleFailed ? tr("status.failed") : tr("status.coverage", terrain.snapshot().mappedPercent());
+        Typeset.tabularRight(painter, Tokens.Type.BODY, status, right, bodyY,
+            sampleFailed ? Tokens.Color.STATUS_DANGER : Tokens.Color.INK_TERTIARY);
+        Glass.hair(painter, header.x(), layout.headerBottom() - Tokens.Space.COZY, header.w());
     }
 
-    private void rail(Painter painter) {
+    private void rail(Painter painter, int mouseX, int mouseY) {
         Box rail = layout.rail();
-        painter.vRule(rail.x() - Tokens.Space.LOOSE, rail.y(), rail.h(),
-            Tokens.Color.LINE_HAIRLINE);
-        section(painter, tr("position"), layout.positionHeading());
-        drawFact(painter, tr("centre"), coordinate(viewport.centerX(), viewport.centerZ()),
-            layout.centreFact());
-        drawFact(painter, tr("scale"), tr("scale.value", viewport.blocksPerCell()),
-            layout.scaleFact());
+        Glass.vhair(painter, rail.x() - Tokens.Space.LOOSE, rail.y(), rail.h());
+        caption(painter, tr("position"), layout.positionHeading());
+        fact(painter, tr("centre"), coordinate(viewport.centerX(), viewport.centerZ()), layout.centreFact());
+        fact(painter, tr("scale"), tr("scale.value", viewport.blocksPerCell()), layout.scaleFact());
 
         List<BridgeProtocol.Waypoint> routes = currentRoutes();
-        section(painter, tr("routes", routes.size()), layout.routesHeading());
+        caption(painter, tr("routes", routes.size()), layout.routesHeading());
         int shown = layout.visibleRoutes(routes.size());
-        List<RouteHit> hits = new java.util.ArrayList<>();
+        List<RouteHit> hits = new ArrayList<>();
         for (int index = 0; index < shown; index++) {
-            Box row = layout.routeRow(index);
-            drawRoute(painter, row, routes.get(index));
-            hits.add(new RouteHit(row, routes.get(index)));
+            hits.add(new RouteHit(layout.routeRow(index), routes.get(index)));
         }
         routeHits = List.copyOf(hits);
+        bar(painter);
+        for (RouteHit hit : routeHits) {
+            route(painter, hit.bounds(), hit.route(), hit.bounds().holds(mouseX, mouseY));
+        }
         int below = layout.routeRow(shown).y();
         if (routes.isEmpty()) {
             Typeset.drawWrapped(painter, Tokens.Type.BODY, tr("routes.empty"), rail.x(), below,
@@ -272,53 +302,69 @@ public final class MapScreen extends Screen {
         } else if (layout.beyond(routes.size()) > 0) {
             // A rail too short to list every route still has to admit it. The map keeps marking
             // the ones the list dropped, so the count is the only place the loss is visible.
-            Typeset.draw(painter, Tokens.Type.LABEL,
-                tr("routes.beyond", layout.beyond(routes.size())), rail.x(),
+            Typeset.draw(painter, Tokens.Type.BODY,
+                tr("routes.beyond", layout.beyond(routes.size())), rail.x() + ROW_PAD,
                 below + Tokens.Space.SNUG, Tokens.Color.INK_TERTIARY);
         }
     }
 
-    private void drawRoute(Painter painter, Box row, BridgeProtocol.Waypoint route) {
-        boolean chosen = route.id().equals(selectedId);
-        if (chosen) {
-            painter.fill(row.x(), row.y(), row.w(), row.h(), Tokens.Color.ACCENT_WASH);
-            painter.fill(row.x(), row.y(), Tokens.Stroke.FOCUS, row.h(), Tokens.Color.ACCENT);
+    /** The gold wash and bar, on their way to the chosen row or resting on it. */
+    private void bar(Painter painter) {
+        Box target = null;
+        for (RouteHit hit : routeHits) {
+            if (hit.route().id().equals(selectedId)) {
+                target = hit.bounds();
+            }
         }
-        int left = row.x() + (chosen ? Tokens.Space.COZY : 0);
-        String name = Typeset.fittingPrefix(Tokens.Type.BODY_STRONG, route.name(), row.w());
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG, name, left,
-            row.y() + Tokens.Space.SNUG, Tokens.Color.INK_PRIMARY);
-        Typeset.tabular(painter, Tokens.Type.LABEL, route.x() + "  " + route.z(), left,
-            row.y() + Tokens.Space.SNUG + Tokens.Type.BODY.leading(),
-            Tokens.Color.INK_TERTIARY);
-        painter.hRule(row.x(), row.bottom() - Tokens.Stroke.HAIR, row.w(),
-            Tokens.Color.LINE_HAIRLINE);
+        if (target == null) {
+            return;
+        }
+        if (!glide.placed()) {
+            glide.snap(target);
+        } else if (!target.equals(glide.target())) {
+            glide.to(target);
+        }
+        glide.advance(System.nanoTime());
+        painter.fill(glide.x(), glide.y(), glide.w(), glide.h(), Tokens.Color.ACCENT_WASH);
+        painter.fill(glide.x(), glide.y(), Tokens.Stroke.BAR, glide.h(), Tokens.Color.ACCENT);
+    }
+
+    private void route(Painter painter, Box row, BridgeProtocol.Waypoint route, boolean over) {
+        boolean chosen = route.id().equals(selectedId);
+        if (over && !chosen) {
+            painter.fill(row.x(), row.y(), row.w(), row.h(), Tokens.Color.SURFACE_RAISED);
+        }
+        int right = row.right() - ROW_PAD;
+        String where = route.x() + "  " + route.z();
+        int whereW = Typeset.tabularWidth(Tokens.Type.BODY, where);
+        Typeset.tabular(painter, Tokens.Type.BODY, where, right - whereW,
+            Typeset.centred(Tokens.Type.BODY, row.y(), row.h()), Tokens.Color.INK_TERTIARY);
+        int room = right - whereW - Tokens.Space.COZY - (row.x() + ROW_PAD);
+        Typeset.draw(painter, Tokens.Type.ROW, Typeset.ellipsized(Tokens.Type.ROW, route.name(), room), row.x() + ROW_PAD,
+            Typeset.centred(Tokens.Type.ROW, row.y(), row.h()),
+            chosen || over ? Tokens.Color.INK_PRIMARY : Tokens.Color.INK_SECONDARY);
     }
 
     /**
-     * The one action the map has, and the server's answer to it. Kept out of the footer because the
-     * footer is about terrain: the fraction of the frame that is real has nothing to do with whether
+     * The one action the map has, and the server's answer to it. Kept out of the foot because the
+     * foot is about the keys: the fraction of the frame that is real has nothing to do with whether
      * a warp was allowed, and reading one where the other was expected is worse than two lines.
      */
     private void actionBand(Painter painter) {
         Box band = layout.band();
-        painter.hRule(band.x(), band.y(), band.w(), Tokens.Color.LINE_HAIRLINE);
+        Glass.hair(painter, band.x(), band.y(), band.w());
         int labelY = band.y() + Tokens.Space.COZY;
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("chosen"), band.x(), labelY,
-            Tokens.Color.INK_TERTIARY);
+        Typeset.draw(painter, Tokens.Type.BODY, tr("chosen"), band.x(), labelY, Tokens.Color.INK_TERTIARY);
         Status status = status();
-        Typeset.drawRight(painter, Tokens.Type.LABEL, status.copy(), band.right(), labelY,
-            status.color());
+        Typeset.drawRight(painter, Tokens.Type.BODY, status.copy(), band.right(), labelY, status.color());
 
-        int nameY = labelY + Tokens.Type.LABEL.leading() + Tokens.Space.SNUG;
+        int nameY = labelY + Tokens.Type.BODY.leading() + Tokens.Space.SNUG;
         BridgeProtocol.Waypoint route = selected();
         if (route == null) {
-            Typeset.draw(painter, Tokens.Type.BODY, tr("chosen.none"), band.x(), nameY,
-                Tokens.Color.INK_TERTIARY);
+            Typeset.draw(painter, Tokens.Type.BODY, tr("chosen.none"), band.x(), nameY, Tokens.Color.INK_TERTIARY);
             return;
         }
-        Typeset.draw(painter, Tokens.Type.BODY_STRONG,
-            Typeset.fittingPrefix(Tokens.Type.BODY_STRONG, route.name(), band.w()),
+        Typeset.draw(painter, Tokens.Type.STRONG, Typeset.ellipsized(Tokens.Type.STRONG, route.name(), band.w()),
             band.x(), nameY, Tokens.Color.INK_PRIMARY);
     }
 
@@ -339,32 +385,23 @@ public final class MapScreen extends Screen {
 
     private void footer(Painter painter) {
         Box content = layout.content();
-        int y = layout.footerTop() + Tokens.Space.COZY;
-        painter.hRule(content.x(), layout.footerTop(), content.w(),
-            Tokens.Color.LINE_HAIRLINE);
-        Typeset.draw(painter, Tokens.Type.LABEL, tr("footer.keys"), content.x(), y,
-            Tokens.Color.INK_TERTIARY);
-        int color = sampleFailed ? Tokens.Color.STATUS_DANGER : Tokens.Color.INK_TERTIARY;
-        String status = sampleFailed
-            ? tr("status.failed")
-            : tr("status.coverage", terrain.snapshot().mappedPercent());
-        Typeset.drawRight(painter, Tokens.Type.LABEL, status, content.right(), y, color);
+        Glass.hair(painter, content.x(), layout.footerTop(), content.w());
+        Glass.hints(painter, content.midX(), layout.footerTop() + Tokens.Space.COZY, List.of(
+            new Glass.Hint("←→↑↓", tr("hint.pan")),
+            new Glass.Hint("+ −", tr("hint.zoom")),
+            new Glass.Hint("R", tr("hint.here")),
+            new Glass.Hint("Enter", warp("hint.go")),
+            new Glass.Hint("Esc", I18n.get("fullmoon.menu.hint.close"))), keyboard);
     }
 
-    private void section(Painter painter, String label, int y) {
-        Box rail = layout.rail();
-        painter.fill(rail.x(), y + Tokens.Space.TIGHT, Tokens.Stroke.FOCUS,
-            Tokens.Type.LABEL.px(), Tokens.Color.ACCENT);
-        Typeset.draw(painter, Tokens.Type.LABEL, label,
-            rail.x() + Tokens.Space.COZY, y, Tokens.Color.INK_TERTIARY);
+    private void caption(Painter painter, String label, int y) {
+        Typeset.draw(painter, Tokens.Type.STRONG, label, layout.rail().x() + ROW_PAD, y, Tokens.Color.INK_TERTIARY);
     }
 
-    private void drawFact(Painter painter, String label, String value, int y) {
+    private void fact(Painter painter, String label, String value, int y) {
         Box rail = layout.rail();
-        Typeset.draw(painter, Tokens.Type.LABEL, label, rail.x(), y,
-            Tokens.Color.INK_TERTIARY);
-        Typeset.tabularRight(painter, Tokens.Type.BODY_STRONG, value, rail.right(), y,
-            Tokens.Color.INK_PRIMARY);
+        Typeset.draw(painter, Tokens.Type.BODY, label, rail.x() + ROW_PAD, y, Tokens.Color.INK_TERTIARY);
+        Typeset.tabularRight(painter, Tokens.Type.STRONG, value, rail.right() - ROW_PAD, y, Tokens.Color.INK_PRIMARY);
     }
 
     private void pan(int columns, int rows) {
@@ -400,6 +437,9 @@ public final class MapScreen extends Screen {
      * off frame it goes.
      */
     private void choose(String id, boolean centre) {
+        if (!id.equals(selectedId)) {
+            UiSounds.play(UiSounds.Cue.FOCUS);
+        }
         selectedId = id;
         BridgeProtocol.Waypoint route = selected();
         if (route == null) {

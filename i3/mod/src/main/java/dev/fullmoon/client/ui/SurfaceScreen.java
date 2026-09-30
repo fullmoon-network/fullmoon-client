@@ -8,16 +8,28 @@ import net.minecraft.network.chat.Component;
 
 import com.mojang.blaze3d.platform.InputConstants;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /** A screen whose pointer, keyboard, text and wheel events all enter through one surface. */
 public abstract class SurfaceScreen extends Screen {
+    private static final Logger LOG = LoggerFactory.getLogger("Fullmoon/Screen");
+
     protected final Surface surface = new Surface();
 
     protected SurfaceScreen(Component title) {
         super(title);
     }
 
+    /** One line per opening, so a capture can be paired with the screen it shows. */
     @Override
-    public final void mouseMoved(double mouseX, double mouseY) {
+    public void added() {
+        super.added();
+        LOG.info("Opened {} screen", getClass().getSimpleName());
+    }
+
+    @Override
+    public void mouseMoved(double mouseX, double mouseY) {
         surface.pointer(mouseX, mouseY);
     }
 
@@ -46,8 +58,13 @@ public abstract class SurfaceScreen extends Screen {
     @Override
     public final boolean mouseScrolled(double mouseX, double mouseY, double scrollX,
             double scrollY) {
-        return surface.scroll(mouseX, mouseY, scrollY)
+        return surface.scroll(mouseX, mouseY, scrollY) || scrolled(mouseX, mouseY, scrollY)
             || super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    /** A wheel turn no control took; the screen's own, if it scrolls. */
+    protected boolean scrolled(double mouseX, double mouseY, double amount) {
+        return false;
     }
 
     @Override

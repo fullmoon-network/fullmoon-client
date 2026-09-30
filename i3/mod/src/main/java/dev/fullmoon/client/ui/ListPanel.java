@@ -5,18 +5,23 @@ import java.util.function.IntConsumer;
 
 import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.layout.Box;
+import dev.fullmoon.client.render.Glide;
 import dev.fullmoon.client.render.Painter;
+import dev.fullmoon.client.sound.UiSounds;
 import dev.fullmoon.client.text.Typeset;
 
 import com.mojang.blaze3d.platform.InputConstants;
 
 /**
- * A well of {@link ListRow}s, as many as fit, with the rest a scroll away.
+ * A run of {@link ListRow}s on the glass, as many as fit, with the rest a scroll away, and the
+ * gold bar that glides to whichever row is chosen.
  *
  * <p>One keyboard stop for the whole list, not one per row: forty mods behind Tab is thirty-nine
  * presses to reach the button under them. So the panel takes the keyboard and the arrows move a
  * mark inside it, which is the same bargain {@link Select} strikes with its open list, and the same
- * one every listbox has struck since before either of us.
+ * one every listbox has struck since before either of us. A panel that {@link #picksOnMove} makes
+ * the mark and the choice one thing, the way the server menus do: an arrow chooses, and whatever
+ * reads the choice follows the bar.
  *
  * <p>This is the first control to answer {@link #scroll}. The wheel and the arrows arrive at the
  * same place through different doors — the wheel moves the view and leaves the mark where it was,
@@ -38,11 +43,13 @@ public final class ListPanel extends Widget {
     private final List<ListRow> rows;
     private final String empty;
     private final IntConsumer onPick;
+    private final Glide glide = new Glide(Tokens.Spring.GLIDE);
 
     private int marked;
     private int selected = -1;
     private int first;
     private boolean dragging;
+    private boolean picksOnMove;
 
     public ListPanel(String label, List<ListRow> rows, String empty, IntConsumer onPick) {
         this(label, rows, empty, -1, onPick);
@@ -57,11 +64,18 @@ public final class ListPanel extends Widget {
         this.selected = this.rows.isEmpty() ? -1 : Math.clamp(selected, -1, this.rows.size() - 1);
         this.marked = Math.max(0, this.selected);
         this.first = this.marked;
+        this.rows.forEach(row -> row.owned(true));
     }
 
-    /** The height a well needs to show {@code rows} of them whole, borders included. */
+    /** The arrows choose as they move: the mark and the bar are one thing. */
+    public ListPanel picksOnMove() {
+        picksOnMove = true;
+        return this;
+    }
+
+    /** The height a run needs to show {@code rows} of them whole. */
     public static int heightFor(int rows) {
-        return rows * ListRow.HEIGHT + Tokens.Stroke.HAIR * 2;
+        return rows * ListRow.HEIGHT;
     }
 
     public int marked() {
@@ -77,7 +91,7 @@ public final class ListPanel extends Widget {
         return first;
     }
 
-    /** How many rows the well has room for. At least one, so an empty box is not a divide by zero. */
+    /** How many rows the panel has room for. At least one, so an empty box is not a divide by zero. */
     public int visible() {
         return Math.max(1, viewport().h() / ListRow.HEIGHT);
     }
@@ -91,12 +105,9 @@ public final class ListPanel extends Widget {
         first = boundedFirst(first, rows.size(), visible());
         Box b = bounds();
         Chrome chrome = voice().chrome(state);
-        // The well is sunken in all eight: the states belong to the rows in it, and to the line
-        // around it, which is where an error on the list as a whole has to show.
-        painter.fill(b.x(), b.y(), b.w(), b.h(), Tokens.Radius.SM, Tokens.Color.SURFACE_SUNKEN);
-        painter.border(b.x(), b.y(), b.w(), b.h(), Tokens.Radius.SM, Tokens.Stroke.HAIR,
-            chrome.line());
-
+        if (state == State.ERROR) {
+            painter.border(b.x(), b.y(), b.w(), b.h(), Tokens.Radius.SM, Tokens.Stroke.HAIR, chrome.line());
+        }
         if (state == State.LOADING) {
             Dots.draw(painter, b.midX(), b.midY(), chrome.ink());
         } else if (rows.isEmpty()) {
@@ -120,18 +131,27 @@ public final class ListPanel extends Widget {
         if (!hovered()) {
             rows.forEach(row -> row.hovered(false));
         }
+        painter.pushClip(view.x(), view.y(), view.w(), view.h());
+        if (selected >= 0 && state.live()) {
+            Box target = rowBox(selected);
+            if (!glide.placed()) {
+                glide.snap(target);
+            } else if (!target.equals(glide.target())) {
+                glide.to(target);
+            }
+            glide.advance(System.nanoTime());
+            float shake = nudgeOffset();
+            painter.fill(glide.x() + shake, glide.y(), glide.w(), glide.h(), Tokens.Color.ACCENT_WASH);
+            painter.fill(glide.x() + shake, glide.y(), Tokens.Stroke.BAR, glide.h(),
+                state == State.ACTIVE ? Tokens.Color.ACCENT_PRESSED : Tokens.Color.ACCENT);
+        }
         for (int i = first; i < last; i++) {
             ListRow row = rows.get(i);
             row.place(rowBox(i));
             row.selected(i == selected);
             row.draw(painter, rowState(state, i));
         }
-        // After the rows, not before: a resting row paints the well ground over anything under it.
-        // The rules land on the boundaries between rows, so a lifted row keeps its band whole.
-        for (int i = first + 1; i < last; i++) {
-            painter.hRule(view.x() + Tokens.Space.COZY, rowBox(i).y(),
-                view.w() - Tokens.Space.COZY * 2, Tokens.Color.LINE_HAIRLINE);
-        }
+        painter.popClip();
 
         if (scrollable()) {
             Box rail = rail();
@@ -240,14 +260,22 @@ public final class ListPanel extends Widget {
      * enough, and it is the row itself that looks refused.
      */
     private boolean moveTo(int index) {
+        int was = marked;
         marked = Math.clamp(index, 0, rows.size() - 1);
+        if (marked != was) {
+            UiSounds.play(UiSounds.Cue.FOCUS);
+        }
         first = Math.clamp(first, marked - visible() + 1, marked);
         first = Math.clamp(first, 0, maxFirst());
+        if (picksOnMove && marked != selected) {
+            pick(marked);
+        }
         return true;
     }
 
     private void pick(int row) {
         if (row < 0 || row >= rows.size() || !rows.get(row).state(false, false).live()) {
+            nudge();
             return;
         }
         // Two facts, two calls: what this row does when it is picked, and which row is now the
@@ -279,7 +307,7 @@ public final class ListPanel extends Widget {
     }
 
     private Box viewport() {
-        return bounds().inset(Tokens.Stroke.HAIR);
+        return bounds();
     }
 
     private Box rail() {

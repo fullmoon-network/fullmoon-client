@@ -12,11 +12,12 @@ import dev.fullmoon.client.text.Typeset;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.input.KeyEvent;
 
 /**
- * What every development surface in this client has in common: the scrim over the world, the
- * masthead, the rail of pages under it, the footer, and the one path every pointer and key takes
- * into a {@link Surface}.
+ * What every development surface in this client has in common: the scrim over the world, one
+ * glass pane, the masthead, the rail of pages under it, the foot, and the one path every pointer
+ * and key takes into a {@link Surface}.
  *
  * <p>The pages are one document rather than three screens that happen to share tokens, which is
  * the whole reason this class exists. It also means the plumbing is written once: a screen that
@@ -52,6 +53,10 @@ public abstract class DevScreen extends SurfaceScreen {
     }
 
     protected static final int MAX_CONTENT = 520;
+    private static final int PANE = Tokens.Space.LOOSE;
+    private static final float SCRIM = 0.52f;
+    /** One wheel notch, in GUI px: a list row and a half. */
+    private static final int NOTCH = 36;
 
     private final Page page;
     private final TabRail rail;
@@ -60,13 +65,20 @@ public abstract class DevScreen extends SurfaceScreen {
     private Box content = Box.EMPTY;
 
     /** What is left of {@link #content} once the chrome has taken its share at both ends. */
+    private Box view = Box.EMPTY;
+
+    /** The page's own box: {@link #view} moved up by {@link #scroll}. */
     private Box body = Box.EMPTY;
+
+    /** How far the page has scrolled under the rail. Only a page taller than its view scrolls. */
+    private int scroll;
 
     /** Whether the keyboard should arrive on the rail with the ring up. See {@link #go}. */
     private boolean ringed;
+    private boolean keyboard;
 
     protected DevScreen(Page page) {
-        super(Typeset.say(Tokens.Type.TITLE, page.title()));
+        super(Typeset.say(Tokens.Type.ROW, page.title()));
         this.page = page;
         // First on the surface, so Tab reaches the rail before the page under it — and so a step
         // from nowhere lands there, which is what carries the ring across a page change.
@@ -101,27 +113,103 @@ public abstract class DevScreen extends SurfaceScreen {
         return MAX_CONTENT;
     }
 
-    /** Where the page's own controls go. Called with the box the chrome has left. */
+    /** Where the page's own controls go. Called with the box the chrome has left, moved up by the scroll. */
     protected abstract void lay(Box body);
+
+    /**
+     * How tall the page is from the top of the box {@link #lay} was last handed, read after it ran.
+     * A page taller than the view scrolls with the wheel, and Tab brings the control it lands on
+     * into view; 0 is a page that always fits.
+     */
+    protected int extent() {
+        return 0;
+    }
 
     /** The page's own drawing. Its surface widgets are drawn after this, by the chrome. */
     protected abstract void paint(Painter painter, Box body);
 
-    /** The right-hand end of the footer rule, which is the page's to fill. */
+    /** The right-hand end of the foot, which is the page's to fill. */
     protected abstract String status();
 
     @Override
     protected final void init() {
+        relay();
+        if (ringed) {
+            ringed = false;   // once: a resize runs init again, and the ring must not step on each time
+            surface.focus().advance(1);
+        }
+    }
+
+    /** Lays the chrome and the page out at the current scroll, the scroll held to what the page needs. */
+    private void relay() {
         int frame = Math.min(MAX_CONTENT, width - Tokens.Space.SECTION * 2);
         int left = (width - frame) / 2;
         content = Box.between(left, Tokens.Space.SECTION, left + frame, DevChrome.footerY(height));
         rail.place(new Box(content.x(), railY(content.y()), content.w(), TabRail.HEIGHT));
-        body = Box.between(content.x(), content.y() + chromeHeight(),
+        view = Box.between(content.x(), content.y() + chromeHeight(),
             content.x() + Math.min(maxContent(), content.w()), content.bottom());
+        body = view.at(view.x(), view.y() - scroll);
         lay(body);
-        if (ringed) {
-            surface.focus().advance(1);
+        int held = Math.clamp(scroll, 0, most());
+        if (held != scroll) {
+            scroll = held;
+            body = view.at(view.x(), view.y() - scroll);
+            lay(body);
         }
+        surface.window(window(), widget -> widget != rail);
+    }
+
+    /** The furthest the page can scroll: what of it does not fit the view. */
+    private int most() {
+        return Math.max(0, extent() - view.h());
+    }
+
+    /** The view across the whole pane, so a focus ring at the column's edge is not cut. */
+    private Box window() {
+        return Box.between(content.x() - PANE, view.y(), content.right() + PANE, view.bottom());
+    }
+
+    private boolean scrollTo(int next) {
+        int held = Math.clamp(next, 0, most());
+        if (held == scroll) {
+            return false;
+        }
+        scroll = held;
+        relay();
+        return true;
+    }
+
+    @Override
+    protected boolean scrolled(double mouseX, double mouseY, double amount) {
+        return window().holds(mouseX, mouseY) && scrollTo(scroll - (int) Math.round(amount * NOTCH));
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        keyboard = true;
+        boolean used = super.keyPressed(event);
+        reveal();
+        return used;
+    }
+
+    /** The control the keyboard is on, brought into the view if the page has it scrolled away. */
+    private void reveal() {
+        Widget held = surface.held();
+        if (held == null || held == rail || most() == 0) {
+            return;
+        }
+        Box b = held.bounds();
+        if (b.y() < view.y()) {
+            scrollTo(scroll - (view.y() - b.y()) - Tokens.Space.COZY);
+        } else if (b.bottom() > view.bottom()) {
+            scrollTo(scroll + (b.bottom() - view.bottom()) + Tokens.Space.COZY);
+        }
+    }
+
+    @Override
+    public void mouseMoved(double mouseX, double mouseY) {
+        keyboard = false;
+        super.mouseMoved(mouseX, mouseY);
     }
 
     @Override
@@ -130,7 +218,7 @@ public abstract class DevScreen extends SurfaceScreen {
         Painter painter = new Painter(gfx);
         painter.blurredStratum();
         painter.fill(0, 0, painter.width(), painter.height(),
-            Rgb.alpha(Tokens.Color.SURFACE_VOID, 0.82f));
+            Rgb.alpha(Tokens.Color.SURFACE_VOID, SCRIM));
     }
 
     @Override
@@ -141,29 +229,50 @@ public abstract class DevScreen extends SurfaceScreen {
         surface.hover(mouseX, mouseY);
 
         Painter painter = new Painter(gfx);
-        DevChrome.header(painter, content.x(), content.y(), content.w(),
-            "클라이언트 i3 · " + page.title());
+        int footerY = DevChrome.footerY(height);
+        Glass.panel(painter, Box.between(content.x() - PANE, content.y() - PANE, content.right() + PANE,
+            footerY + DevChrome.footerHeight()));
+        DevChrome.header(painter, content.x(), content.y(), content.w(), page.title(), "클라이언트 i3 · 개발 표면");
+        // The page scrolls under the rail and over the foot: it is drawn inside its window only, the
+        // rail and every open overlay outside it.
+        Box window = window();
+        painter.pushClip(window.x(), window.y(), window.w(), window.h());
         paint(painter, body);
+        surface.drawNormal(painter, widget -> widget != rail);
+        painter.popClip();
+        surface.drawNormal(painter, widget -> widget == rail);
+        surface.drawOverlays(painter);
+        scrollbar(painter);
 
-        surface.draw(painter);
-
-        DevChrome.footer(painter, content.x(), DevChrome.footerY(height), content.w(), keys(),
-            status());
+        DevChrome.footer(painter, content, footerY, hints(), keyboard, status());
 
         Widget tipped = surface.tipped();
-        if (tipped != null) {
+        if (tipped != null && (tipped == rail || tipped.bounds().overlaps(view))) {
             Tooltip.draw(painter, tipped.hint(), tipped.bounds(), content);
         }
     }
 
+    /** A hairline track at the pane's right edge and a thumb as long as the view is of the page. */
+    private void scrollbar(Painter painter) {
+        int most = most();
+        if (most == 0) {
+            return;
+        }
+        int x = content.right() + PANE / 2 - 1;
+        int thumb = Math.max(Tokens.Space.GUTTER, view.h() * view.h() / Math.max(1, extent()));
+        int y = view.y() + (view.h() - thumb) * scroll / most;
+        painter.fill(x, view.y(), 2, view.h(), Tokens.Color.LINE_HAIRLINE);
+        painter.fill(x, y, 2, thumb, Tokens.Color.INK_TERTIARY);
+    }
+
     /** The masthead, the rail beneath its rule, and the gutter between the rail and the page. */
     static int chromeHeight() {
-        return DevChrome.headerHeight() + TabRail.HEIGHT + Tokens.Stroke.HAIR;
+        return DevChrome.headerHeight() + TabRail.HEIGHT + Tokens.Space.COZY;
     }
 
     /** Directly under the masthead rule, so the two rules read as one bar with the tabs in it. */
     private static int railY(int contentY) {
-        return contentY + DevChrome.headerHeight() - Tokens.Space.GUTTER + Tokens.Stroke.HAIR;
+        return contentY + DevChrome.headerHeight() - Tokens.Space.GUTTER + Tokens.Space.SNUG + Tokens.Stroke.HAIR;
     }
 
     private static List<String> tabs() {
@@ -181,11 +290,16 @@ public abstract class DevScreen extends SurfaceScreen {
     private void go(int tab) {
         DevScreen next = open(Page.values()[tab]);
         next.ringed = surface.focus().rings(rail);
+        next.rail.from(page.ordinal());
         Minecraft.getInstance().setScreen(next);
     }
 
-    private String keys() {
-        return "Esc 닫기 · Tab 이동 · " + FullmoonClient.pageKey(page) + " 다시 열기";
+    private List<Glass.Hint> hints() {
+        if (most() > 0) {
+            return List.of(new Glass.Hint("Tab", "이동"), new Glass.Hint("휠", "스크롤"),
+                new Glass.Hint(FullmoonClient.pageKey(page), "다시 열기"), new Glass.Hint("Esc", "닫기"));
+        }
+        return List.of(new Glass.Hint("Tab", "이동"), new Glass.Hint(FullmoonClient.pageKey(page), "다시 열기"),
+            new Glass.Hint("Esc", "닫기"));
     }
-
 }

@@ -15,13 +15,26 @@ const CONST = (name) =>
 const CSSVAR = (name) =>
   name.replace(/\./g, '-').replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
 
+/** Opaque sRGB hex of an entry, from its oklch triple or its hex. */
 const hex = (entry) => {
+  if (entry.hex) return entry.hex.toUpperCase();
   const [r, g, b] = oklchToRgb(...entry.oklch);
-  return '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
+  return '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+};
+const alpha = (entry) => (entry.alpha === undefined ? 1 : entry.alpha);
+/** Packed 0xAARRGGBB as Java writes it. */
+const packed = (entry) => {
+  const a = Math.round(alpha(entry) * 255).toString(16).padStart(2, '0').toUpperCase();
+  return `0x${a}${hex(entry).slice(1)}`;
+};
+const describe = (entry) => {
+  const source = entry.oklch ? `oklch(${entry.oklch.join(' ')})` : hex(entry);
+  return alpha(entry) === 1 ? source : `${source} @ ${alpha(entry)}`;
 };
 
 const colors = Object.entries(tokens.color).filter(([k]) => !k.startsWith('$'));
-const resolved = colors.map(([name, entry]) => ({ name, entry, hex: hex(entry) }));
+const resolved = colors.map(([name, entry]) => ({ name, entry, hex: hex(entry), game: entry.game !== false }));
+const gameColors = resolved.filter((c) => c.game);
 
 /* ---------- Tokens.java ---------- */
 const javaLines = [];
@@ -36,43 +49,44 @@ j(' */');
 j('public final class Tokens {');
 j('    private Tokens() {}');
 j('');
-j('    /** Packed 0xAARRGGBB, opaque. Only a scrim reopens the alpha, via Rgb#alpha. */');
+j('    /**');
+j('     * Packed 0xAARRGGBB. Inks are opaque; grounds carry the alpha the design gives them, because');
+j('     * the glass is a translucent pane over the game\'s own blur and a hover or a selection is a');
+j('     * tint of that pane. Rgb#alpha reopens the alpha of an opaque token for a scrim or a fade.');
+j('     */');
 j('    public static final class Color {');
-for (const { name, entry, hex: h } of resolved) {
-  j(`        /** ${entry.use} · oklch(${entry.oklch.join(' ')}) */`);
-  j(`        public static final int ${CONST(name)} = 0xFF${h.slice(1).toUpperCase()};`);
+for (const { name, entry } of gameColors) {
+  j(`        /** ${entry.use} · ${describe(entry)} */`);
+  j(`        public static final int ${CONST(name)} = ${packed(entry)};`);
 }
 j('');
 j('        private Color() {}');
 j('    }');
 j('');
-j('    public static final class Space {');
-for (const [k, v] of Object.entries(tokens.space).filter(([k]) => !k.startsWith('$')))
-  j(`        public static final int ${CONST(k)} = ${v};`);
-j('');
-j('        private Space() {}');
-j('    }');
-j('');
-j('    public static final class Radius {');
-for (const [k, v] of Object.entries(tokens.radius).filter(([k]) => !k.startsWith('$')))
-  j(`        public static final int ${CONST(k)} = ${v};`);
-j('');
-j('        private Radius() {}');
-j('    }');
-j('');
+const intGroup = (className, entries) => {
+  j(`    public static final class ${className} {`);
+  for (const [k, v] of entries) j(`        public static final int ${CONST(k)} = ${v};`);
+  j('');
+  j(`        private ${className}() {}`);
+  j('    }');
+  j('');
+};
+const plain = (group) => Object.entries(group).filter(([k]) => !k.startsWith('$'));
+intGroup('Space', plain(tokens.space));
+j('    /** Fixed heights and widths of the glass components, GUI px. */');
+intGroup('Size', plain(tokens.size));
+intGroup('Radius', plain(tokens.radius));
 j('    public static final class Stroke {');
-for (const [k, v] of Object.entries(tokens.stroke)) j(`        public static final int ${CONST(k)} = ${v};`);
+for (const [k, v] of Object.entries(tokens.stroke)) {
+  j(Number.isInteger(v)
+    ? `        public static final int ${CONST(k)} = ${v};`
+    : `        public static final float ${CONST(k)} = ${v}f;`);
+}
 j('');
 j('        private Stroke() {}');
 j('    }');
 j('');
-j('    public static final class Duration {');
-for (const [k, v] of Object.entries(tokens.motion.duration))
-  j(`        public static final int ${CONST(k)} = ${v};`);
-j('');
-j('        private Duration() {}');
-j('    }');
-j('');
+intGroup('Duration', plain(tokens.motion.duration));
 j('    public static final class Easing {');
 j('        /** Control points of a cubic Bézier from (0,0) to (1,1), as CSS cubic-bezier() takes them. */');
 j('        public record Curve(float x1, float y1, float x2, float y2) {}');
@@ -83,26 +97,46 @@ j('');
 j('        private Easing() {}');
 j('    }');
 j('');
-j('    public static final class Layer {');
-for (const [k, v] of Object.entries(tokens.layer).filter(([k]) => !k.startsWith('$')))
-  j(`        public static final int ${CONST(k)} = ${v};`);
+j('    public static final class Spring {');
+j('        /**');
+j('         * {@code response} is the period, in seconds, of the undamped spring; {@code dampingFraction}');
+j('         * 1 is critically damped, which never overshoots.');
+j('         */');
+j('        public record Shape(float response, float dampingFraction) {}');
 j('');
-j('        private Layer() {}');
+for (const [k, v] of plain(tokens.motion.spring))
+  j(`        public static final Shape ${CONST(k)} = new Shape(${v.response}f, ${v.dampingFraction}f);`);
+j('');
+j('        private Spring() {}');
 j('    }');
 j('');
+j('    public static final class Sound {');
+for (const [k, v] of plain(tokens.sound)) {
+  j(Number.isInteger(v)
+    ? `        public static final int ${CONST(k)} = ${v};`
+    : `        public static final float ${CONST(k)} = ${v}f;`);
+}
+j('');
+j('        private Sound() {}');
+j('    }');
+j('');
+intGroup('Layer', plain(tokens.layer));
 j('    /**');
-j('     * One baked ttf provider per role. The game rasterises per provider, so a role is');
-j('     * a font id and not a scale factor — asking for title at 1.4x would resample the');
-j('     * body atlas and blur it.');
+j('     * One baked ttf provider per role and GUI scale. The game rasterises per provider, so a role');
+j('     * is a font id and not a scale factor — asking for title at 1.4x would resample the body');
+j('     * atlas and blur it. {@link Role#font} is the id stem; Typeset appends the scale suffix.');
 j('     */');
 j('    public static final class Type {');
-j('        /** {@code font} is the provider id under assets/fullmoon/font; px and leading are GUI px. */');
-j('        public record Role(String font, int px, int leading) {}');
+j('        /**');
+j('         * {@code font} is the provider id stem under assets/fullmoon/font; px and leading are GUI px.');
+j('         * {@code latinOnly} marks a role too small for Hangul: Typeset sets Hangul out of it.');
+j('         */');
+j('        public record Role(String font, int px, int leading, boolean latinOnly) {}');
 j('');
-const typeRoles = Object.entries(tokens.type).filter(([k]) => !k.startsWith('$'));
+const typeRoles = plain(tokens.type);
 for (const [k, v] of typeRoles) {
-  j(`        /** ${v.face} ${v.px}/${v.leading} */`);
-  j(`        public static final Role ${CONST(k)} = new Role("${v.font}", ${v.px}, ${v.leading});`);
+  j(`        /** ${v.face} ${v.px}/${v.leading}${v.tabular ? ' · tabular figures' : ''}${v.latinOnly ? ' · Latin and digits only' : ''} */`);
+  j(`        public static final Role ${CONST(k)} = new Role("${v.font}", ${v.px}, ${v.leading}, ${v.latinOnly ? 'true' : 'false'});`);
 }
 j('');
 j('        /** Declaration order, for the design specimen screen. */');
@@ -119,8 +153,8 @@ j('');
 j('    /** Token name to packed colour, in declaration order, for the design specimen screen. */');
 j('    public static final java.util.List<java.util.Map.Entry<String, Integer>> COLOR_ROLL =');
 j('        java.util.List.of(');
-resolved.forEach(({ name }, i) => {
-  const tail = i === resolved.length - 1 ? '' : ',';
+gameColors.forEach(({ name }, i) => {
+  const tail = i === gameColors.length - 1 ? '' : ',';
   j(`            java.util.Map.entry("${name}", Color.${CONST(name)})${tail}`);
 });
 j('        );');
@@ -131,60 +165,65 @@ mkdirSync(dirname(javaOut), { recursive: true });
 writeFileSync(javaOut, javaLines.join('\n') + '\n');
 
 /* ---------- tokens.css ---------- */
-// The launcher reads the same colours by the same names. It also carries a daylight palace
+// The launcher reads the same colours by the same names. It also carries a daylight palette
 // (colorDay) and the accent metals, which the game has no use for and so never sees.
 const density = tokens.cssDensity;
 const px = (gui, factor) => `${Math.round(gui * factor)}px`;
-const oklchCss = (e) => `oklch(${e.oklch[0]} ${e.oklch[1]} ${e.oklch[2]})`;
-const dayColors = Object.entries(tokens.colorDay).filter(([k]) => !k.startsWith('$'));
+const cssColor = (e) => {
+  if (alpha(e) !== 1) {
+    const h = hex(e);
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    return `rgb(${r} ${g} ${b} / ${alpha(e)})`;
+  }
+  return e.oklch ? `oklch(${e.oklch[0]} ${e.oklch[1]} ${e.oklch[2]})` : hex(e);
+};
+const dayColors = plain(tokens.colorDay);
 const missingDay = colors.map(([k]) => k).filter((k) => !tokens.colorDay[k]);
 if (missingDay.length) throw new Error(`colorDay lacks ${missingDay.join(', ')}`);
-const metals = Object.entries(tokens.accentMetal).filter(([k]) => !k.startsWith('$'));
+const metals = plain(tokens.accentMetal);
 
 const css = [];
 const c = (s = '') => css.push(s);
-// Each palace also names every metal's accent, so a picker can show all three at once
-// without scoping itself into a theme it is not in.
 const colorBlock = (selector, scheme, entries, hour) => {
   c(`${selector} {`);
   c(`  color-scheme: ${scheme};`);
   for (const [name, entry] of entries) {
-    c(`  --color-${CSSVAR(name)}: ${oklchCss(entry)}; /* ${hex(entry)} · ${entry.use} */`);
+    c(`  --color-${CSSVAR(name)}: ${cssColor(entry)}; /* ${describe(entry)} · ${entry.use} */`);
   }
   const gilt = entries.find(([name]) => name === 'accent')[1];
-  c(`  --metal-gilt: ${oklchCss(gilt)};`);
-  for (const [metal, set] of metals) c(`  --metal-${metal}: ${oklchCss(set[hour].accent)};`);
+  c(`  --metal-gilt: ${cssColor(gilt)};`);
+  for (const [metal, set] of metals) c(`  --metal-${metal}: ${cssColor(set[hour].accent)};`);
   c('}');
   c('');
 };
 c('/* Generated from i3/design/tokens.json by i3/design/generate.mjs. Do not edit by hand. */');
 c(':root {');
-for (const [k, v] of Object.entries(tokens.space).filter(([k]) => !k.startsWith('$')))
-  c(`  --space-${CSSVAR(k)}: ${px(v, density.space)};`);
+for (const [k, v] of plain(tokens.space)) c(`  --space-${CSSVAR(k)}: ${px(v, density.space)};`);
 c('');
-for (const [k, v] of Object.entries(tokens.radius).filter(([k]) => !k.startsWith('$')))
+for (const [k, v] of plain(tokens.size)) c(`  --size-${CSSVAR(k)}: ${px(v, density.space)};`);
+c('');
+for (const [k, v] of plain(tokens.radius))
   c(`  --radius-${CSSVAR(k)}: ${k === 'round' ? '999px' : px(v, density.space)};`);
 c('');
 for (const [k, v] of Object.entries(tokens.stroke)) c(`  --stroke-${CSSVAR(k)}: ${v}px;`);
 c('');
-for (const [k, v] of Object.entries(tokens.motion.duration)) c(`  --dur-${CSSVAR(k)}: ${v}ms;`);
+for (const [k, v] of plain(tokens.motion.duration)) c(`  --dur-${CSSVAR(k)}: ${v}ms;`);
 for (const [k, v] of Object.entries(tokens.motion.easing))
   c(`  --ease-${CSSVAR(k)}: cubic-bezier(${v.join(', ')});`);
 c('');
-for (const [k, v] of Object.entries(tokens.layer).filter(([k]) => !k.startsWith('$')))
-  c(`  --layer-${CSSVAR(k)}: ${v};`);
+for (const [k, v] of plain(tokens.layer)) c(`  --layer-${CSSVAR(k)}: ${v};`);
 c('');
-c("  --font-display: 'Fullmoon Serif', 'Noto Serif KR', serif;");
-c("  --font-body: 'Pretendard', system-ui, sans-serif;");
-for (const [k, v] of Object.entries(tokens.type).filter(([k]) => !k.startsWith('$'))) {
-  const serif = v.face.startsWith('Fullmoon Serif');
-  const weight = serif || v.face.endsWith('SemiBold') ? 600 : 400;
+c("  --font-display: 'Hahmlet', serif;");
+c("  --font-body: 'Fullmoon Sans', 'Pretendard', system-ui, sans-serif;");
+const typeVars = (name, v) => {
   const size = px(v.px, density.type);
   const leading = px(v.leading, density.type);
-  c(`  --type-${CSSVAR(k)}-size: ${size};`);
-  c(`  --type-${CSSVAR(k)}-leading: ${leading};`);
-  c(`  --type-${CSSVAR(k)}: ${weight} ${size}/${leading} var(${serif ? '--font-display' : '--font-body'});`);
-}
+  c(`  --type-${CSSVAR(name)}-size: ${size};`);
+  c(`  --type-${CSSVAR(name)}-leading: ${leading};`);
+  c(`  --type-${CSSVAR(name)}: ${v.weight} ${size}/${leading} var(${v.family === 'serif' ? '--font-display' : '--font-body'});`);
+};
+for (const [k, v] of typeRoles) typeVars(k, v);
+for (const [alias, target] of plain(tokens.typeAliases)) typeVars(alias, tokens.type[target]);
 c('}');
 c('');
 colorBlock(':root,\n[data-theme="dark"]', 'dark', resolved.map(({ name, entry }) => [name, entry]), 'night');
@@ -193,18 +232,18 @@ for (const [metal, { night, day }] of metals) {
   const withUse = (set) => Object.entries(set).map(([k, e]) => [k, { ...e, use: `${metal} ${k}` }]);
   c(`[data-accent="${metal}"],`);
   c(`[data-accent="${metal}"] [data-theme="dark"] {`);
-  for (const [k, e] of withUse(night)) c(`  --color-${CSSVAR(k)}: ${oklchCss(e)}; /* ${hex(e)} */`);
+  for (const [k, e] of withUse(night)) c(`  --color-${CSSVAR(k)}: ${cssColor(e)}; /* ${describe(e)} */`);
   c('}');
   c('');
   c(`[data-theme="light"][data-accent="${metal}"],`);
   c(`[data-accent="${metal}"] [data-theme="light"] {`);
-  for (const [k, e] of withUse(day)) c(`  --color-${CSSVAR(k)}: ${oklchCss(e)}; /* ${hex(e)} */`);
+  for (const [k, e] of withUse(day)) c(`  --color-${CSSVAR(k)}: ${cssColor(e)}; /* ${describe(e)} */`);
   c('}');
   c('');
 }
 c('@media (prefers-reduced-motion: reduce) {');
 c('  :root {');
-for (const k of Object.keys(tokens.motion.duration))
+for (const k of Object.keys(plain(Object.fromEntries(plain(tokens.motion.duration)))))
   c(`    --dur-${CSSVAR(k)}: ${k === 'instant' ? 0 : tokens.motion.duration.reduced}ms;`);
 c('  }');
 c('}');
@@ -214,30 +253,47 @@ mkdirSync(dirname(cssOut), { recursive: true });
 writeFileSync(cssOut, css.join('\n') + '\n');
 
 /* ---------- contrast evidence ---------- */
-const pick = (n) => resolved.find((r) => r.name === n).hex;
-const pickDay = (n) => hex(tokens.colorDay[n]);
-const checks = [
-  ['ink.primary on surface.base', 'ink.primary', 'surface.base', 4.5],
-  ['ink.secondary on surface.base', 'ink.secondary', 'surface.base', 4.5],
-  ['ink.tertiary on surface.base', 'ink.tertiary', 'surface.base', 3.0],
-  ['ink.onAccent on accent', 'ink.onAccent', 'accent', 4.5],
-  ['accent (focus ring) on surface.base', 'accent', 'surface.base', 3.0],
-  ['accent (focus ring) on surface.raised', 'accent', 'surface.raised', 3.0],
-  ['status.live on surface.base', 'status.live', 'surface.base', 3.0],
-  ['status.warn on surface.base', 'status.warn', 'surface.base', 3.0],
-  ['status.danger on surface.base', 'status.danger', 'surface.base', 3.0],
-  ['line.hairline on surface.base', 'line.hairline', 'surface.base', 1.15],
-  ['ink.primary on surface.raised', 'ink.primary', 'surface.raised', 4.5],
-  ['ink.primary on accent.wash', 'ink.primary', 'accent.wash', 4.5],
-  ['line.gilt on surface.base', 'line.gilt', 'surface.base', 1.8],
-  ['line.lattice on surface.base', 'line.lattice', 'surface.base', 1.1],
-  ['accent (corner bracket) on surface.void', 'accent', 'surface.void', 3.0],
-  ['ink.primary on ornament.cinnabar (seal)', 'ink.primary', 'ornament.cinnabar', 3.0],
-  ['moon.lit on moon.shadow', 'moon.lit', 'moon.shadow', 7.0],
-].map(([label, a, b, floor]) => [label, pick(a), pick(b), floor]);
+// A translucent ground is composited over the glass, and the glass over the void, before it is
+// measured: that is the darkest thing the game's blur can be under it.
+const entryOf = (n) => tokens.color[n];
+const dayEntryOf = (n) => tokens.colorDay[n];
+const rgbOf = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const hexOf = (rgb) => '#' + rgb.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+const over = (top, bottomHex) => {
+  const a = alpha(top);
+  const t = rgbOf(hex(top));
+  const b = rgbOf(bottomHex);
+  return hexOf(t.map((v, i) => v * a + b[i] * (1 - a)));
+};
+const ground = (name, palette, base) => over(palette(name), base);
+const nightGlass = over(entryOf('surface.glass'), hex(entryOf('surface.void')));
+const dayGlass = over(dayEntryOf('surface.glass'), hex(dayEntryOf('surface.void')));
+const nightGround = (n) => (alpha(entryOf(n)) === 1 ? hex(entryOf(n)) : ground(n, entryOf, nightGlass));
+const dayGround = (n) => (alpha(dayEntryOf(n)) === 1 ? hex(dayEntryOf(n)) : ground(n, dayEntryOf, dayGlass));
+const ink = (n) => hex(entryOf(n));
+const dayInk = (n) => hex(dayEntryOf(n));
 
-// The launcher sets meta text small and puts the accent in small labels, so its floors are
-// the small-text ones, in both palaces and under every metal.
+const checks = [
+  ['ink.primary on glass', ink('ink.primary'), nightGlass, 4.5],
+  ['ink.secondary on glass', ink('ink.secondary'), nightGlass, 4.5],
+  ['ink.tertiary on glass', ink('ink.tertiary'), nightGlass, 4.5],
+  ['ink.primary on raised', ink('ink.primary'), nightGround('surface.raised'), 4.5],
+  ['ink.primary on accent.wash', ink('ink.primary'), nightGround('accent.wash'), 4.5],
+  ['ink.secondary on accent.wash', ink('ink.secondary'), nightGround('accent.wash'), 4.5],
+  ['ink.onAccent on accent', ink('ink.onAccent'), ink('accent'), 4.5],
+  ['ink.onAccent on accent.pressed', ink('ink.onAccent'), ink('accent.pressed'), 4.5],
+  ['accent on glass', ink('accent'), nightGlass, 4.5],
+  ['status.live on glass', ink('status.live'), nightGlass, 4.5],
+  ['status.warn on glass', ink('status.warn'), nightGlass, 4.5],
+  ['status.danger on glass', ink('status.danger'), nightGlass, 4.5],
+  ['status.win on glass', ink('status.win'), nightGlass, 4.5],
+  ['status.ash on glass', ink('status.ash'), nightGlass, 4.5],
+  ['ink.disabled on glass (42%, decorative floor)', ink('ink.disabled'), nightGlass, 2.0],
+  ['line.hairline on glass', ink('line.hairline'), nightGlass, 1.0],
+  ['moon.lit on moon.shadow', ink('moon.lit'), ink('moon.shadow'), 7.0],
+  ['ink.primary on glassHud over void', ink('ink.primary'), nightGround('surface.glassHud'), 4.5],
+];
+
 const launcherPairs = [
   ['ink.tertiary', 'surface.base', 4.5],
   ['ink.tertiary', 'surface.sunken', 4.5],
@@ -246,26 +302,27 @@ const launcherPairs = [
   ['ink.primary', 'surface.overlay', 4.5],
   ['status.live', 'surface.base', 3.0],
   ['status.danger', 'surface.base', 3.0],
-  ['line.gilt', 'surface.base', 1.8],
 ];
+// The launcher has no game blur under it: a translucent ground there sits on the void.
+const nightOnVoid = (n) => (alpha(entryOf(n)) === 1 ? hex(entryOf(n)) : over(entryOf(n), hex(entryOf('surface.void'))));
+const dayOnVoid = (n) => (alpha(dayEntryOf(n)) === 1 ? hex(dayEntryOf(n)) : over(dayEntryOf(n), hex(dayEntryOf('surface.void'))));
 for (const [a, b, floor] of launcherPairs) {
-  checks.push([`launcher night · ${a} on ${b}`, pick(a), pick(b), floor]);
-  checks.push([`launcher day · ${a} on ${b}`, pickDay(a), pickDay(b), floor]);
+  checks.push([`launcher night · ${a} on ${b}`, ink(a), nightOnVoid(b), floor]);
+  checks.push([`launcher day · ${a} on ${b}`, dayInk(a), dayOnVoid(b), floor]);
 }
 const accentSets = [
-  ['gilt', 'night', (n) => pick(n), (n) => pick(n)],
-  ['gilt', 'day', (n) => pickDay(n), (n) => pickDay(n)],
+  ['gilt', 'night', (n) => entryOf(n), nightGlass, ink],
+  ['gilt', 'day', (n) => dayEntryOf(n), dayGlass, dayInk],
   ...metals.flatMap(([metal, set]) => [
-    [metal, 'night', (n) => hex(set.night[n]), (n) => pick(n)],
-    [metal, 'day', (n) => hex(set.day[n]), (n) => pickDay(n)],
+    [metal, 'night', (n) => set.night[n], nightGlass, ink],
+    [metal, 'day', (n) => set.day[n], dayGlass, dayInk],
   ]),
 ];
-for (const [metal, hour, own, base] of accentSets) {
-  checks.push([`${metal} ${hour} · ink.onAccent on accent`, base('ink.onAccent'), own('accent'), 4.5]);
-  checks.push([`${metal} ${hour} · ink.onAccent on accent.pressed`, base('ink.onAccent'), own('accent.pressed'), 4.5]);
-  checks.push([`${metal} ${hour} · accent on surface.base`, own('accent'), base('surface.base'), 4.5]);
-  checks.push([`${metal} ${hour} · accent on surface.void`, own('accent'), base('surface.void'), 3.0]);
-  checks.push([`${metal} ${hour} · ink.primary on accent.wash`, base('ink.primary'), own('accent.wash'), 4.5]);
+for (const [metal, hour, own, glass, base] of accentSets) {
+  checks.push([`${metal} ${hour} · ink.onAccent on accent`, base('ink.onAccent'), hex(own('accent')), 4.5]);
+  checks.push([`${metal} ${hour} · ink.onAccent on accent.pressed`, base('ink.onAccent'), hex(own('accent.pressed')), 4.5]);
+  checks.push([`${metal} ${hour} · accent on glass`, hex(own('accent')), glass, 4.5]);
+  checks.push([`${metal} ${hour} · ink.primary on accent.wash`, base('ink.primary'), over(own('accent.wash'), glass), 4.5]);
 }
 
 let failed = 0;
@@ -283,3 +340,32 @@ if (failed) {
   process.exit(1);
 }
 console.log('\nall contrast floors met');
+
+/* ---------- font providers ---------- */
+// One json per role and GUI scale. The game rasterises a ttf provider once at size × oversample
+// and samples the atlas with nearest filtering, so a glyph is only crisp where oversample equals
+// the GUI scale; Typeset picks the id whose suffix is the window's scale.
+const FONT_DIR = resolve(HERE, '../mod/src/main/resources/assets/fullmoon/font');
+const FILES = {
+  sans: { 400: 'sans-regular.ttf', 600: 'sans-semibold.ttf', 700: 'sans-bold.ttf' },
+  serif: { 600: 'serif-semibold.ttf', 700: 'serif-bold.ttf' },
+};
+const FONT_SCALES = [2, 3, 4];
+let providers = 0;
+for (const [name, v] of typeRoles) {
+  for (const scale of FONT_SCALES) {
+    const list = [];
+    const primary = FILES[v.family][v.weight];
+    if (!primary) throw new Error(`no ${v.family} face at weight ${v.weight} for ${name}`);
+    list.push({ type: 'ttf', file: `fullmoon:${primary}`, size: v.px, oversample: scale });
+    if (v.family === 'serif') {
+      // Hahmlet carries KS X 1001; a syllable outside it falls through to the sans at the same size.
+      list.push({ type: 'ttf', file: `fullmoon:${FILES.sans[v.weight]}`, size: v.px, oversample: scale });
+    }
+    list.push({ type: 'reference', id: 'minecraft:include/space' });
+    const id = v.font.replace(/^fullmoon:/, '');
+    writeFileSync(resolve(FONT_DIR, `${id}_x${scale}.json`), JSON.stringify({ providers: list }, null, 4) + '\n');
+    providers++;
+  }
+}
+console.log(`wrote ${providers} font providers under assets/fullmoon/font`);

@@ -1,4 +1,55 @@
-/* ── ui kit: buttons, controls, badges, modal, fields ─────── */
+/* ── ui kit: glass, tiles, buttons, controls, badges, modal, fields ─────── */
+
+/* ── the two grounds every surface is built from ── */
+
+/* A glass panel: the translucent ground, a one-pixel light along its top and a dark line outside. */
+.glass {
+  background: var(--color-surface-glass);
+  box-shadow: inset 0 1px 0 var(--color-surface-highlight), 0 0 0 1px var(--color-surface-edge);
+}
+/* A tile: a quieter lift with a hairline ring; a card on the void. */
+.tile {
+  position: relative;
+  background: var(--color-surface-tile);
+  box-shadow: inset 0 0 0 1px var(--color-line-hairline);
+  transition: background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+button.tile:hover, a.tile:hover, .tile.is-interactive:hover { background: var(--color-surface-raised); }
+/* the chosen tile wears the selection: the two-pixel bar and the wash */
+.tile.is-chosen { background: var(--color-accent-wash); box-shadow: inset var(--stroke-bar) 0 0 var(--color-accent), inset 0 0 0 1px var(--color-line-hairline); }
+
+/* A section head: the small label with the hairline running on after it. */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-snug);
+  font: var(--type-micro);
+  letter-spacing: 0.08em;
+  color: var(--color-ink-tertiary);
+}
+.section-head::after { content: ""; flex: 1; height: 1px; background: var(--color-line-hairline); }
+.section-head em { font-weight: 400; letter-spacing: 0; color: var(--color-ink-tertiary); }
+
+.rule { height: 1px; background: var(--color-line-hairline); }
+
+/* A keycap: the key's name inside a strong line with a two-pixel bottom edge, one-pixel corners. */
+.key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  font: var(--type-micro);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--color-ink-tertiary);
+  background: var(--color-surface-control-disabled);
+  border: 1px solid var(--color-line-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-key);
+  white-space: nowrap;
+}
 
 /* ── Button — square, one weight; the accent fill is spent once per surface ── */
 .btn {
@@ -8,43 +59,41 @@
   gap: var(--space-snug);
   height: 32px;
   padding: 0 var(--space-cozy);
-  font: var(--type-body-strong);
+  font: var(--type-strong);
   white-space: nowrap;
-  border: 1px solid transparent;
   transition:
     background-color var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out),
-    box-shadow var(--dur-fast) var(--ease-out);
+    box-shadow var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
 }
 .btn:disabled { color: var(--color-ink-disabled); cursor: default; }
 
-/* the gilt plaque: at rest a flat gilt field, under the pointer it takes the cut inner line */
 .btn-primary { background: var(--color-accent); color: var(--color-ink-on-accent); }
-.btn-primary:hover:not(:disabled) {
-  box-shadow: inset 0 0 0 2px var(--color-accent), inset 0 0 0 3px var(--color-ink-on-accent);
-}
+.btn-primary:hover:not(:disabled) { background: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-ink-on-accent); }
 .btn-primary:active:not(:disabled) { background: var(--color-accent-pressed); }
-.btn-primary:disabled { background: var(--color-surface-raised); color: var(--color-ink-disabled); }
+.btn-primary:disabled { background: var(--color-surface-control-disabled); color: var(--color-ink-disabled); }
 
+/* the quiet button: the control ground inside a strong line; it lifts under the pointer and
+   sinks while held */
 .btn-soft {
-  background: var(--color-surface-base);
-  border-color: var(--color-line-gilt-faint);
+  background: var(--color-surface-control);
+  box-shadow: inset 0 0 0 1px var(--color-line-strong);
   color: var(--color-ink-primary);
 }
-.btn-soft:hover:not(:disabled) { border-color: var(--color-line-gilt); background: var(--color-surface-raised); }
+.btn-soft:hover:not(:disabled) { background: var(--color-surface-control-hover); }
+.btn-soft:active:not(:disabled) { background: var(--color-surface-control-pressed); }
 
-.btn-outline { border-color: var(--color-line-strong); color: var(--color-ink-primary); }
-.btn-outline:hover:not(:disabled) { border-color: var(--color-line-gilt); }
+.btn-outline { box-shadow: inset 0 0 0 1px var(--color-line-strong); color: var(--color-ink-primary); }
+.btn-outline:hover:not(:disabled) { background: var(--color-surface-raised); }
 
 .btn-ghost { color: var(--color-ink-secondary); }
 .btn-ghost:hover:not(:disabled) { background: var(--color-surface-raised); color: var(--color-ink-primary); }
 
 /* destructive is an outline in danger ink, never a filled call to action */
-.btn-danger { border-color: var(--color-status-danger); color: var(--color-status-danger); }
+.btn-danger { box-shadow: inset 0 0 0 1px var(--color-status-danger); color: var(--color-status-danger); }
 .btn-danger:hover:not(:disabled) { background: var(--color-surface-raised); }
 
-.btn-sm { height: 26px; padding: 0 var(--space-base); font: var(--type-label); }
+.btn-sm { height: 26px; padding: 0 var(--space-base); font: var(--type-micro); }
 .btn-lg { height: 40px; padding: 0 var(--space-loose); }
 
 /* ── IconButton ── */
@@ -85,22 +134,22 @@
 }
 .toggle.on .toggle-knob { transform: translateX(16px); background: var(--color-ink-on-accent); }
 
-/* ── Segmented — words on a rule, the chosen one underlined, as the game's TabRail ── */
+/* ── Segmented — words in a strong line; the chosen one carries the bar and the wash ── */
 .segmented {
   display: inline-flex;
-  border: 1px solid var(--color-line-gilt-faint);
+  box-shadow: inset 0 0 0 1px var(--color-line-strong);
   background: var(--color-surface-sunken);
 }
 .segmented-item {
   position: relative;
   height: 28px;
   padding: 0 var(--space-base);
-  font: var(--type-label);
+  font: var(--type-micro);
   color: var(--color-ink-tertiary);
   transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
 .segmented-item + .segmented-item { border-left: 1px solid var(--color-line-hairline); }
-.segmented-item:hover { color: var(--color-ink-primary); }
+.segmented-item:hover { color: var(--color-ink-primary); background: var(--color-surface-raised); }
 .segmented-item.active { color: var(--color-ink-primary); background: var(--color-accent-wash); }
 .segmented-item.active::after {
   content: "";
@@ -108,11 +157,11 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 2px;
+  height: var(--stroke-bar);
   background: var(--color-accent);
 }
 
-/* ── Slider — a gilt rail with the palace diamond for a thumb ── */
+/* ── Slider — a strong rail filled in accent up to a square accent thumb ── */
 .slider { position: relative; padding-bottom: 20px; }
 .slider input[type="range"] {
   -webkit-appearance: none;
@@ -133,24 +182,22 @@
   height: 12px;
   margin-top: -5px;
   background: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-surface-base);
-  transform: rotate(45deg);
+  box-shadow: 0 0 0 3px var(--color-surface-void);
   cursor: grab;
 }
 .slider input[type="range"]::-moz-range-track { height: 2px; background: var(--color-line-strong); }
 .slider input[type="range"]::-moz-range-progress { height: 2px; background: var(--color-accent); }
 .slider input[type="range"]::-moz-range-thumb {
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
   border: 0;
   border-radius: 0;
   background: var(--color-accent);
-  transform: rotate(45deg);
 }
 .slider-marks { position: absolute; left: 0; right: 0; bottom: 0; height: 16px; }
 .slider-marks .mark {
   position: absolute;
-  font: var(--type-label);
+  font: var(--type-micro);
   font-variant-numeric: tabular-nums;
   color: var(--color-ink-tertiary);
 }
@@ -163,15 +210,15 @@
   gap: 6px;
   height: 22px;
   padding: 0 var(--space-snug);
-  font: var(--type-label);
+  font: var(--type-micro);
   letter-spacing: 0.04em;
   white-space: nowrap;
   color: var(--color-ink-secondary);
-  border: 1px solid var(--color-line-hairline);
+  box-shadow: inset 0 0 0 1px var(--color-line-hairline);
   background: var(--color-surface-sunken);
 }
 .badge::before { content: ""; width: 5px; height: 5px; flex: none; background: currentColor; }
-.badge-accent { color: var(--color-accent); border-color: var(--color-line-gilt-faint); }
+.badge-accent { color: var(--color-accent); }
 .badge-ok { color: var(--color-status-live); }
 .badge-warn { color: var(--color-status-warn); }
 .badge-err { color: var(--color-status-danger); }
@@ -211,16 +258,17 @@
   border-top-color: var(--color-accent);
   animation: spin 0.9s linear infinite;
 }
-.spinner-light { border-color: var(--color-line-gilt-faint); border-top-color: var(--color-ink-primary); }
+.spinner-light { border-color: var(--color-surface-control-pressed); border-top-color: var(--color-ink-on-accent); }
 
-/* ── Modal — a framed panel over the scrim, header in the lattice band ── */
+/* ── Modal — a glass panel over the scrim, the title on a hairline ── */
+.scrim { background: color-mix(in srgb, var(--color-surface-void) 78%, transparent); }
 .modal-backdrop {
   position: fixed;
   inset: 0;
   z-index: var(--layer-overlay);
   display: grid;
   place-items: center;
-  background: var(--pf-scrim);
+  background: color-mix(in srgb, var(--color-surface-void) 78%, transparent);
   animation: fade-in var(--dur-fast) var(--ease-out);
 }
 .modal {
@@ -237,11 +285,9 @@
   gap: var(--space-base);
   min-height: 56px;
   padding: 0 var(--space-snug) 0 var(--space-loose);
+  border-bottom: 1px solid var(--color-line-hairline);
 }
-.modal-head h3 {
-  font: var(--type-heading);
-  color: var(--color-ink-primary);
-}
+.modal-head h3 { font: var(--type-title); color: var(--color-ink-primary); }
 .modal-body { padding: var(--space-loose); overflow-y: auto; }
 .modal-actions {
   display: flex;
@@ -251,7 +297,7 @@
 }
 .confirm-body { color: var(--color-ink-secondary); }
 
-/* ── Empty state — a sunken well with a new moon in it: nothing lit yet ── */
+/* ── Empty state — a sunken well with nothing lit yet ── */
 .empty {
   display: flex;
   flex-direction: column;
@@ -259,17 +305,17 @@
   gap: var(--space-snug);
   padding: var(--space-section) var(--space-loose);
   background: var(--color-surface-sunken);
-  border: 1px dashed var(--color-line-gilt-faint);
+  box-shadow: inset 0 0 0 1px var(--color-line-hairline);
   text-align: center;
 }
 .empty-icon { color: var(--color-ink-tertiary); margin-bottom: var(--space-tight); }
-.empty-title { font: var(--type-heading); color: var(--color-ink-primary); }
+.empty-title { font: var(--type-title); color: var(--color-ink-primary); }
 .empty-hint { max-width: 380px; color: var(--color-ink-secondary); }
 .empty-action { margin-top: var(--space-base); }
 
 /* ── fields ── */
 .field { display: flex; flex-direction: column; gap: var(--space-snug); margin-bottom: var(--space-loose); }
-.field-label { font: var(--type-body-strong); color: var(--color-ink-primary); }
+.field-label { font: var(--type-strong); color: var(--color-ink-primary); }
 .field-label b { color: var(--color-accent); font-weight: 600; }
 .input {
   height: 34px;
@@ -279,7 +325,41 @@
   color: var(--color-ink-primary);
   transition: border-color var(--dur-fast) var(--ease-out);
 }
-.input:hover { border-color: var(--color-line-gilt); }
+.input:hover { border-color: var(--color-ink-disabled); }
 .input:focus { outline: none; border-color: var(--color-accent); }
 .input:focus-visible { outline: var(--stroke-focus) solid var(--color-accent); outline-offset: 0; }
 .input::placeholder { color: var(--color-ink-tertiary); }
+
+/* ── the gliding selection: one indicator per list, moved, never repainted per row ── */
+.glide-host { position: relative; }
+.glide {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 0;
+  pointer-events: none;
+  background: var(--color-accent-wash);
+  transition:
+    top var(--dur-base) var(--ease-out),
+    height var(--dur-base) var(--ease-out),
+    left var(--dur-base) var(--ease-out),
+    width var(--dur-base) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+.glide::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--stroke-bar);
+  background: var(--color-accent);
+}
+.glide.is-hidden { opacity: 0; }
+/* the first placement is a snap, so a list does not slide in from its origin */
+.glide.is-snapped { transition: none; }
+/* a horizontal list carries the bar along its bottom edge instead */
+.glide-x { background: none; right: auto; top: auto; bottom: -1px; height: var(--stroke-bar); }
+.glide-x::before { display: none; }
+.glide-x::after { content: ""; position: absolute; inset: 0; background: var(--color-accent); }

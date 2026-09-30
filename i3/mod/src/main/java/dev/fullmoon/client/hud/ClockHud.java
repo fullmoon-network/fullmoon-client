@@ -3,33 +3,31 @@ package dev.fullmoon.client.hud;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.render.Painter;
-import dev.fullmoon.client.text.Typeset;
 import dev.fullmoon.client.title.MoonPhase;
 
 import net.minecraft.client.Minecraft;
 
-/** Real-world clock chip, with tonight's real moon beside the time. */
+/** The real clock, with tonight's real moon beside it. */
 public final class ClockHud extends BaseHudElement {
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
-    private static final float MOON_R = 4.0f;
+    private static final float MOON_R = 5.0f;
 
     public ClockHud() {
-        super("clock", "시계", "일반", true, Anchor.TOP_RIGHT, 16, 82);
+        super("clock", "시계", "일반", true, Anchor.TOP_RIGHT, Tokens.Space.COZY, Tokens.Space.COZY);
     }
 
     @Override
     public int measureWidth(Minecraft client) {
-        String text = formatText(client, false);
-        return PADDING_H * 2 + moonWidth() + Typeset.width(Tokens.Type.LABEL, "TIME") + Tokens.Space.SNUG
-            + Typeset.width(Tokens.Type.BODY_STRONG, text);
+        return chipWidth(moonWidth(), parts());
     }
 
     private static int moonWidth() {
-        return Math.round(MOON_R * 2) + Tokens.Space.SNUG;
+        return Math.round(MOON_R * 2) + GAP;
     }
 
     @Override
@@ -47,11 +45,10 @@ public final class ClockHud extends BaseHudElement {
 
     @Override
     public void draw(Painter painter, Box bounds, Minecraft client, boolean isEditor) {
-        String text = formatText(client, isEditor);
-        drawChip(painter, bounds, "TIME", text, 0);
+        drawChip(painter, bounds, 0, parts());
     }
 
-    private String formatText(Minecraft client, boolean isEditor) {
-        return LocalTime.now().format(TIME_FMT);
+    private static List<Part> parts() {
+        return List.of(new Part(LocalTime.now().format(TIME_FMT), ""));
     }
 }

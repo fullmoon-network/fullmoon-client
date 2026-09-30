@@ -1,0 +1,42 @@
+{
+  "ui.focus": {
+    "subtitle": "fullmoon.subtitle.ui.focus",
+    "sounds": [{"name": "fullmoon:ui/focus", "stream": false}]
+  },
+  "ui.confirm": {
+    "subtitle": "fullmoon.subtitle.ui.confirm",
+    "sounds": [{"name": "fullmoon:ui/confirm", "stream": false}]
+  },
+  "ui.back": {
+    "subtitle": "fullmoon.subtitle.ui.back",
+    "sounds": [{"name": "fullmoon:ui/back", "stream": false}]
+  },
+  "ui.open": {
+    "subtitle": "fullmoon.subtitle.ui.open",
+    "sounds": [{"name": "fullmoon:ui/open", "stream": false}]
+  },
+  "ui.close": {
+    "subtitle": "fullmoon.subtitle.ui.close",
+    "sounds": [{"name": "fullmoon:ui/close", "stream": false}]
+  },
+  "ui.error": {
+    "subtitle": "fullmoon.subtitle.ui.error",
+    "sounds": [{"name": "fullmoon:ui/error", "stream": false}]
+  },
+  "ui.tab": {
+    "subtitle": "fullmoon.subtitle.ui.tab",
+    "sounds": [{"name": "fullmoon:ui/tab", "stream": false}]
+  },
+  "ui.reel": {
+    "subtitle": "fullmoon.subtitle.ui.reel",
+    "sounds": [{"name": "fullmoon:ui/reel", "stream": false}]
+  },
+  "ui.win": {
+    "subtitle": "fullmoon.subtitle.ui.win",
+    "sounds": [{"name": "fullmoon:ui/win", "stream": false}]
+  },
+  "ui.lose": {
+    "subtitle": "fullmoon.subtitle.ui.lose",
+    "sounds": [{"name": "fullmoon:ui/lose", "stream": false}]
+  }
+}

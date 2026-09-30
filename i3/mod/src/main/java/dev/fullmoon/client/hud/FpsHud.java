@@ -1,24 +1,30 @@
 package dev.fullmoon.client.hud;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.layout.Box;
+import dev.fullmoon.client.network.FullmoonChannel;
 import dev.fullmoon.client.render.Painter;
-import dev.fullmoon.client.text.Typeset;
 
 import net.minecraft.client.Minecraft;
 
-/** Client framerate and frame time chip. */
+/** Frames a second, and the server's ticks a second beside it once a Fullmoon server reports them. */
 public final class FpsHud extends BaseHudElement {
-
     public FpsHud() {
-        super("fps", "FPS", "성능", true, Anchor.TOP_LEFT, 16, 82);
+        super("fps", "FPS", "성능", true, Anchor.TOP_LEFT, Tokens.Space.COZY,
+            Tokens.Space.COZY + Tokens.Size.HUD_CHIP + Tokens.Space.SNUG);
     }
 
     @Override
     public int measureWidth(Minecraft client) {
-        String text = formatText(client, false);
-        return PADDING_H * 2 + Typeset.width(Tokens.Type.LABEL, "FPS") + Tokens.Space.SNUG
-            + Typeset.width(Tokens.Type.BODY_STRONG, text);
+        return measureWidth(client, false);
+    }
+
+    @Override
+    public int measureWidth(Minecraft client, boolean isEditor) {
+        return chipWidth(0, parts(client, isEditor));
     }
 
     @Override
@@ -28,16 +34,19 @@ public final class FpsHud extends BaseHudElement {
 
     @Override
     public void draw(Painter painter, Box bounds, Minecraft client, boolean isEditor) {
-        String text = formatText(client, isEditor);
-        drawChip(painter, bounds, "FPS", text, 0);
+        drawChip(painter, bounds, 0, parts(client, isEditor));
     }
 
-    private String formatText(Minecraft client, boolean isEditor) {
+    private static List<Part> parts(Minecraft client, boolean isEditor) {
+        List<Part> parts = new ArrayList<>();
         if (isEditor) {
-            return "144 fps · 6.9 ms";
+            parts.add(new Part("144", "fps"));
+            parts.add(new Part("20", "tps"));
+            return parts;
         }
-        int fps = client.getFps();
-        double ms = fps > 0 ? (1000.0 / fps) : 0.0;
-        return String.format("%d fps · %.1f ms", fps, ms);
+        parts.add(new Part(Integer.toString(client.getFps()), "fps"));
+        FullmoonChannel.metrics(System.currentTimeMillis()).ifPresent(metrics ->
+            parts.add(new Part(Long.toString(Math.round(metrics.ticksPerSecond())), "tps")));
+        return parts;
     }
 }

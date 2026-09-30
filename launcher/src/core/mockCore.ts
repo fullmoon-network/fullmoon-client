@@ -41,6 +41,19 @@ import { loadState, saveState } from "./persistence";
 import BRAND from "../brand";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** The capture rig's canned ping answer, when it has set one. */
+function rigPing(): { players: number; maxPlayers: number; pingMs: number } | null {
+  try {
+    const raw = localStorage.getItem("fullmoon.rig.ping");
+    if (!raw) return null;
+    const v = JSON.parse(raw) as { players?: unknown; maxPlayers?: unknown; pingMs?: unknown };
+    const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : 0);
+    return { players: n(v.players), maxPlayers: n(v.maxPlayers), pingMs: n(v.pingMs) };
+  } catch {
+    return null;
+  }
+}
 const latency = () => sleep(90 + Math.random() * 160);
 const uid = () =>
   "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -931,6 +944,12 @@ export class MockCore implements PinionCore {
      rather than by making up a plausible player count. */
   async servers_ping(addresses: string[]): Promise<Record<string, ServerStatus>> {
     await sleep(200);
+    // The capture rig (scripts/systemshot.mjs) photographs the live state too; it sets this key
+    // with the answer to report. Nothing else sets it, so a player's browser build never sees it.
+    const rig = rigPing();
+    if (rig) {
+      return Object.fromEntries(addresses.map((a) => [a, { online: true, motd: "", version: "", ...rig }]));
+    }
     return Object.fromEntries(
       addresses.map((a) => [
         a,
