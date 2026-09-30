@@ -32,6 +32,9 @@ public final class SpecimenScreen extends DevScreen {
 
     private int frames;
 
+    /** How tall the two columns drew, from the page's top; known after the first frame. */
+    private int extent;
+
     public SpecimenScreen() {
         super(Page.SPECIMEN);
     }
@@ -64,6 +67,13 @@ public final class SpecimenScreen extends DevScreen {
 
         painter.vRule(body.x() + leftW + Tokens.Space.GUTTER / 2, body.y(),
             Math.max(leftBottom, rightBottom) - body.y(), Tokens.Color.LINE_HAIRLINE);
+        extent = Math.max(leftBottom, rightBottom) - body.y() + Tokens.Space.COZY;
+    }
+
+    /** The columns are measured by drawing them, so the page scrolls from its second frame on. */
+    @Override
+    protected int extent() {
+        return extent;
     }
 
     /** What the page is for, counted: a footer that says the roll sizes is a footer that checks them. */
