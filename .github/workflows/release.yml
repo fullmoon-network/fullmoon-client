@@ -14,6 +14,14 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  # A tag whose commit message carries a skip-ci marker (a squash merge that
+  # folded in docs commits) never fires the push trigger; dispatching with the
+  # existing tag builds that exact commit instead of moving the tag.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and release (e.g. v0.3.0)
+        required: true
 
 permissions:
   contents: write
@@ -24,6 +32,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -97,6 +107,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -196,5 +208,6 @@ jobs:
       - name: Upload to the release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
           files: dist/*
           generate_release_notes: true
