@@ -35,10 +35,37 @@ pub async fn detect() -> Result<Vec<JavaRuntime>> {
             .cmp(&major_of(&a.version))
             .then_with(|| a.path.cmp(&b.path))
     });
-    if let Some(first) = out.iter_mut().find(|r| major_of(&r.version) >= MIN_MAJOR) {
-        first.recommended = true;
-    }
+    recommend(&mut out);
     Ok(out)
+}
+
+/// Flag the runtime the game should use: the *lowest* major that is still >= `MIN_MAJOR`.
+/// 26.1 ships Java 25, so 25 is what Fabric and the mods are exercised on; a newer JDK also
+/// runs it, but a fresh install should not land on an early-access 27 just because it is the
+/// highest number on the disk. Ties (several vendors of the same major) go to the path order.
+fn recommend(runtimes: &mut [JavaRuntime]) {
+    for r in runtimes.iter_mut() {
+        r.recommended = false;
+    }
+    let best = runtimes
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| major_of(&r.version) >= MIN_MAJOR)
+        .min_by(|(_, a), (_, b)| {
+            major_of(&a.version)
+                .cmp(&major_of(&b.version))
+                .then_with(|| a.path.cmp(&b.path))
+        })
+        .map(|(i, _)| i);
+    if let Some(i) = best {
+        runtimes[i].recommended = true;
+    }
+}
+
+/// A saved `javaPath` is only worth keeping if it still names a file. Older builds wrote
+/// Windows separators on Linux (`\usr\lib\jvm\...`), and JDKs get uninstalled.
+pub fn saved_path_is_usable(path: Option<&str>) -> bool {
+    path.is_some_and(|p| !p.is_empty() && Path::new(p).is_file())
 }
 
 /// Every `java` executable worth asking about, before deduplication.
@@ -242,6 +269,53 @@ mod tests {
         assert_eq!(major_of("21.0.5"), 21);
         assert_eq!(major_of("1.8.0_402"), 8);
         assert_eq!(major_of("26-ea"), 26);
+    }
+
+    fn rt(version: &str, path: &str) -> JavaRuntime {
+        JavaRuntime {
+            path: path.into(),
+            version: version.into(),
+            vendor: "v".into(),
+            arch: "amd64".into(),
+            recommended: false,
+        }
+    }
+
+    #[test]
+    fn the_lowest_major_that_meets_the_floor_is_recommended() {
+        // Minecraft 26.1.2 needs 25 or newer; 25 is the one it ships, so it wins over 26 and 27
+        let mut list = vec![
+            rt("27.0.1", "/usr/lib/jvm/jre-27/bin/java"),
+            rt("26.0.1", "/usr/lib/jvm/java-latest-openjdk/bin/java"),
+            rt("25.0.3", "/usr/lib/jvm/java-25-openjdk/bin/java"),
+            rt("21.0.5", "/usr/lib/jvm/java-21-openjdk/bin/java"),
+        ];
+        recommend(&mut list);
+        let flagged: Vec<_> = list.iter().filter(|r| r.recommended).map(|r| r.version.as_str()).collect();
+        assert_eq!(flagged, ["25.0.3"]);
+    }
+
+    #[test]
+    fn nothing_below_25_is_ever_recommended_and_newer_still_qualifies() {
+        let mut old = vec![rt("21.0.5", "/a/java"), rt("1.8.0_402", "/b/java")];
+        recommend(&mut old);
+        assert!(old.iter().all(|r| !r.recommended));
+        let mut only_new = vec![rt("27.0.1", "/a/java"), rt("21.0.5", "/b/java")];
+        recommend(&mut only_new);
+        assert!(only_new[0].recommended && !only_new[1].recommended);
+    }
+
+    #[test]
+    fn a_saved_path_must_be_a_real_file() {
+        assert!(!saved_path_is_usable(None));
+        assert!(!saved_path_is_usable(Some("")));
+        // what an older build wrote on Linux
+        assert!(!saved_path_is_usable(Some("\\usr\\lib\\jvm\\java-latest-openjdk\\bin\\java")));
+        let dir = scratch("saved");
+        let exe = dir.join("java");
+        std::fs::write(&exe, b"").unwrap();
+        assert!(saved_path_is_usable(exe.to_str()));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

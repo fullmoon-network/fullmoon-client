@@ -32,7 +32,9 @@ echo "deb ok: $(dpkg-deb -f "${debs[0]}" Package Version Depends | tr '\n' ' ')"
 mapfile -t inimg < <(find "$work/squashfs-root" -name fullmoon-client.jar)
 [ "${#inimg[@]}" -eq 1 ] || fail "expected one bundled mod in the AppImage, got ${#inimg[@]}"
 [ "$(sha256sum < "${inimg[0]}")" = "$(sha256sum < "$staged")" ] || fail "AppImage mod hash differs from the staged jar"
-echo "appimage ok: mod hash matches" | tee -a linux-smoke-result.txt
+leftover=$(find "$work/squashfs-root" \( -name 'libEGL*' -o -name 'libwayland-*' -o -name 'libgbm*' \) | head -n3)
+[ -z "$leftover" ] || fail "the AppImage still carries the graphics stack: $leftover"
+echo "appimage ok: mod hash matches, no bundled EGL/wayland/gbm" | tee -a linux-smoke-result.txt
 
 data="$work/profile"
 mkdir -p "$data"
@@ -75,6 +77,7 @@ else
   fail "no settings.json — the frontend never asked for settings"
 fi
 
+! grep -q 'EGL_BAD_PARAMETER\|Aborting' launcher.log || { cat launcher.log; fail "WebKit's web process aborted"; }
 kill -0 "$app" 2>/dev/null || fail "the launcher died after the window opened"
 kill "$app" 2>/dev/null || true
 kill "$xvfb" 2>/dev/null || true

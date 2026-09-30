@@ -21,7 +21,9 @@ use crate::{
 #[tauri::command]
 pub async fn settings_get(state: State<'_, AppState>) -> Result<Settings> {
     // first run has no java pinned; adopt the best runtime on the box and keep it
-    let missing = state.settings.lock().await.java_path.is_none();
+    // ...and again when the pinned one no longer names a file (an uninstalled JDK, or the
+    // backslash path an older build wrote on Linux)
+    let missing = !java::saved_path_is_usable(state.settings.lock().await.java_path.as_deref());
     if missing {
         if let Some(best) = java::detect()
             .await

@@ -151,6 +151,9 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run bundle -- --bundles appimage,deb,rpm
 
+      - name: Let the AppImage use the host graphics stack
+        run: ./.github/scripts/appimage-host-libs.sh
+
       - name: Smoke-test the AppImage under Xvfb
         run: ./.github/scripts/linux-smoke.sh
 

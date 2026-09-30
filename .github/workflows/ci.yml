@@ -190,6 +190,9 @@ jobs:
         run: npm run bundle -- --bundles appimage,deb,rpm
         working-directory: launcher
 
+      - name: Let the AppImage use the host graphics stack
+        run: ./.github/scripts/appimage-host-libs.sh
+
       - name: Smoke-test the AppImage under Xvfb
         run: ./.github/scripts/linux-smoke.sh
 
@@ -205,4 +208,5 @@ jobs:
             linux-smoke-result.txt
             launcher.log
             x-tree.txt
+            appimage-removed-libs.txt
           if-no-files-found: warn

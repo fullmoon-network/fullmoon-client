@@ -31,6 +31,9 @@
   "bundle": {
     "active": true,
     "publisher": "Fullmoon",
+    "category": "Game",
+    "shortDescription": "풀문 네트워크 전용 마인크래프트 런처",
+    "longDescription": "풀문 네트워크의 로비와 야생 서버에 들어가기 위한 마인크래프트 런처예요. 게임과 인게임 모드를 함께 설치하고 실행해 줘요.",
     "targets": ["nsis"],
     "resources": ["resources/mods/*.jar"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico"]
