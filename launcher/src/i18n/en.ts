@@ -359,7 +359,7 @@ const en: Dict = {
     privacy: "Privacy",
     about: "About",
     javaRuntime: "Java runtime",
-    javaNone: "No Java found. Install Java 21 or newer, then rescan.",
+    javaNone: "No Java found. Install Java 25 or newer, then rescan.",
     javaReq: "{mc} needs Java {major} or newer",
     javaMeets: "picked {v} · ok",
     javaShort: "picked {v} · too old",

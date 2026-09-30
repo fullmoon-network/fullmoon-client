@@ -357,7 +357,7 @@ const ko = {
     privacy: "프라이버시",
     about: "정보",
     javaRuntime: "Java 런타임",
-    javaNone: "설치된 Java를 찾지 못했어요. Java 21 이상을 설치하고 다시 검색해 주세요.",
+    javaNone: "설치된 Java를 찾지 못했어요. Java 25 이상을 설치하고 다시 검색해 주세요.",
     javaReq: "{mc} · Java {major} 이상 필요",
     javaMeets: "선택 {v} · 충족",
     javaShort: "선택 {v} · 미달",

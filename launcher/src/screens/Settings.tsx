@@ -15,7 +15,7 @@ const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "
 
 /* Mirrors java.rs `major_of` — Java 8 reports itself as 1.8.0_x. The floor is
    MIN_MAJOR there; the two have to move together. */
-const JAVA_MIN_MAJOR = 21;
+const JAVA_MIN_MAJOR = 25;
 function javaMajor(version: string): number {
   const head = version.split(/[.\-+]/)[0] ?? "0";
   if (head === "1") return Number(version.split(".")[1] ?? 0) || 0;

@@ -1,7 +1,8 @@
 /* Real JDK discovery. Candidates come from JAVA_HOME, PATH and the vendor
-   install roots people actually end up with on Windows (Adoptium, Microsoft,
-   Zulu, Graal, plus Mojang's own bundled runtimes); each is then asked what
-   it is with `java -version`, because a path proves nothing. */
+   install roots people actually end up with (Windows: Adoptium, Microsoft,
+   Zulu, Graal; Linux: /usr/lib/jvm, SDKMAN, IntelliJ's ~/.jdks; plus Mojang's
+   own bundled runtimes on both); each is then asked what it is with
+   `java -version`, because a path proves nothing. */
 use std::{
     collections::BTreeSet,
     path::{Path, PathBuf},
@@ -9,9 +10,11 @@ use std::{
 
 use crate::{error::Result, model::JavaRuntime};
 
-/// Minecraft 26.x runs on Java 21+; anything older is listed but never
-/// recommended, so the picker can still show a user their old 8.
-const MIN_MAJOR: u32 = 21;
+/// Minecraft 26.1 ships `java-runtime-epsilon` (major 25) in its version json and its classes
+/// are compiled for it, so a Java 21 dies with UnsupportedClassVersionError. Anything older is
+/// listed but never recommended, so the picker can still show a user their old 8. The frontend
+/// mirrors this as `JAVA_MIN_MAJOR` in Settings.tsx; the two move together.
+const MIN_MAJOR: u32 = 25;
 
 pub async fn detect() -> Result<Vec<JavaRuntime>> {
     let mut seen = BTreeSet::new();
@@ -39,6 +42,29 @@ pub async fn detect() -> Result<Vec<JavaRuntime>> {
 }
 
 /// Every `java` executable worth asking about, before deduplication.
+/// How far below a vendor root a JDK home may sit. Mojang nests three deep:
+/// `<root>/<component>/<platform>/<component>/bin/java`.
+const MAX_DEPTH: usize = 3;
+
+/// Every `<dir>/bin/<exe>` in the tree under `root`, `depth` levels down. macOS bundles keep
+/// their home under `Contents/Home`, so that one is tried on every directory as well.
+async fn collect_java_homes(root: &Path, depth: usize, exe: &str, found: &mut Vec<PathBuf>) {
+    let mut level = vec![root.to_path_buf()];
+    for _ in 0..depth {
+        let mut next = Vec::new();
+        for dir in &level {
+            let Ok(mut entries) = tokio::fs::read_dir(dir).await else { continue };
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                let sub = entry.path();
+                found.push(sub.join("bin").join(exe));
+                found.push(sub.join("Contents").join("Home").join("bin").join(exe));
+                next.push(sub);
+            }
+        }
+        level = next;
+    }
+}
+
 async fn candidates() -> Vec<PathBuf> {
     let exe_name = if cfg!(windows) { "java.exe" } else { "java" };
     let mut found = Vec::new();
@@ -54,17 +80,7 @@ async fn candidates() -> Vec<PathBuf> {
     }
 
     for root in vendor_roots() {
-        let Ok(mut entries) = tokio::fs::read_dir(&root).await else { continue };
-        while let Ok(Some(entry)) = entries.next_entry().await {
-            let dir = entry.path();
-            found.push(dir.join("bin").join(exe_name));
-            // Mojang nests one more level: <root>/<component>/<platform>/bin
-            if let Ok(mut inner) = tokio::fs::read_dir(&dir).await {
-                while let Ok(Some(sub)) = inner.next_entry().await {
-                    found.push(sub.path().join("bin").join(exe_name));
-                }
-            }
-        }
+        collect_java_homes(&root, MAX_DEPTH, exe_name, &mut found).await;
     }
 
     found
@@ -90,8 +106,42 @@ fn vendor_roots() -> Vec<PathBuf> {
             roots.push(PathBuf::from(appdata).join(".minecraft").join("runtime"));
         }
     } else {
-        roots.push(PathBuf::from("/usr/lib/jvm"));
-        roots.push(PathBuf::from("/Library/Java/JavaVirtualMachines"));
+        roots.extend(unix_roots(dirs::home_dir().as_deref()));
+    }
+    roots
+}
+
+/// Where Linux (and macOS) keep JDKs: distro packages, the official launcher's runtimes,
+/// IntelliJ's downloads, SDKMAN and the other version managers, Prism/MultiMC's own copies.
+fn unix_roots(home: Option<&Path>) -> Vec<PathBuf> {
+    let mut roots: Vec<PathBuf> = [
+        "/usr/lib/jvm",   // Debian, Ubuntu, Arch, Fedora (`/usr/lib/jvm/java-25-openjdk-amd64`)
+        "/usr/lib64/jvm", // openSUSE
+        "/usr/java",      // Oracle's rpm
+        "/opt/java",
+        "/opt/jdk",
+        "/opt/openjdk",
+        "/Library/Java/JavaVirtualMachines",
+    ]
+    .into_iter()
+    .map(PathBuf::from)
+    .collect();
+    if let Some(h) = home {
+        for rel in [
+            ".minecraft/runtime", // the official launcher: <component>/<platform>/<component>/bin
+            ".var/app/com.mojang.Minecraft/.minecraft/runtime", // its Flatpak
+            ".jdks",              // IntelliJ
+            ".sdkman/candidates/java",
+            ".asdf/installs/java",
+            ".local/share/mise/installs/java",
+            ".local/share/JetBrains/Toolbox/apps",
+            ".local/share/PrismLauncher/java",
+            ".local/share/multimc/java",
+            ".local/share/jdks",
+            "Library/Java/JavaVirtualMachines",
+        ] {
+            roots.push(h.join(rel));
+        }
     }
     roots
 }
@@ -121,12 +171,20 @@ async fn probe(exe: &Path) -> Option<JavaRuntime> {
     let arch = property(&text, "os.arch").unwrap_or_else(|| "unknown".into());
 
     Some(JavaRuntime {
-        path: exe.to_string_lossy().replace('/', "\\"),
+        path: display_path(exe),
         version,
         vendor,
         arch,
         recommended: false,
     })
+}
+
+/// The UI compares this string with the saved `javaPath`, so it must be exactly what gets
+/// spawned. Windows wants backslashes; everywhere else the path is already right and a
+/// backslash would turn a filename into a different one.
+fn display_path(exe: &Path) -> String {
+    let s = exe.to_string_lossy();
+    if cfg!(windows) { s.replace('/', "\\") } else { s.into_owned() }
 }
 
 fn property(text: &str, key: &str) -> Option<String> {
@@ -164,4 +222,60 @@ fn dunce_canonicalize(p: &Path) -> std::io::Result<PathBuf> {
     Ok(PathBuf::from(
         s.strip_prefix(r"\\?\").map(str::to_owned).unwrap_or_else(|| s.to_string()),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn scratch(tag: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("fullmoon-java-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn java_25_is_the_floor_and_java_8_reads_as_8() {
+        assert_eq!(MIN_MAJOR, 25);
+        assert_eq!(major_of("25.0.3"), 25);
+        assert_eq!(major_of("21.0.5"), 21);
+        assert_eq!(major_of("1.8.0_402"), 8);
+        assert_eq!(major_of("26-ea"), 26);
+    }
+
+    #[test]
+    fn linux_roots_cover_distro_and_home_installs() {
+        let roots = unix_roots(Some(Path::new("/home/p")));
+        for want in [
+            "/usr/lib/jvm",
+            "/home/p/.minecraft/runtime",
+            "/home/p/.jdks",
+            "/home/p/.sdkman/candidates/java",
+        ] {
+            assert!(roots.contains(&PathBuf::from(want)), "missing {want}");
+        }
+        assert!(!unix_roots(None).is_empty());
+    }
+
+    #[test]
+    fn finds_flat_and_mojang_nested_homes() {
+        let root = scratch("nested");
+        // Debian: <root>/java-25-openjdk-amd64/bin/java
+        std::fs::create_dir_all(root.join("java-25-openjdk-amd64/bin")).unwrap();
+        // Mojang: <root>/java-runtime-epsilon/linux/java-runtime-epsilon/bin/java
+        std::fs::create_dir_all(root.join("java-runtime-epsilon/linux/java-runtime-epsilon/bin")).unwrap();
+        let mut found = Vec::new();
+        let rt = tokio::runtime::Builder::new_current_thread().build().unwrap();
+        rt.block_on(collect_java_homes(&root, MAX_DEPTH, "java", &mut found));
+        assert!(found.contains(&root.join("java-25-openjdk-amd64/bin/java")));
+        assert!(found.contains(&root.join("java-runtime-epsilon/linux/java-runtime-epsilon/bin/java")));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_unix_path_keeps_its_slashes() {
+        assert_eq!(display_path(Path::new("/usr/lib/jvm/x/bin/java")), "/usr/lib/jvm/x/bin/java");
+    }
 }
