@@ -127,6 +127,12 @@ pub async fn versions_manifest(state: State<'_, AppState>) -> Result<Vec<Version
     Ok(meta::summaries(&m))
 }
 
+/// Disk only, so the boot never waits on launchermeta; empty before the first fetch.
+#[tauri::command]
+pub async fn versions_cached() -> Result<Vec<VersionSummary>> {
+    Ok(meta::cached().await.map(|m| meta::summaries(&m)).unwrap_or_default())
+}
+
 #[tauri::command]
 pub async fn instances_list(state: State<'_, AppState>) -> Result<Vec<Instance>> {
     Ok(state.instances.lock().await.clone())
@@ -355,6 +361,7 @@ pub async fn mod_toggle(
         &game,
         &loader,
         concurrency,
+        mods::Policy::Reuse,
     )
     .await
 }
@@ -656,6 +663,7 @@ async fn start_game(
         &inst.version_id,
         &inst.loader,
         settings.concurrency as usize,
+        mods::Policy::Reuse,
     )
     .await?;
     let version: crate::version::VersionJson = {
