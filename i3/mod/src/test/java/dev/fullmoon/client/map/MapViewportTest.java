@@ -56,4 +56,16 @@ class MapViewportTest {
         assertThrows(IllegalArgumentException.class,
             () -> new MapViewport(0.0, 0.0, 2).project(0.0, 0.0, 10, 0));
     }
+
+    @Test
+    void theBlockAtAColumnAndRowIsWhatWorldAtReports() {
+        MapViewport viewport = new MapViewport(100.4, -39.6, 4);
+        for (int column = 0; column < 13; column++) {
+            for (int row = 0; row < 9; row++) {
+                MapViewport.WorldPoint point = viewport.worldAt(column, row, 13, 9);
+                assertEquals(point.x(), viewport.blockX(column, 13));
+                assertEquals(point.z(), viewport.blockZ(row, 9));
+            }
+        }
+    }
 }

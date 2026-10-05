@@ -23,10 +23,19 @@ public record MapViewport(double centerX, double centerZ, int blocksPerCell) {
     }
 
     public WorldPoint worldAt(int column, int row, int columns, int rows) {
-        requireRaster(columns, rows);
-        double x = centerX + (column - midpoint(columns)) * blocksPerCell;
-        double z = centerZ + (row - midpoint(rows)) * blocksPerCell;
-        return new WorldPoint((int) Math.floor(x), (int) Math.floor(z));
+        return new WorldPoint(blockX(column, columns), blockZ(row, rows));
+    }
+
+    /** The block column a raster column sits over: {@link #worldAt}'s x, without the point. */
+    public int blockX(int column, int columns) {
+        requireRaster(columns, 1);
+        return (int) Math.floor(centerX + (column - midpoint(columns)) * blocksPerCell);
+    }
+
+    /** The block row a raster row sits over: {@link #worldAt}'s z, without the point. */
+    public int blockZ(int row, int rows) {
+        requireRaster(1, rows);
+        return (int) Math.floor(centerZ + (row - midpoint(rows)) * blocksPerCell);
     }
 
     public MapViewport panCells(int columns, int rows) {

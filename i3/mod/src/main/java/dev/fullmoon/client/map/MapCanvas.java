@@ -48,16 +48,12 @@ public final class MapCanvas {
             TerrainSnapshot snapshot, MapViewport viewport) {
         int gridColor = Rgb.alpha(Tokens.Color.LINE_HAIRLINE, 0.52f);
         for (int column = 0; column < snapshot.width(); column++) {
-            MapViewport.WorldPoint point = viewport.worldAt(
-                column, 0, snapshot.width(), snapshot.height());
-            if (Math.floorMod(point.x(), REGION_GRID_BLOCKS) < viewport.blocksPerCell()) {
+            if (Math.floorMod(viewport.blockX(column, snapshot.width()), REGION_GRID_BLOCKS) < viewport.blocksPerCell()) {
                 painter.vRule(raster.x() + column * cellSize, raster.y(), raster.h(), gridColor);
             }
         }
         for (int row = 0; row < snapshot.height(); row++) {
-            MapViewport.WorldPoint point = viewport.worldAt(
-                0, row, snapshot.width(), snapshot.height());
-            if (Math.floorMod(point.z(), REGION_GRID_BLOCKS) < viewport.blocksPerCell()) {
+            if (Math.floorMod(viewport.blockZ(row, snapshot.height()), REGION_GRID_BLOCKS) < viewport.blocksPerCell()) {
                 painter.hRule(raster.x(), raster.y() + row * cellSize, raster.w(), gridColor);
             }
         }

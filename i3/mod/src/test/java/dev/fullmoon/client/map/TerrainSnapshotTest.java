@@ -76,4 +76,30 @@ class TerrainSnapshotTest {
         assertThrows(IndexOutOfBoundsException.class, () -> snapshot.cell(0, -1));
         assertTrue(snapshot.runs().getFirst().mapped());
     }
+
+    @Test
+    void aRasterBuiltFromPrimitivesIsTheSnapshotItsCellsDescribe() {
+        TerrainSnapshot fromCells = new TerrainSnapshot(3, 2, List.of(
+            GRASS, GRASS, UNKNOWN,
+            WATER, SHOAL, UNKNOWN));
+        TerrainSnapshot fromRasters = TerrainSnapshot.ofRasters(3, 2,
+            new int[] {11, 11, 7, 13, 7, 7},
+            new int[] {64, 64, 0, 62, 63, 0},
+            new boolean[] {true, true, false, true, true, false});
+
+        assertEquals(fromCells, fromRasters);
+        assertEquals(fromCells.runs(), fromRasters.runs());
+        assertEquals(fromCells.cells(), fromRasters.cells());
+        assertEquals(fromCells.mappedPercent(), fromRasters.mappedPercent());
+        assertEquals(67, fromRasters.mappedPercent());
+        assertEquals(WATER, fromRasters.cell(0, 1));
+    }
+
+    @Test
+    void rastersOfTheWrongSizeAreRefused() {
+        assertThrows(IllegalArgumentException.class, () -> TerrainSnapshot.ofRasters(2, 2,
+            new int[4], new int[3], new boolean[4]));
+        assertThrows(IllegalArgumentException.class, () -> TerrainSnapshot.ofRasters(0, 2,
+            new int[0], new int[0], new boolean[0]));
+    }
 }
