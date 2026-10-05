@@ -8,7 +8,7 @@
     "dev": "vite --host 127.0.0.1 --port 5921 --strictPort",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 5921",
-    "test": "node --experimental-strip-types --test scripts/account-contract.test.ts scripts/contrast.test.ts scripts/copy-tone.test.ts scripts/hud-contract.test.ts scripts/launch-steps.test.ts scripts/log-batch.test.ts scripts/log-level.test.ts scripts/moon-phase.test.ts scripts/release-contract.test.ts scripts/shell-layering.test.ts",
+    "test": "node --experimental-strip-types --test scripts/account-contract.test.ts scripts/contrast.test.ts scripts/copy-tone.test.ts scripts/hud-contract.test.ts scripts/launch-steps.test.ts scripts/log-batch.test.ts scripts/log-level.test.ts scripts/moon-phase.test.ts scripts/render-gate.test.ts scripts/release-contract.test.ts scripts/shell-layering.test.ts",
     "verify": "node scripts/verify.mjs",
     "assets": "node scripts/generate-assets.mjs",
     "rebrand": "node scripts/rebrand.mjs",
