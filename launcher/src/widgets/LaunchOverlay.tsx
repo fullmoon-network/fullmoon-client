@@ -3,6 +3,7 @@ import { Icon } from "../components/Icon";
 import { Button } from "../components/ui";
 import { Moon } from "../components/Moon";
 import { useStore } from "../state/store";
+import { useLogs } from "../state/logs";
 import { launchProgress } from "../core/launchSteps";
 import { useT } from "../i18n";
 import type { LogLevel } from "../core/bindings";
@@ -19,7 +20,8 @@ const LEVEL_CLASS: Record<LogLevel, string> = {
    drawn as a moon that fills one step at a time — never a timer and never an estimate.
    The raw log stays one press away, folded, for the player who wants to watch it scroll. */
 export function LaunchOverlay({ onHide }: { onHide: () => void }) {
-  const { game, logs, instances, killGame } = useStore();
+  const { game, instances, killGame } = useStore();
+  const { logs } = useLogs();
   const { t } = useT();
   const [showLog, setShowLog] = useState(false);
   const tailRef = useRef<HTMLDivElement>(null);

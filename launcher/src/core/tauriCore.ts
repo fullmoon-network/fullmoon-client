@@ -84,6 +84,7 @@ export class TauriCore implements PinionCore {
   auth_add_offline = (username: string) => this.call<Account>("auth_add_offline", { username });
 
   // versions / instances
+  versions_cached = () => this.call<VersionSummary[]>("versions_cached");
   versions_manifest = () => this.call<VersionSummary[]>("versions_manifest");
   instances_list = () => this.call<Instance[]>("instances_list");
   instance_create = (spec: InstanceSpec) => this.call<Instance>("instance_create", { spec });
