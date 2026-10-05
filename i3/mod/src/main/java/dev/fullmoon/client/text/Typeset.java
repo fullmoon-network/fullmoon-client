@@ -2,6 +2,7 @@ package dev.fullmoon.client.text;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.ToIntFunction;
@@ -45,8 +46,14 @@ public final class Typeset {
     /** The GUI scales a provider set is baked for; any other scale takes the nearest of these. */
     private static final int[] SCALES = {2, 3, 4};
 
+    /** Strings kept per face before its table is dropped; a screen of live text is a few hundred. */
+    private static final int MEMO_LIMIT = 2048;
+
     private static final Map<String, Style> STYLES = new HashMap<>();
-    private static final Map<String, Float> DIGIT_CELLS = new HashMap<>();
+    private static final Map<Tokens.Type.Role, String[]> FONT_IDS = new IdentityHashMap<>();
+    private static final Map<Tokens.Type.Role, Style[]> ROLE_STYLES = new IdentityHashMap<>();
+    private static final Map<Style, Face> FACES = new IdentityHashMap<>();
+    private static int epoch;
     /**
      * How far under the middle of its line box a face's baseline sits, as a share of the em:
      * (ascender − descender) / 2 in the face's own metrics, which is where the mockups' CSS line
@@ -69,13 +76,25 @@ public final class Typeset {
 
     /** {@code fullmoon:body_x3} for body at scale 3; scale 1 shares the ×2 atlas, 5 and up the ×4. */
     public static String fontId(Tokens.Type.Role role, int guiScale) {
-        int best = SCALES[0];
-        for (int scale : SCALES) {
-            if (Math.abs(scale - guiScale) < Math.abs(best - guiScale)) {
-                best = scale;
+        String[] ids = FONT_IDS.get(role);
+        if (ids == null) {
+            ids = new String[SCALES.length];
+            for (int i = 0; i < SCALES.length; i++) {
+                ids[i] = role.font() + "_x" + SCALES[i];
+            }
+            FONT_IDS.put(role, ids);
+        }
+        return ids[scaleIndex(guiScale)];
+    }
+
+    private static int scaleIndex(int guiScale) {
+        int best = 0;
+        for (int i = 1; i < SCALES.length; i++) {
+            if (Math.abs(SCALES[i] - guiScale) < Math.abs(SCALES[best] - guiScale)) {
+                best = i;
             }
         }
-        return role.font() + "_x" + best;
+        return best;
     }
 
     /**
@@ -99,7 +118,22 @@ public final class Typeset {
     }
 
     private static Style style(Tokens.Type.Role role) {
-        return styleOf(fontId(role));
+        return style(role, Minecraft.getInstance().getWindow().getGuiScale());
+    }
+
+    private static Style style(Tokens.Type.Role role, int guiScale) {
+        Style[] row = ROLE_STYLES.get(role);
+        if (row == null) {
+            row = new Style[SCALES.length];
+            ROLE_STYLES.put(role, row);
+        }
+        int index = scaleIndex(guiScale);
+        Style style = row[index];
+        if (style == null) {
+            style = styleOf(fontId(role, guiScale));
+            row[index] = style;
+        }
+        return style;
     }
 
     private static Style styleOf(String fontId) {
@@ -118,11 +152,11 @@ public final class Typeset {
 
     /** The role's text as a component, for the game's own text and tooltip APIs. */
     public static Component say(Tokens.Type.Role role, String text) {
-        return Component.literal(text).withStyle(style(roleFor(role, text)));
+        return shaped(style(roleFor(role, text)), text).component();
     }
 
     public static int width(Tokens.Type.Role role, String text) {
-        return font().width(say(role, text));
+        return shaped(style(roleFor(role, text)), text).width();
     }
 
     /** A server's own text set in the role's face, keeping the colours and styles it carries. */
@@ -162,16 +196,19 @@ public final class Typeset {
         return lines(t -> width(role, t), text, width, maxLines);
     }
 
+    /** Prefix widths never shrink as a prefix grows, so the longest one that fits is found by halving. */
     static String fittingPrefix(ToIntFunction<String> measure, String text, int width) {
-        int end = 0;
-        while (end < text.length()) {
-            int next = end + Character.charCount(text.codePointAt(end));
-            if (measure.applyAsInt(text.substring(0, next)) > width) {
-                break;
+        int low = 0;
+        int high = text.codePointCount(0, text.length());
+        while (low < high) {
+            int mid = (low + high + 1) >>> 1;
+            if (measure.applyAsInt(text.substring(0, text.offsetByCodePoints(0, mid))) > width) {
+                high = mid - 1;
+            } else {
+                low = mid;
             }
-            end = next;
         }
-        return text.substring(0, end);
+        return text.substring(0, text.offsetByCodePoints(0, low));
     }
 
     static String ellipsized(ToIntFunction<String> measure, String text, int width) {
@@ -204,11 +241,11 @@ public final class Typeset {
 
     /** Draws left-aligned from the text's top-left corner. */
     public static int draw(Painter painter, Tokens.Type.Role role, String text, int x, int y, int color) {
-        int measured = width(role, text);
+        Shaped shaped = shaped(style(roleFor(role, text)), text);
         painter.gfx().nextStratum();
-        drawRaw(painter, role, text, x, y, color);
+        painter.gfx().text(font(), shaped.component(), x, y, painter.tint(color), false);
         painter.gfx().nextStratum();
-        return measured;
+        return shaped.width();
     }
 
     /** Draws right-aligned so that the text ends at {@code right}. */
@@ -279,18 +316,12 @@ public final class Typeset {
 
     /** The advance of the widest digit in the role — one column of a tabular figure. */
     public static float digitCell(Tokens.Type.Role role) {
-        return DIGIT_CELLS.computeIfAbsent(fontId(role), id -> {
-            float widest = 0;
-            for (char digit = '0'; digit <= '9'; digit++) {
-                widest = Math.max(widest, advance(role, String.valueOf(digit)));
-            }
-            return widest;
-        });
+        return face(style(role)).cell();
     }
 
     /** Advance of {@code text} once digits are forced onto the tabular cell. */
     public static int tabularWidth(Tokens.Type.Role role, String text) {
-        return Math.round(tabular(null, role, text, 0f, 0, 0));
+        return Math.round(tab(style(roleFor(role, text)), text).width());
     }
 
     /**
@@ -307,50 +338,25 @@ public final class Typeset {
         return Math.round(tabular(painter, role, text, (float) x, y, color));
     }
 
-    /** The tabular layout, drawn when {@code painter} is given and only measured when it is null. */
+    /** The tabular layout, drawn from the segments {@link #tab} measured the first time it saw the text. */
     private static float tabular(Painter painter, Tokens.Type.Role role, String text, float x, int y, int color) {
-        Tokens.Type.Role set = roleFor(role, text);
-        float cell = digitCell(set);
+        Tab tab = tab(style(roleFor(role, text)), text);
         float cursor = x;
-        if (painter != null) {
-            painter.gfx().nextStratum();
-        }
-        int i = 0;
-        while (i < text.length()) {
-            if (isDigit(text.charAt(i))) {
-                String glyph = String.valueOf(text.charAt(i));
-                if (painter != null) {
-                    drawIn(painter, set, glyph, Math.round(cursor + (cell - advance(set, glyph)) / 2), y, color);
-                }
-                cursor += cell;
-                i++;
-                continue;
+        int tint = painter.tint(color);
+        painter.gfx().nextStratum();
+        for (int i = 0; i < tab.segments.length; i++) {
+            Segment segment = tab.segments[i];
+            if (segment.digit) {
+                painter.gfx().text(font(), segment.component,
+                    Math.round(cursor + (tab.cell - segment.advance) / 2), y, tint, false);
+                cursor += tab.cell;
+            } else {
+                painter.gfx().text(font(), segment.component, Math.round(cursor), y, tint, false);
+                cursor += segment.advance;
             }
-            int end = i;
-            while (end < text.length() && !isDigit(text.charAt(end))) {
-                end++;
-            }
-            String run = text.substring(i, end);
-            if (painter != null) {
-                drawIn(painter, set, run, Math.round(cursor), y, color);
-            }
-            cursor += advance(set, run);
-            i = end;
         }
-        if (painter != null) {
-            painter.gfx().nextStratum();
-        }
+        painter.gfx().nextStratum();
         return cursor - x;
-    }
-
-    /** The unrounded advance of {@code text} in a role already settled by {@link #roleFor}. */
-    private static float advance(Tokens.Type.Role set, String text) {
-        return font().getSplitter().stringWidth(Component.literal(text).withStyle(style(set)));
-    }
-
-    /** Draws in a role already settled by {@link #roleFor}, so a run without Hangul keeps the line's face. */
-    private static void drawIn(Painter painter, Tokens.Type.Role set, String text, int x, int y, int color) {
-        painter.gfx().text(font(), Component.literal(text).withStyle(style(set)), x, y, painter.tint(color), false);
     }
 
     /** As {@link #tabular}, ending at {@code right}. Keeps a changing value's last digit still. */
@@ -364,15 +370,117 @@ public final class Typeset {
         return c >= '0' && c <= '9';
     }
 
-    /** Text gets its own strata so pipeline batching cannot move a later solid in front of it. */
-    private static void drawRaw(Painter painter, Tokens.Type.Role role, String text,
-            int x, int y, int color) {
-        painter.gfx().text(font(), say(role, text), x, y, painter.tint(color), false);
+    /** Bumps whenever {@link #invalidate} drops the metrics, so a width kept elsewhere knows it is stale. */
+    public static int epoch() {
+        return epoch;
     }
 
     /** Drops the memoised metrics. Called on a resource reload, when the atlases change. */
     public static void invalidate() {
-        DIGIT_CELLS.clear();
+        FACES.clear();
+        ROLE_STYLES.clear();
         STYLES.clear();
+        epoch++;
+    }
+
+    private static Face face(Style style) {
+        Face face = FACES.get(style);
+        if (face == null) {
+            face = new Face(style);
+            FACES.put(style, face);
+        }
+        return face;
+    }
+
+    private static Shaped shaped(Style style, String text) {
+        Face face = face(style);
+        Shaped shaped = face.texts.find(text);
+        if (shaped == null) {
+            Component component = Component.literal(text).withStyle(style);
+            shaped = face.texts.remember(text, new Shaped(component, font().width(component)));
+        }
+        return shaped;
+    }
+
+    private static Tab tab(Style style, String text) {
+        Face face = face(style);
+        Tab tab = face.tabs.find(text);
+        if (tab == null) {
+            tab = face.tabs.remember(text, face.layout(text));
+        }
+        return tab;
+    }
+
+    /** The unrounded advance of {@code text} in a face. */
+    private static float advance(Style style, String text) {
+        return font().getSplitter().stringWidth(Component.literal(text).withStyle(style));
+    }
+
+    /** A string as a component and the whole pixels it measures, kept so neither is rebuilt per frame. */
+    private record Shaped(Component component, int width) {}
+
+    /** One stretch of a tabular line: a single digit, or the run of anything else between digits. */
+    private record Segment(Component component, float advance, boolean digit) {}
+
+    /** A tabular line broken into segments once; {@code width} is its advance laid out from zero. */
+    private record Tab(Segment[] segments, float cell, float width) {}
+
+    /** What is memoised for one provider's style: the strings set in it, and its digit metrics. */
+    private static final class Face {
+        private final Style style;
+        private final Memo<Shaped> texts = new Memo<>(MEMO_LIMIT);
+        private final Memo<Tab> tabs = new Memo<>(MEMO_LIMIT);
+        private float[] digitAdvances;
+        private float cell;
+
+        private Face(Style style) {
+            this.style = style;
+        }
+
+        private float cell() {
+            digits();
+            return cell;
+        }
+
+        private float[] digits() {
+            if (digitAdvances == null) {
+                float[] advances = new float[10];
+                float widest = 0;
+                for (int digit = 0; digit < 10; digit++) {
+                    advances[digit] = advance(style, String.valueOf((char) ('0' + digit)));
+                    widest = Math.max(widest, advances[digit]);
+                }
+                digitAdvances = advances;
+                cell = widest;
+            }
+            return digitAdvances;
+        }
+
+        private Tab layout(String text) {
+            float[] advances = digits();
+            List<Segment> segments = new ArrayList<>();
+            float cursor = 0;
+            int i = 0;
+            while (i < text.length()) {
+                char c = text.charAt(i);
+                if (isDigit(c)) {
+                    segments.add(new Segment(
+                        Component.literal(String.valueOf(c)).withStyle(style), advances[c - '0'], true));
+                    cursor += cell;
+                    i++;
+                    continue;
+                }
+                int end = i;
+                while (end < text.length() && !isDigit(text.charAt(end))) {
+                    end++;
+                }
+                String run = text.substring(i, end);
+                float advance = advance(style, run);
+                segments.add(new Segment(Component.literal(run).withStyle(style), advance, false));
+                cursor += advance;
+                i = end;
+            }
+            return new Tab(segments.toArray(new Segment[0]), cell, cursor);
+        }
     }
 }
