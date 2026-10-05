@@ -7,6 +7,8 @@ import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.render.Painter;
 import dev.fullmoon.client.text.Typeset;
 
+import net.minecraft.client.Minecraft;
+
 /**
  * Base class for HUD elements: anchor state, and the chip every readout is drawn as — sixteen
  * pixels of HUD glass with no border, the value large in the row face and its unit small in
@@ -31,6 +33,13 @@ public abstract class BaseHudElement implements HudElement {
     private int offsetX;
     private int offsetY;
     private float scale = 1.0f;
+
+    /** The last chip measured: a chip is measured for its bounds, again for the sidebar's, and drawn. */
+    private List<Part> measuredParts;
+    private int measuredLead;
+    private int measuredEpoch;
+    private int measuredScale;
+    private int measuredWidth;
 
     protected BaseHudElement(String id, String label, String category, boolean enabled,
             Anchor anchor, int offsetX, int offsetY) {
@@ -122,8 +131,25 @@ public abstract class BaseHudElement implements HudElement {
         return 0;
     }
 
-    /** The width of a chip holding {@code parts}, after {@code lead} pixels of dot or moon. */
-    protected static int chipWidth(int lead, List<Part> parts) {
+    /**
+     * The width of a chip holding {@code parts}, after {@code lead} pixels of dot or moon. The
+     * same list object is the same chip, so a caller that hands back the list it was given while
+     * nothing under it changed is not measured again; a font reload or a new GUI scale is.
+     */
+    protected int chipWidth(int lead, List<Part> parts) {
+        int epoch = Typeset.epoch();
+        int guiScale = Minecraft.getInstance().getWindow().getGuiScale();
+        if (parts != measuredParts || lead != measuredLead || epoch != measuredEpoch || guiScale != measuredScale) {
+            measuredWidth = measure(lead, parts);
+            measuredParts = parts;
+            measuredLead = lead;
+            measuredEpoch = epoch;
+            measuredScale = guiScale;
+        }
+        return measuredWidth;
+    }
+
+    private static int measure(int lead, List<Part> parts) {
         int w = PADDING_H * 2 + lead;
         for (int i = 0; i < parts.size(); i++) {
             Part part = parts.get(i);

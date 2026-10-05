@@ -13,6 +13,10 @@ import net.minecraft.client.multiplayer.PlayerInfo;
 public final class PingHud extends BaseHudElement {
     private static final int GOOD_MS = 60;
     private static final int FAIR_MS = 150;
+    private static final List<Part> SAMPLE = List.of(new Part("18", "ms"));
+
+    private List<Part> live = List.of();
+    private int livePing = Integer.MIN_VALUE;
 
     public PingHud() {
         super("ping", "네트워크 핑", "네트워크", true, Anchor.TOP_RIGHT, Tokens.Space.COZY,
@@ -42,8 +46,16 @@ public final class PingHud extends BaseHudElement {
         drawChip(painter, bounds, dot, parts(client, isEditor));
     }
 
-    private static List<Part> parts(Minecraft client, boolean isEditor) {
-        return List.of(new Part(Integer.toString(isEditor ? 18 : ping(client)), "ms"));
+    private List<Part> parts(Minecraft client, boolean isEditor) {
+        if (isEditor) {
+            return SAMPLE;
+        }
+        int ping = ping(client);
+        if (ping != livePing) {
+            livePing = ping;
+            live = List.of(new Part(Integer.toString(ping), "ms"));
+        }
+        return live;
     }
 
     private static int ping(Minecraft client) {

@@ -2,6 +2,7 @@ package dev.fullmoon.client.hud;
 
 import java.time.Instant;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -16,6 +17,11 @@ import net.minecraft.client.Minecraft;
 public final class ClockHud extends BaseHudElement {
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final float MOON_R = 5.0f;
+
+    /** The chip and the moon for the wall-clock second last read; both move far slower than a frame. */
+    private List<Part> live = List.of();
+    private MoonPhase moon;
+    private long liveSecond = Long.MIN_VALUE;
 
     public ClockHud() {
         super("clock", "시계", "일반", true, Anchor.TOP_RIGHT, Tokens.Space.COZY, Tokens.Space.COZY);
@@ -32,7 +38,7 @@ public final class ClockHud extends BaseHudElement {
 
     @Override
     protected int drawLeadingMark(Painter painter, int x, float cy) {
-        MoonPhase moon = MoonPhase.at(Instant.now());
+        parts();
         painter.moon(x + MOON_R, cy, MOON_R, moon.lit(), moon.waxing(),
             Tokens.Color.MOON_LIT, Tokens.Color.MOON_SHADOW);
         return moonWidth();
@@ -48,7 +54,15 @@ public final class ClockHud extends BaseHudElement {
         drawChip(painter, bounds, 0, parts());
     }
 
-    private static List<Part> parts() {
-        return List.of(new Part(LocalTime.now().format(TIME_FMT), ""));
+    private List<Part> parts() {
+        long now = System.currentTimeMillis();
+        long second = Math.floorDiv(now, 1000L);
+        if (second != liveSecond) {
+            liveSecond = second;
+            Instant instant = Instant.ofEpochMilli(now);
+            live = List.of(new Part(LocalTime.ofInstant(instant, ZoneId.systemDefault()).format(TIME_FMT), ""));
+            moon = MoonPhase.at(instant);
+        }
+        return live;
     }
 }

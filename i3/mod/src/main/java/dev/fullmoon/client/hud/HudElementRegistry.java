@@ -20,6 +20,8 @@ public final class HudElementRegistry {
     private static final HudElementRegistry INSTANCE = new HudElementRegistry();
 
     private final Map<String, HudElement> registry = new LinkedHashMap<>();
+    /** What {@link #elements} hands out every frame, rebuilt only when an element is registered. */
+    private List<HudElement> snapshot = List.of();
     private final HudWatch watch = new HudWatch();
     private Path configPath;
     private int gridSnap = HudGrid.DEFAULT_STEP;
@@ -48,10 +50,11 @@ public final class HudElementRegistry {
     public void register(HudElement element) {
         Objects.requireNonNull(element, "element");
         registry.put(element.id(), element);
+        snapshot = Collections.unmodifiableList(new ArrayList<>(registry.values()));
     }
 
     public List<HudElement> elements() {
-        return Collections.unmodifiableList(new ArrayList<>(registry.values()));
+        return snapshot;
     }
 
     public HudElement get(String id) {
