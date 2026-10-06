@@ -113,6 +113,11 @@ pub fn instance_state_file(id: &str) -> PathBuf {
     instance_dir(id).join("instance.json")
 }
 
+/// What `mods::apply` last put in `mods/` and how it was verified — see `modlock.rs`.
+pub fn instance_mod_lock_file(id: &str) -> PathBuf {
+    instance_dir(id).join("mods.lock.json")
+}
+
 /// The launcher's own shipped files — the Pinion mod jar lives here. An
 /// installed build has them beside the binary; `tauri dev` runs from the crate,
 /// where they are still only in the source tree.

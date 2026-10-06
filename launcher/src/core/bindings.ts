@@ -276,6 +276,8 @@ export interface PinionCore {
   auth_add_offline(username: string): Promise<Account>;
 
   // versions / instances
+  /** what the last successful fetch left on disk; never touches the network */
+  versions_cached(): Promise<VersionSummary[]>;
   versions_manifest(): Promise<VersionSummary[]>;
   instances_list(): Promise<Instance[]>;
   instance_create(spec: InstanceSpec): Promise<Instance>;

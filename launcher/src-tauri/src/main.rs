@@ -14,6 +14,7 @@ mod java;
 mod launch;
 mod meta;
 mod model;
+mod modlock;
 mod mods;
 mod offline;
 mod paths;
@@ -45,6 +46,7 @@ fn main() {
             commands::java_detect,
             commands::system_memory_mb,
             commands::versions_manifest,
+            commands::versions_cached,
             commands::instances_list,
             commands::instance_create,
             commands::instance_update,

@@ -70,6 +70,13 @@ pub async fn manifest(client: &reqwest::Client) -> Result<VersionManifest> {
     }
 }
 
+/// The on-disk copy alone, never the network — what the first paint can show
+/// while `manifest` refreshes in the background. `None` before the first
+/// successful fetch.
+pub async fn cached() -> Option<VersionManifest> {
+    store::read_or(&cache_file(), || None).await
+}
+
 /// Releases and snapshots the UI is allowed to offer, newest first.
 pub fn summaries(m: &VersionManifest) -> Vec<VersionSummary> {
     m.versions

@@ -19,7 +19,7 @@ from fontTools.ttLib import TTFont
 
 from _glyf import to_glyf
 
-SOURCE_DIR = pathlib.Path(__file__).resolve().parents[1].parent / "launcher/public/fonts"
+SOURCE_DIR = pathlib.Path(__file__).resolve().parents[1].parent / "launcher/fonts-src"
 OUT_DIR = pathlib.Path(__file__).resolve().parents[1] / "mod/src/main/resources/assets/fullmoon/font"
 FACES = [
     ("Pretendard-Regular.otf", "sans-regular.ttf", "Regular"),

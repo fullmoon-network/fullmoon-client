@@ -270,6 +270,7 @@ pub async fn run(
         game,
         loader,
         concurrency,
+        crate::mods::Policy::Refresh,
     )
     .await?;
     emit(app, instance_id, InstallStage::Mods, 1.0);

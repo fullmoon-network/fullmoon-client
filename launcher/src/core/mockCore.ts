@@ -635,6 +635,10 @@ export class MockCore implements PinionCore {
 
   /* ── versions / instances ── */
 
+  async versions_cached(): Promise<VersionSummary[]> {
+    return VERSIONS.map((v) => ({ ...v }));
+  }
+
   async versions_manifest(): Promise<VersionSummary[]> {
     await latency();
     return VERSIONS.map((v) => ({ ...v }));

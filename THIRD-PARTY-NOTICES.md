@@ -21,8 +21,8 @@ verifies every download against Mojang's published SHA1 before use.
 
 | Component | Source | Terms |
 |---|---|---|
-| Pretendard (Regular/SemiBold/Bold/ExtraBold, bundled in launcher `public/fonts/`; Regular/SemiBold/Bold subset and renamed "Fullmoon Sans" in the mod, see `i3/mod/src/main/resources/licenses/NOTICE-fonts.md`) | github.com/orioncactus/pretendard | SIL Open Font License 1.1 |
-| Hahmlet (variable, bundled in launcher `public/fonts/`; instanced at 600/700, subset and renamed "Fullmoon Serif" in the mod) | github.com/hyper-type/hahmlet | SIL Open Font License 1.1 |
+| Pretendard (Regular/SemiBold/Bold/ExtraBold, sources in launcher `fonts-src/`, shipped as subset WOFF2 renamed "Fullmoon Figures" in `public/fonts/`; Regular/SemiBold/Bold subset and renamed "Fullmoon Sans" in the mod, see `i3/mod/src/main/resources/licenses/NOTICE-fonts.md`) | github.com/orioncactus/pretendard | SIL Open Font License 1.1 |
+| Hahmlet (variable, sources in launcher `fonts-src/`, shipped as WOFF2 renamed "Fullmoon Display" in `public/fonts/`; instanced at 600/700, subset and renamed "Fullmoon Serif" in the mod) | github.com/hyper-type/hahmlet | SIL Open Font License 1.1 |
 
 ## Sounds
 

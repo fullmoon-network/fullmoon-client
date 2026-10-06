@@ -7,14 +7,19 @@ import { Dock } from "./components/Dock";
 import { ProgressDock, Toasts } from "./components/Docks";
 import { LaunchOverlay } from "./widgets/LaunchOverlay";
 import { PlayScreen } from "./screens/Play";
-import { DashboardScreen } from "./screens/Dashboard";
-import { ModsScreen } from "./screens/Mods";
-import { CosmeticsScreen } from "./screens/Cosmetics";
-import { AccountsScreen } from "./screens/Accounts";
-import { SettingsScreen } from "./screens/Settings";
+import { lazyComponent } from "./components/lazyComponent";
+import Skin3D from "./widgets/Skin3D";
 import { useStore } from "./state/store";
 import { play as cue } from "./core/uiSounds";
 import { useT } from "./i18n";
+
+/* the play screen is the first view; the others load on first use, and are fetched in the
+   background once the first view is up so a click never waits for a chunk */
+const DashboardScreen = lazyComponent(() => import("./screens/Dashboard").then((m) => ({ default: m.DashboardScreen })));
+const ModsScreen = lazyComponent(() => import("./screens/Mods").then((m) => ({ default: m.ModsScreen })));
+const CosmeticsScreen = lazyComponent(() => import("./screens/Cosmetics").then((m) => ({ default: m.CosmeticsScreen })));
+const AccountsScreen = lazyComponent(() => import("./screens/Accounts").then((m) => ({ default: m.AccountsScreen })));
+const SettingsScreen = lazyComponent(() => import("./screens/Settings").then((m) => ({ default: m.SettingsScreen })));
 
 const SCREENS = {
   play: PlayScreen,
@@ -25,6 +30,17 @@ const SCREENS = {
   accounts: AccountsScreen,
   settings: SettingsScreen,
 } as const;
+
+function preloadChunks() {
+  const chunks = [DashboardScreen, ModsScreen, CosmeticsScreen, AccountsScreen, SettingsScreen, Skin3D];
+  let i = 0;
+  const next = () => {
+    if (i < chunks.length) chunks[i++].preload().then(() => idle(next), () => idle(next));
+  };
+  idle(next);
+}
+const idle = (fn: () => void) =>
+  typeof requestIdleCallback === "function" ? requestIdleCallback(fn, { timeout: 2000 }) : setTimeout(fn, 300);
 
 export default function App() {
   const { ready, screen, settings, game, overlayHiddenFor, setOverlayHidden } = useStore();
@@ -40,6 +56,10 @@ export default function App() {
   useEffect(() => {
     if (settings) setLang(settings.language);
   }, [settings, setLang]);
+
+  useEffect(() => {
+    if (ready) preloadChunks();
+  }, [ready]);
 
   /* global command palette hotkey */
   useEffect(() => {

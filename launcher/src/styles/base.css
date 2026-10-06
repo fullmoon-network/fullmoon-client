@@ -3,50 +3,51 @@
    i3/design/tokens.json. Nothing below writes a colour of its own. */
 
 /* The body face is the game's own: the Pretendard cuts the mod bakes (assets/fullmoon/font), so a
-   launcher label and an in-game label are the same outlines and rasterise the same way. They are
+   launcher label and an in-game label are the same outlines and rasterise the same way (WOFF2
+   wrappers of those files; i3/design/make-web-fonts.py bakes every file under /fonts). They are
    a Hangul-and-Latin subset without OpenType features — no tabular figures — so the bold, which
    sets figures, is the full Pretendard Bold (as mock g sets it), and `.num` asks for the full
    Pretendard first. */
 @font-face {
   font-family: 'Fullmoon Sans';
-  src: url('../../../i3/mod/src/main/resources/assets/fullmoon/font/sans-regular.ttf') format('truetype');
+  src: url('/fonts/FullmoonSans-Regular.woff2') format('woff2');
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: 'Fullmoon Sans';
-  src: url('../../../i3/mod/src/main/resources/assets/fullmoon/font/sans-semibold.ttf') format('truetype');
+  src: url('/fonts/FullmoonSans-SemiBold.woff2') format('woff2');
   font-weight: 600;
   font-display: swap;
 }
 @font-face {
   font-family: 'Fullmoon Sans';
-  src: url('/fonts/Pretendard-Bold.otf') format('opentype');
+  src: url('/fonts/Pretendard-Bold.woff2') format('woff2');
   font-weight: 700;
   font-display: swap;
 }
 /* Pretendard in full, self-hosted like every asset we ship. */
 @font-face {
   font-family: 'Pretendard';
-  src: url('/fonts/Pretendard-Regular.otf') format('opentype');
+  src: url('/fonts/Pretendard-Regular.woff2') format('woff2');
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: 'Pretendard';
-  src: url('/fonts/Pretendard-SemiBold.otf') format('opentype');
+  src: url('/fonts/Pretendard-SemiBold.woff2') format('woff2');
   font-weight: 600;
   font-display: swap;
 }
 @font-face {
   font-family: 'Pretendard';
-  src: url('/fonts/Pretendard-Bold.otf') format('opentype');
+  src: url('/fonts/Pretendard-Bold.woff2') format('woff2');
   font-weight: 700;
   font-display: swap;
 }
 @font-face {
   font-family: 'Pretendard';
-  src: url('/fonts/Pretendard-ExtraBold.otf') format('opentype');
+  src: url('/fonts/Pretendard-ExtraBold.woff2') format('woff2');
   font-weight: 800;
   font-display: swap;
 }
@@ -54,7 +55,7 @@
    and the launcher, which can set any weight, reads the axis itself. */
 @font-face {
   font-family: 'Hahmlet';
-  src: url('/fonts/Hahmlet[wght].ttf') format('truetype');
+  src: url('/fonts/Hahmlet-Variable.woff2') format('woff2');
   font-weight: 100 900;
   font-display: swap;
 }

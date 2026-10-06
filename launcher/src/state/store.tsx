@@ -26,7 +26,6 @@ import type {
   InstanceSpec,
   JavaRuntime,
   Loadout,
-  LogLevel,
   ModCatalog,
   NewsItem,
   ServerEntry,
@@ -38,6 +37,7 @@ import type {
 } from "../core/bindings";
 import { useT } from "../i18n";
 import { setUiSoundsEnabled } from "../core/uiSounds";
+import { LogsProvider } from "./logs";
 
 export type Screen = "play" | "dashboard" | "home" | "mods" | "cosmetics" | "accounts" | "settings";
 export type SettingsTab = "java" | "perf" | "look" | "hud" | "privacy" | "about";
@@ -54,15 +54,6 @@ export interface DownloadInfo {
   pct: number;
   bytesPerSec: number;
   at: number;
-}
-
-export interface LogEntry {
-  id: number;
-  /** the run that printed it, so a surface can read one session and not the tail of the last */
-  session: string;
-  level: LogLevel;
-  line: string;
-  ts: string;
 }
 
 /** The launcher's own two preferences. They are not the core's Settings: the IPC contract stays
@@ -138,10 +129,8 @@ interface Store {
   removeServer: (id: string) => Promise<void>;
 
   game: GameState;
-  logs: LogEntry[];
   launch: (instanceId: string, server?: string) => Promise<void>;
   killGame: () => Promise<void>;
-  clearLogs: () => void;
 
   loadout: Loadout | null;
   equip: (slot: keyof Loadout, itemId: string | null) => Promise<void>;
@@ -154,7 +143,6 @@ interface Store {
 
 const Ctx = createContext<Store | null>(null);
 let toastSeq = 0;
-let logSeq = 0;
 
 /* boot fallbacks — only reached when a core call fails outright */
 const BOOT_SETTINGS: Settings = {
@@ -180,11 +168,6 @@ function soft<T>(p: Promise<T>, fallback: T, failed: string[]): Promise<T> {
     return fallback;
   });
 }
-
-const now = () =>
-  new Date().toLocaleTimeString("en-GB", { hour12: false }) +
-  "." +
-  String(new Date().getMilliseconds()).padStart(3, "0");
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { t } = useT();
@@ -245,7 +228,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [game, setGame] = useState<GameState>({
     state: "idle", sessionId: null, instanceId: null, server: null, startedAt: null, exitCode: null,
   });
-  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loadout, setLoadout] = useState<Loadout | null>(null);
   const [javaRuntimes, setJavaRuntimes] = useState<JavaRuntime[]>([]);
   const [systemMemoryMb, setSystemMemoryMb] = useState(0);
@@ -275,7 +257,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const failed: string[] = [];
       const [accs, vers, insts, mods, cos, st, nw, sv, gs, wal, wtx] = await Promise.all([
         soft(core.auth_list(), [], failed),
-        soft(core.versions_manifest(), [], failed),
+        /* disk only: the live manifest refreshes after the first paint, below */
+        soft(core.versions_cached(), [], failed),
         soft(core.instances_list(), [], failed),
         soft(core.mods_available(), { mods: [] }, failed),
         soft(core.cosmetics_catalog(), [], failed),
@@ -302,31 +285,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setWalletTxs(wtx);
       setServers(sv);
       setGame(gs);
-      /* a run already in flight has been talking without us — take its tail so
-         the console shows the session rather than starting from the next line */
-      if (gs.sessionId) {
-        core.game_log().then(
-          (lines) =>
-            alive &&
-            setLogs(
-              lines.map(({ sessionId, level, line }) => ({
-                id: ++logSeq,
-                session: sessionId,
-                level,
-                line,
-                // stamping the whole backlog with the moment we asked for it
-                // would date every line to the same millisecond
-                ts: line.match(/^\[(\d{2}:\d{2}:\d{2})\]/)?.[1] ?? "",
-              })),
-            ),
-          () => {},
-        );
-      }
       setSelectedInstanceId((sel) =>
         sel && insts.some((i) => i.id === sel) ? sel : insts[0]?.id ?? null,
       );
       setReady(true);
       if (failed.length > 0) toast("error", failed[0]);
+      /* launchermeta can take its whole connect timeout when the box is offline */
+      core.versions_manifest().then(
+        (fresh) => alive && setVersions(fresh),
+        (e) => alive && vers.length === 0 && toast("error", errText(e)),
+      );
       /* probing every JDK on the box takes a second — never hold up the boot */
       core.java_detect().then(
         (rs) => alive && setJavaRuntimes(rs),
@@ -368,10 +336,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       });
     });
 
-    const offLog = core.on("game://log", ({ sessionId, level, line }) => {
-      setLogs((l) => [...l.slice(-900), { id: ++logSeq, session: sessionId, level, line, ts: now() }]);
-    });
-
     const offState = core.on("game://state", ({ sessionId, state, exitCode }) => {
       setGame((g) => (g.sessionId === sessionId ? { ...g, state, exitCode: exitCode ?? null } : g));
       if (state === "crashed") toast("error", t("console.crashedToast", { code: exitCode ?? -1 }));
@@ -382,7 +346,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       alive = false;
       offInstall();
       offDl();
-      offLog();
       offState();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -603,8 +566,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [game.sessionId, toast, t]);
 
-  const clearLogs = useCallback(() => setLogs([]), []);
-
   const equip = useCallback(
     async (slot: keyof Loadout, itemId: string | null) => {
       if (!activeUuid) return;
@@ -625,22 +586,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [instances, selectedInstanceId],
   );
 
-  const value: Store = {
-    ready, uiPrefs, setUiPref, screen, setScreen, settingsTab,
-    overlayHiddenFor, setOverlayHidden: setOverlayHiddenFor,
-    accounts, activeAccount, selectAccount, removeAccount, refreshAccount, importOfficial, syncAccounts,
-    versions, instances, selectedInstanceId, selectInstance, selectedInstance,
-    createInstance, deleteInstance, installInstance,
-    modCatalog, cosmetics,
-    settings, patchSettings,
-    javaRuntimes, systemMemoryMb, scanningJava, rescanJava,
-    news, wallet, walletTxs, servers, serverStatus, pingingServers, refreshServers, addServer, removeServer,
-    game, logs, launch, killGame, clearLogs,
-    loadout, equip,
-    downloads, toasts, toast, dismissToast,
-  };
+  const value = useMemo<Store>(
+    () => ({
+      ready, uiPrefs, setUiPref, screen, setScreen, settingsTab,
+      overlayHiddenFor, setOverlayHidden: setOverlayHiddenFor,
+      accounts, activeAccount, selectAccount, removeAccount, refreshAccount, importOfficial, syncAccounts,
+      versions, instances, selectedInstanceId, selectInstance, selectedInstance,
+      createInstance, deleteInstance, installInstance,
+      modCatalog, cosmetics,
+      settings, patchSettings,
+      javaRuntimes, systemMemoryMb, scanningJava, rescanJava,
+      news, wallet, walletTxs, servers, serverStatus, pingingServers, refreshServers, addServer, removeServer,
+      game, launch, killGame,
+      loadout, equip,
+      downloads, toasts, toast, dismissToast,
+    }),
+    [
+      ready, uiPrefs, setUiPref, screen, setScreen, settingsTab, overlayHiddenFor, setOverlayHiddenFor,
+      accounts, activeAccount, selectAccount, removeAccount, refreshAccount, importOfficial,
+      syncAccounts, versions, instances, selectedInstanceId, selectInstance, selectedInstance,
+      createInstance, deleteInstance, installInstance, modCatalog, cosmetics, settings, patchSettings,
+      javaRuntimes, systemMemoryMb, scanningJava, rescanJava, news, wallet, walletTxs, servers,
+      serverStatus, pingingServers, refreshServers, addServer, removeServer, game, launch, killGame,
+      loadout, equip, downloads, toasts, toast, dismissToast,
+    ],
+  );
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={value}>
+      <LogsProvider>{children}</LogsProvider>
+    </Ctx.Provider>
+  );
 }
 
 export function useStore(): Store {

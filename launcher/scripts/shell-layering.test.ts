@@ -131,7 +131,7 @@ test("no palace remains: no ornament tokens, no frame classes, no Palace module"
 test("figures are tabular: the bold and every .num run come from the full Pretendard", () => {
   // the mod's baked cuts are a subset with no OpenType features, so tabular-nums needs the full face
   const base = src("styles/base.css");
-  assert.match(base, /font-family: 'Fullmoon Sans';\s*src: url\('\/fonts\/Pretendard-Bold\.otf'\) format\('opentype'\);\s*font-weight: 700;/);
+  assert.match(base, /font-family: 'Fullmoon Sans';\s*src: url\('\/fonts\/Pretendard-Bold\.woff2'\) format\('woff2'\);\s*font-weight: 700;/);
   assert.match(base, /\.num \{ font-family: 'Pretendard',[^}]*tabular-nums; \}/);
 });
 

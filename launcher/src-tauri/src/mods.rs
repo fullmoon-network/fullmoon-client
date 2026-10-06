@@ -20,6 +20,7 @@ use crate::{
     catalog,
     download::{self, Item, Progress},
     error::{Error, Result},
+    modlock::{self, Locked, ModLock, Stamp},
     paths, store,
 };
 
@@ -229,6 +230,19 @@ async fn modrinth(client: &reqwest::Client, project: &str, game: &str) -> Result
     }))
 }
 
+/// How much of last time's lookup a sync may lean on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Policy {
+    /// Play and the mod toggles: a jar the lock still vouches for is not looked up again.
+    Reuse,
+    /// Install: ask every host, whatever the lock says.
+    Refresh,
+}
+
+/// With a jar on disk to fall back on, a host that does not answer is not
+/// worth waiting out the connect timeout for.
+const LOOKUP_PATIENCE: std::time::Duration = std::time::Duration::from_secs(8);
+
 /// Bring the instance's `mods/` in line with what is switched on, and record
 /// what we put there. The single entry point — install and the mod toggles all
 /// go through here, so there is one description of "what should be on disk".
@@ -239,6 +253,7 @@ pub async fn apply(
     game: &str,
     loader: &str,
     concurrency: usize,
+    policy: Policy,
 ) -> Result<()> {
     let mut st = state(instance_id).await;
     let enabled: Vec<String> = catalog::get()
@@ -248,55 +263,100 @@ pub async fn apply(
         .filter(|id| !st.disabled.contains(id))
         .collect();
 
-    st.managed = sync(
+    let lock = modlock::load(instance_id, game).await;
+    let (managed, lock) = sync(
         client,
         resources,
         instance_id,
-        game,
         loader,
         &enabled,
         &st.managed,
         concurrency,
+        policy,
+        lock,
     )
     .await?;
+    st.managed = managed;
+    // a lock that fails to save only costs the next launch a lookup
+    let _ = modlock::save(instance_id, &lock).await;
     save_state(instance_id, &st).await
 }
 
 /// Make `<instance>/minecraft/mods` match `enabled`, and return the new
-/// managed map for `instance.json`.
+/// managed map for `instance.json` with the lock that describes it.
 async fn sync(
     client: &reqwest::Client,
     resources: &std::path::Path,
     instance_id: &str,
-    game: &str,
     loader: &str,
     enabled: &[String],
     managed: &BTreeMap<String, String>,
     concurrency: usize,
-) -> Result<BTreeMap<String, String>> {
+    policy: Policy,
+    old: ModLock,
+) -> Result<(BTreeMap<String, String>, ModLock)> {
     let dir = paths::instance_mods_dir(instance_id);
     paths::ensure_dir(&dir).await?;
 
+    let game = old.game.clone();
+    let game_ref = &game;
+    let now = modlock::now_secs();
     let sources = &catalog::get().mod_sources;
     let mut next: BTreeMap<String, String> = BTreeMap::new();
+    let mut lock = ModLock { game: game.clone(), mods: BTreeMap::new() };
     let mut fetches: Vec<Item> = Vec::new();
-    let mut copies: Vec<(PathBuf, PathBuf)> = Vec::new();
+    let mut fetched_ids: Vec<(String, String)> = Vec::new();
+    let mut copies: Vec<(String, PathBuf, PathBuf)> = Vec::new();
 
     // vanilla instances get no mods at all — there is no loader to run them
     if loader == "fabric" {
+        /* What the lock vouches for needs no lookup. The rest is resolved all
+           at once: three hosts answering in turn made the launch wait for the
+           sum of them. */
+        let mut lookups = Vec::new();
         for (id, source) in sources {
             if !enabled.iter().any(|e| e == id) {
                 continue;
             }
-            /* A host being down is not a reason to ground a launch: if the jar
-               this instance already runs is still on disk, keep running it and
-               resolve again next time. Only a mod with nothing on disk can
-               fail the sync. */
-            let res = match resolve(client, source, game, resources).await {
+            let on_disk = managed.get(id).filter(|f| dir.join(f.as_str()).is_file());
+            if let (Policy::Reuse, ModSource::Maven { .. } | ModSource::Modrinth { .. }, Some(file)) =
+                (policy, source, on_disk)
+            {
+                if let Some(jar) = Stamp::of(&dir.join(file)).await {
+                    if let Some(e) = old.trusted(id, file, &jar, now) {
+                        next.insert(id.clone(), file.clone());
+                        lock.mods.insert(id.clone(), e.clone());
+                        continue;
+                    }
+                }
+            }
+            lookups.push(async move {
+                /* A host being down is not a reason to ground a launch: if the jar
+                   this instance already runs is still on disk, keep running it and
+                   resolve again next time. Only a mod with nothing on disk can
+                   fail the sync. */
+                let res = match on_disk {
+                    Some(_) => tokio::time::timeout(
+                        LOOKUP_PATIENCE,
+                        resolve(client, source, game_ref, resources),
+                    )
+                    .await
+                    .unwrap_or_else(|_| Err(Error::Invalid(format!("{id}: lookup timed out")))),
+                    None => resolve(client, source, game_ref, resources).await,
+                };
+                (id, on_disk, res)
+            });
+        }
+
+        for (id, on_disk, res) in futures::future::join_all(lookups).await {
+            let res = match res {
                 Ok(res) => res,
-                Err(e) => match managed.get(id).filter(|f| dir.join(f.as_str()).is_file()) {
+                Err(e) => match on_disk {
                     Some(file) => {
                         next.insert(id.clone(), file.clone());
+                        if let Some(e) = old.mods.get(id).filter(|e| &e.file == file) {
+                            lock.mods.insert(id.clone(), e.clone());
+                        }
                         continue;
                     }
                     None => return Err(e),
@@ -309,13 +369,23 @@ async fn sync(
             next.insert(id.clone(), res.file.clone());
 
             match (&res.url, &res.local) {
-                (Some(url), _) => fetches.push(Item {
-                    url: url.clone(),
-                    path: target,
-                    sha1: res.sha1.clone(),
-                    size: res.size,
-                }),
-                (None, Some(local)) => copies.push((local.clone(), target)),
+                (Some(url), _) => {
+                    let jar = Stamp::of(&target).await;
+                    if old.same_download(id, &res.file, jar.as_ref(), res.sha1.as_deref()) {
+                        let mut e = old.mods[id].clone();
+                        e.resolved_at = now;
+                        lock.mods.insert(id.clone(), e);
+                    } else {
+                        fetches.push(Item {
+                            url: url.clone(),
+                            path: target,
+                            sha1: res.sha1.clone(),
+                            size: res.size,
+                        });
+                        fetched_ids.push((id.clone(), res.file.clone()));
+                    }
+                }
+                (None, Some(local)) => copies.push((id.clone(), local.clone(), target)),
                 _ => {}
             }
         }
@@ -331,19 +401,54 @@ async fn sync(
 
     /* Compared by content, not by length: our own mod keeps its file name and
        usually its size across builds, so a length check left every instance
-       running whichever jar it happened to install first. */
-    for (from, to) in copies {
-        if tokio::fs::metadata(&to).await.is_ok()
-            && download::sha1_of(&to).await == download::sha1_of(&from).await
-        {
-            continue;
+       running whichever jar it happened to install first. Content is only read
+       when the lock cannot say that neither copy moved. */
+    for (id, from, to) in copies {
+        let file = next[&id].clone();
+        let origin = Stamp::of(&from).await;
+        let jar = Stamp::of(&to).await;
+        if let Some(origin) = &origin {
+            if old.bundled_current(&id, &file, jar.as_ref(), origin) {
+                lock.mods.insert(id.clone(), old.mods[&id].clone());
+                continue;
+            }
         }
-        tokio::fs::copy(&from, &to).await?;
+        let want = download::sha1_of(&from).await;
+        if jar.is_none() || download::sha1_of(&to).await != want {
+            tokio::fs::copy(&from, &to).await?;
+        }
+        if let (Some(sha1), Some(origin), Some(jar)) = (want, origin, Stamp::of(&to).await) {
+            lock.mods.insert(
+                id,
+                Locked {
+                    version: version_from_file(&file),
+                    file,
+                    sha1,
+                    jar,
+                    origin: Some(origin),
+                    resolved_at: 0,
+                },
+            );
+        }
     }
 
     if !fetches.is_empty() {
+        let wanted: BTreeMap<_, _> = fetches.iter().map(|i| (i.path.clone(), i.sha1.clone())).collect();
         download::fetch_all(client, fetches, concurrency, Arc::new(Progress::default())).await?;
+        for (id, file) in fetched_ids {
+            let path = dir.join(&file);
+            let sha1 = match wanted.get(&path).cloned().flatten() {
+                Some(s) => Some(s),
+                None => download::sha1_of(&path).await,
+            };
+            if let (Some(sha1), Some(jar)) = (sha1, Stamp::of(&path).await) {
+                lock.mods.insert(
+                    id,
+                    Locked { version: version_from_file(&file), file, sha1, jar, origin: None, resolved_at: now },
+                );
+            }
+        }
     }
 
-    Ok(next)
+    Ok((next, lock))
 }
