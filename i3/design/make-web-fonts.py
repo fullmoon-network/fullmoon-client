@@ -15,6 +15,7 @@ Fullmoon Sans is the mod's own baked cut (assets/fullmoon/font); only its wrappe
 Needs fonttools and brotli:  python3 -m venv v && v/bin/pip install fonttools brotli
 """
 
+import hashlib
 import pathlib
 import sys
 import time
@@ -26,6 +27,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 SRC = ROOT / "launcher/fonts-src"
 MOD_FONTS = ROOT / "i3/mod/src/main/resources/assets/fullmoon/font"
 OUT = ROOT / "launcher/public/fonts"
+# which source bytes each shipped file was baked from; launcher/scripts/web-fonts.test.ts fails
+# once a source moves on without this script being run again
+MANIFEST = SRC / "web-fonts.sha256"
 
 HANGUL = range(0xAC00, 0xD7A4)
 
@@ -99,7 +103,16 @@ def verify(src: pathlib.Path, out: pathlib.Path, whole: bool) -> str:
     return f"{len(want)}/{len(want)} hangul syllables ({len(want & after)} present of {len(HANGUL)} in the block)"
 
 
+def write_manifest(pairs: list[tuple[pathlib.Path, pathlib.Path]]) -> None:
+    lines = [
+        f"{hashlib.sha256(src.read_bytes()).hexdigest()}  {src.relative_to(ROOT).as_posix()}  {out.relative_to(ROOT).as_posix()}"
+        for src, out in pairs
+    ]
+    MANIFEST.write_text("\n".join(lines) + "\n")
+
+
 def main() -> int:
+    baked = []
     wanted = {cp for lo, hi in KEEP for cp in range(lo, hi + 1)} | set(HANGUL)
     jobs = []
     for w in PRETENDARD:
@@ -110,13 +123,16 @@ def main() -> int:
     for src, out, unicodes, whole, family, style in jobs:
         t = time.time()
         slim(src, out, unicodes, family, style)
+        baked.append((src, out))
         print(f"{out.name:28s} {src.stat().st_size:>9,} -> {out.stat().st_size:>9,} B  "
               f"{time.time() - t:4.1f}s  {verify(src, out, whole)}")
     for name, style in (("sans-regular", "Regular"), ("sans-semibold", "SemiBold")):
         src, out = MOD_FONTS / f"{name}.ttf", OUT / f"FullmoonSans-{style}.woff2"
         rewrap(src, out)
+        baked.append((src, out))
         print(f"{out.name:28s} {src.stat().st_size:>9,} -> {out.stat().st_size:>9,} B  "
               f"{verify(src, out, True)}")
+    write_manifest(baked)
     return 0
 
 
