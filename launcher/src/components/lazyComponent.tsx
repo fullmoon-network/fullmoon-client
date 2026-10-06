@@ -1,32 +1,30 @@
-import { Suspense, lazy, useState, type ComponentType, type JSX, type ReactNode } from "react";
+import { Suspense, lazy, useState, type ComponentProps, type ComponentType, type ReactNode } from "react";
 
 /* A component loaded on first use. Once its chunk has arrived it renders straight away, with no
    Suspense hop, so a screen change inside a view transition never captures the fallback; before
    that, the fallback holds the component's place. `preload` lets the app fetch the chunk while it
    is idle, so in practice the fallback is only ever seen on a very slow disk. */
-export function lazyComponent<P extends object>(
-  load: () => Promise<{ default: ComponentType<P> }>,
-  fallback: (props: P) => ReactNode = () => null,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function lazyComponent<C extends ComponentType<any>>(
+  load: () => Promise<{ default: C }>,
+  fallback: (props: ComponentProps<C>) => ReactNode = () => null,
 ) {
-  let Loaded: ComponentType<P> | null = null;
+  let Loaded: C | null = null;
   let pending: Promise<void> | null = null;
   const preload = () =>
     (pending ??= load().then((m) => {
       Loaded = m.default;
     }));
-  const Inner = lazy(() => preload().then(() => ({ default: Loaded as ComponentType<P> })));
+  const Inner = lazy(() => preload().then(() => ({ default: Loaded as C })));
 
-  function Lazy(props: P) {
+  function Lazy(props: ComponentProps<C>) {
     /* decided once per mount: swapping an element's type later would remount it and lose its state */
     const [direct] = useState(() => Loaded !== null);
-    const p = props as P & JSX.IntrinsicAttributes;
-    if (direct && Loaded) {
-      const C = Loaded;
-      return <C {...p} />;
-    }
+    const Direct = Loaded;
+    if (direct && Direct) return <Direct {...props} />;
     return (
       <Suspense fallback={fallback(props)}>
-        <Inner {...p} />
+        <Inner {...props} />
       </Suspense>
     );
   }

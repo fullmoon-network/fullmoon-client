@@ -39,25 +39,24 @@ export function LogsProvider({ children }: { children: ReactNode }) {
     });
     /* a run already in flight has been talking without us — take its tail so
        the console shows the session rather than starting from the next line */
-    core.game_status().then(
-      (gs) =>
-        gs.sessionId &&
-        core.game_log().then(
-          (lines) =>
-            alive &&
-            setLogs(
-              lines.map(({ sessionId, level, line }) => ({
-                id: ++logSeq,
-                session: sessionId,
-                level,
-                line,
-                // stamping the whole backlog with the moment we asked for it
-                // would date every line to the same millisecond
-                ts: line.match(/^\[(\d{2}:\d{2}:\d{2})\]/)?.[1] ?? "",
-              })),
-            ),
-        ),
-    ).catch(() => {});
+    core
+      .game_status()
+      .then((gs) => (gs.sessionId ? core.game_log() : []))
+      .then((lines) => {
+        if (!alive || lines.length === 0) return;
+        setLogs(
+          lines.map(({ sessionId, level, line }) => ({
+            id: ++logSeq,
+            session: sessionId,
+            level,
+            line,
+            // stamping the whole backlog with the moment we asked for it
+            // would date every line to the same millisecond
+            ts: line.match(/^\[(\d{2}:\d{2}:\d{2})\]/)?.[1] ?? "",
+          })),
+        );
+      })
+      .catch(() => {});
     return () => {
       alive = false;
       off();
