@@ -1,6 +1,7 @@
 package dev.fullmoon.client.hud;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -62,6 +63,21 @@ public final class ScoreboardSidebar {
     /** A line read as label and value; a line with no value is all label. */
     record Split(String label, String value, int valueColor) {}
 
+    /** What a row of the sidebar is. */
+    enum Kind { RULE, HELP, ENTRY }
+
+    /**
+     * One row, set and ready to draw. A help row carries the command in {@code label}, what it
+     * does in {@code value} and the command's width in {@code valueW}; an entry carries its label,
+     * its value, the value's width and the colour the server gave it.
+     */
+    record Row(Kind kind, String label, String value, int valueW, int valueColor) {}
+
+    /** The sidebar laid out: everything that does not depend on where on screen it lands. */
+    record Layout(int height, String title, int titleColor, List<Row> rows) {}
+
+    private static final SidebarCache CACHE = new SidebarCache();
+
     private ScoreboardSidebar() {}
 
     public static void init() {
@@ -89,14 +105,23 @@ public final class ScoreboardSidebar {
             return;
         }
         NumberFormat format = objective.numberFormatOrDefault(StyledFormat.SIDEBAR_DEFAULT);
-        List<Line> lines = scoreboard.listPlayerScores(objective).stream()
-            .filter(entry -> !entry.isHidden())
-            .sorted(ORDER)
-            .limit(MAX_LINES)
-            .map(entry -> new Line(
-                PlayerTeam.formatNameForTeam(scoreboard.getPlayersTeam(entry.owner()), entry.ownerName()),
-                entry.formatValue(format)))
-            .toList();
+        Collection<PlayerScoreEntry> scores = scoreboard.listPlayerScores(objective);
+        Component title = objective.getDisplayName();
+        int guiScale = client.getWindow().getGuiScale();
+        int epoch = Typeset.epoch();
+        // The server owns the lines and they change a few times a minute; sorting, colour-stripping
+        // and ellipsizing fifteen of them every frame is what the last frame already did.
+        if (!CACHE.matches(objective, title, format, scores, scoreboard, guiScale, epoch)) {
+            List<Line> lines = scores.stream()
+                .filter(entry -> !entry.isHidden())
+                .sorted(ORDER)
+                .limit(MAX_LINES)
+                .map(entry -> new Line(
+                    PlayerTeam.formatNameForTeam(scoreboard.getPlayersTeam(entry.owner()), entry.ownerName()),
+                    entry.formatValue(format)))
+                .toList();
+            CACHE.store(objective, title, format, scores, scoreboard, guiScale, epoch, layout(title, lines));
+        }
         gfx.nextStratum();
         Painter painter = new Painter(gfx);
         List<Box> occupied = new ArrayList<>();
@@ -105,7 +130,7 @@ public final class ScoreboardSidebar {
                 occupied.add(element.computeBounds(painter.width(), painter.height(), client));
             }
         }
-        draw(painter, objective.getDisplayName(), lines, occupied);
+        render(painter, CACHE.layout(), occupied);
     }
 
     /** The {@code sidebar} fixture: the lobby's sidebar as the live rehearsal saw it. */
@@ -113,14 +138,14 @@ public final class ScoreboardSidebar {
         if (!System.getProperty(ServerMenuSample.PROPERTY, "").equals("sidebar")) {
             return;
         }
-        draw(painter, Component.literal("풀문").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), List.of(
+        render(painter, layout(Component.literal("풀문").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), List.of(
             new Line(Component.literal("────────").withStyle(ChatFormatting.DARK_GRAY), Component.empty()),
             line("소지금", "2억원", ChatFormatting.YELLOW),
             line("접속자", "1명", ChatFormatting.WHITE),
             line("위치", "로비", ChatFormatting.AQUA),
             line("플레이", "39초", ChatFormatting.WHITE),
             new Line(Component.literal("/텔레포트 ").withStyle(ChatFormatting.WHITE)
-                .append(Component.literal("로비 곳곳으로 이동").withStyle(ChatFormatting.GRAY)), Component.empty())),
+                .append(Component.literal("로비 곳곳으로 이동").withStyle(ChatFormatting.GRAY)), Component.empty()))),
             List.of());
     }
 
@@ -260,7 +285,8 @@ public final class ScoreboardSidebar {
         return new Split(text.substring(0, space).strip(), value, color);
     }
 
-    private static void draw(Painter painter, Component title, List<Line> all, List<Box> occupied) {
+    /** Sets the sidebar for a screen's fonts: which rows, their text cut to fit and their widths. */
+    static Layout layout(Component title, List<Line> all) {
         // The title is ruled off by its own spacing; a server's rule straight under it would double it.
         List<Line> lines = !all.isEmpty() && isRule(all.getFirst().name().getString()) ? all.subList(1, all.size()) : all;
         int rows = 0;
@@ -274,42 +300,26 @@ public final class ScoreboardSidebar {
         }
         int h = PAD_Y + Tokens.Type.ROW.leading() + Tokens.Space.SNUG + rows * LINE
             + (help > 0 ? Tokens.Space.SNUG * 2 + Tokens.Stroke.HAIR + help * LINE : 0) + PAD_Y;
-        Box at = place(painter.width(), painter.height(), W, h, occupied);
-        int x = at.x();
-        int y = at.y();
         int inner = W - PAD_X * 2;
-        painter.fill(x, y, W, h, Tokens.Radius.NONE, Tokens.Color.SURFACE_GLASS_HUD);
 
-        int cursor = y + PAD_Y;
-        List<Run> titleRuns = runs(title);
         int titleColor = Tokens.Color.ACCENT;
-        for (Run run : titleRuns) {
+        for (Run run : runs(title)) {
             if (run.color() != 0) {
                 titleColor = run.color();
                 break;
             }
         }
-        Typeset.draw(painter, Tokens.Type.ROW, Typeset.ellipsized(Tokens.Type.ROW, title.getString().strip(), inner),
-            x + PAD_X, cursor, titleColor);
-        cursor += Tokens.Type.ROW.leading() + Tokens.Space.SNUG;
+        String titleText = Typeset.ellipsized(Tokens.Type.ROW, title.getString().strip(), inner);
 
-        boolean ruled = false;
+        List<Row> set = new ArrayList<>(lines.size());
         for (Line line : lines) {
             String raw = line.name().getString();
             if (isHelp(raw)) {
-                if (!ruled) {
-                    cursor += Tokens.Space.SNUG;
-                    Glass.hair(painter, x + PAD_X, cursor, inner);
-                    cursor += Tokens.Stroke.HAIR + Tokens.Space.SNUG;
-                    ruled = true;
-                }
-                helpLine(painter, x + PAD_X, cursor, inner, helpText(raw));
-                cursor += LINE;
+                set.add(helpRow(helpText(raw), inner));
                 continue;
             }
             if (isRule(raw) && line.value().getString().isBlank()) {
-                Glass.hair(painter, x + PAD_X, cursor + LINE / 2, inner);
-                cursor += LINE;
+                set.add(new Row(Kind.RULE, "", "", 0, 0));
                 continue;
             }
             Split split = split(runs(line.name()));
@@ -321,31 +331,64 @@ public final class ScoreboardSidebar {
                 valueColor = chatColor(line.value().getStyle().getColor());
                 label = raw.strip();
             }
-            int textY = Typeset.centred(Tokens.Type.BODY, cursor, LINE);
             int valueW = value.isEmpty() ? 0 : Typeset.tabularWidth(Tokens.Type.STRONG, value);
-            if (valueW > 0) {
-                Typeset.tabular(painter, Tokens.Type.STRONG, value, x + W - PAD_X - valueW, textY,
-                    valueColor == 0 ? Tokens.Color.INK_PRIMARY : valueColor);
-            }
             int room = inner - (valueW > 0 ? valueW + Tokens.Space.COZY : 0);
-            Typeset.draw(painter, Tokens.Type.BODY, Typeset.ellipsized(Tokens.Type.BODY, label, room),
-                x + PAD_X, textY, Tokens.Color.INK_SECONDARY);
-            cursor += LINE;
+            set.add(new Row(Kind.ENTRY, Typeset.ellipsized(Tokens.Type.BODY, label, room), value, valueW, valueColor));
         }
+        return new Layout(h, titleText, titleColor, List.copyOf(set));
     }
 
     /** {@code /텔레포트 로비 곳곳으로 이동}: the command in strong ink, what it does in body. */
-    private static void helpLine(Painter painter, int x, int y, int w, String text) {
+    private static Row helpRow(String text, int w) {
         int space = text.indexOf(' ');
         String command = space < 0 ? text : text.substring(0, space);
         String rest = space < 0 ? "" : text.substring(space + 1).strip();
-        int textY = Typeset.centred(Tokens.Type.BODY, y, LINE);
-        int used = Typeset.draw(painter, Tokens.Type.STRONG, Typeset.ellipsized(Tokens.Type.STRONG, command, w),
-            x, textY, Tokens.Color.INK_PRIMARY);
-        if (!rest.isEmpty()) {
-            int restX = x + used + Tokens.Space.SNUG;
-            Typeset.draw(painter, Tokens.Type.BODY, Typeset.ellipsized(Tokens.Type.BODY, rest, x + w - restX),
-                restX, textY, Tokens.Color.INK_SECONDARY);
+        String cut = Typeset.ellipsized(Tokens.Type.STRONG, command, w);
+        int used = Typeset.width(Tokens.Type.STRONG, cut);
+        String tail = rest.isEmpty() ? ""
+            : Typeset.ellipsized(Tokens.Type.BODY, rest, w - used - Tokens.Space.SNUG);
+        return new Row(Kind.HELP, cut, tail, used, 0);
+    }
+
+    private static void render(Painter painter, Layout layout, List<Box> occupied) {
+        Box at = place(painter.width(), painter.height(), W, layout.height(), occupied);
+        int x = at.x();
+        int y = at.y();
+        int inner = W - PAD_X * 2;
+        painter.fill(x, y, W, layout.height(), Tokens.Radius.NONE, Tokens.Color.SURFACE_GLASS_HUD);
+
+        int cursor = y + PAD_Y;
+        Typeset.draw(painter, Tokens.Type.ROW, layout.title(), x + PAD_X, cursor, layout.titleColor());
+        cursor += Tokens.Type.ROW.leading() + Tokens.Space.SNUG;
+
+        boolean ruled = false;
+        for (Row row : layout.rows()) {
+            switch (row.kind()) {
+                case HELP -> {
+                    if (!ruled) {
+                        cursor += Tokens.Space.SNUG;
+                        Glass.hair(painter, x + PAD_X, cursor, inner);
+                        cursor += Tokens.Stroke.HAIR + Tokens.Space.SNUG;
+                        ruled = true;
+                    }
+                    int textY = Typeset.centred(Tokens.Type.BODY, cursor, LINE);
+                    Typeset.draw(painter, Tokens.Type.STRONG, row.label(), x + PAD_X, textY, Tokens.Color.INK_PRIMARY);
+                    if (!row.value().isEmpty()) {
+                        Typeset.draw(painter, Tokens.Type.BODY, row.value(),
+                            x + PAD_X + row.valueW() + Tokens.Space.SNUG, textY, Tokens.Color.INK_SECONDARY);
+                    }
+                }
+                case RULE -> Glass.hair(painter, x + PAD_X, cursor + LINE / 2, inner);
+                case ENTRY -> {
+                    int textY = Typeset.centred(Tokens.Type.BODY, cursor, LINE);
+                    if (row.valueW() > 0) {
+                        Typeset.tabular(painter, Tokens.Type.STRONG, row.value(), x + W - PAD_X - row.valueW(), textY,
+                            row.valueColor() == 0 ? Tokens.Color.INK_PRIMARY : row.valueColor());
+                    }
+                    Typeset.draw(painter, Tokens.Type.BODY, row.label(), x + PAD_X, textY, Tokens.Color.INK_SECONDARY);
+                }
+            }
+            cursor += LINE;
         }
     }
 }

@@ -14,6 +14,8 @@ import net.minecraft.world.effect.MobEffectInstance;
 
 /** Active player potion status effects with countdown timers and amplifier levels. */
 public final class StatusEffectsHud extends BaseHudElement {
+    private List<Part> live = List.of();
+    private String liveText;
 
     public StatusEffectsHud() {
         super("effects", "상태 효과", "플레이어", false, Anchor.TOP_RIGHT, 16, 134);
@@ -26,8 +28,7 @@ public final class StatusEffectsHud extends BaseHudElement {
 
     @Override
     public int measureWidth(Minecraft client, boolean isEditor) {
-        String text = formatText(client, isEditor);
-        return chipWidth(0, java.util.List.of(new Part(text, "FX")));
+        return chipWidth(0, parts(client, isEditor));
     }
 
     @Override
@@ -37,8 +38,17 @@ public final class StatusEffectsHud extends BaseHudElement {
 
     @Override
     public void draw(Painter painter, Box bounds, Minecraft client, boolean isEditor) {
+        drawChip(painter, bounds, 0, parts(client, isEditor));
+    }
+
+    /** One chip per distinct line of text, so a line that has not changed is not measured again. */
+    private List<Part> parts(Minecraft client, boolean isEditor) {
         String text = formatText(client, isEditor);
-        drawChip(painter, bounds, "FX", text, 0);
+        if (!text.equals(liveText)) {
+            liveText = text;
+            live = List.of(new Part(text, "FX"));
+        }
+        return live;
     }
 
     private String formatText(Minecraft client, boolean isEditor) {

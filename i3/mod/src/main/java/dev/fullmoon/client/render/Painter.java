@@ -3,10 +3,12 @@ package dev.fullmoon.client.render;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 
 import org.joml.Matrix3x2f;
+import org.joml.Matrix3x2fc;
 
 /**
  * The only way anything in this client puts a solid on screen.
@@ -58,6 +60,20 @@ public final class Painter {
     /** A colour with this painter's opacity applied, for the game's own text call. */
     public int tint(int color) {
         return opacity >= 1.0f ? color : Rgb.scaleAlpha(color, opacity);
+    }
+
+    /**
+     * Whether a row of cells that begins at GUI x {@code left} and is {@code cell} wide has every
+     * edge on a whole screen pixel under the current pose and GUI scale. A pose that turns or skews
+     * is never on one.
+     */
+    public boolean onWholePixels(float left, float cell) {
+        Matrix3x2fc pose = gfx.pose();
+        if (pose.m01() != 0.0f || pose.m10() != 0.0f) {
+            return false;
+        }
+        float scale = Minecraft.getInstance().getWindow().getGuiScale();
+        return PixelArt.onWholePixels((left * pose.m00() + pose.m20()) * scale, cell * pose.m00() * scale);
     }
 
     /** Fills a rect. */

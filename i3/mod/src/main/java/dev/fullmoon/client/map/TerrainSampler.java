@@ -1,8 +1,5 @@
 package dev.fullmoon.client.map;
 
-import java.util.List;
-import java.util.stream.IntStream;
-
 import dev.fullmoon.client.design.Tokens;
 
 import net.minecraft.core.BlockPos;
@@ -27,63 +24,76 @@ public final class TerrainSampler {
             throw new IllegalArgumentException("Terrain sample dimensions must be positive");
         }
 
-        List<RawCell> raw = IntStream.range(0, Math.multiplyExact(width, height))
-            .mapToObj(index -> sampleCell(level, viewport, width, height,
-                index % width, index / width))
-            .toList();
-        List<TerrainSnapshot.Cell> cells = IntStream.range(0, raw.size())
-            .mapToObj(index -> paint(raw, index, width))
-            .toList();
-        return TerrainSample.of(new TerrainSnapshot(width, height, cells));
+        int count = Math.multiplyExact(width, height);
+        boolean[] mapped = new boolean[count];
+        int[] elevations = new int[count];
+        MapColor[] mapColors = new MapColor[count];
+        BlockPos.MutableBlockPos position = new BlockPos.MutableBlockPos();
+        // A chunk is sixteen blocks and a cell is one to sixteen of them, so neighbours in a row
+        // almost always share one; the level is not touched while this runs, so asking once is the
+        // same as asking per cell.
+        int chunkX = 0;
+        int chunkZ = 0;
+        LevelChunk chunk = null;
+        boolean looked = false;
+        for (int row = 0; row < height; row++) {
+            int z = viewport.blockZ(row, height);
+            for (int column = 0; column < width; column++) {
+                int index = row * width + column;
+                int x = viewport.blockX(column, width);
+                int cellChunkX = Math.floorDiv(x, 16);
+                int cellChunkZ = Math.floorDiv(z, 16);
+                if (!looked || cellChunkX != chunkX || cellChunkZ != chunkZ) {
+                    chunkX = cellChunkX;
+                    chunkZ = cellChunkZ;
+                    chunk = loaded(level, chunkX, chunkZ);
+                    looked = true;
+                }
+                mapColors[index] = MapColor.NONE;
+                if (chunk == null) {
+                    continue;
+                }
+                int elevation = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
+                if (!level.isInsideBuildHeight(elevation)) {
+                    continue;
+                }
+                position.set(x, elevation, z);
+                BlockState state = chunk.getBlockState(position);
+                mapped[index] = true;
+                elevations[index] = elevation;
+                mapColors[index] = state.getMapColor(chunk, position);
+            }
+        }
+
+        int[] colors = new int[count];
+        for (int index = 0; index < count; index++) {
+            colors[index] = mapped[index] ? color(mapped, elevations, mapColors, index, width)
+                : Tokens.Color.SURFACE_SUNKEN;
+        }
+        return TerrainSample.of(TerrainSnapshot.ofRasters(width, height, colors, elevations, mapped));
     }
 
-    private static RawCell sampleCell(ClientLevel level, MapViewport viewport,
-            int width, int height, int column, int row) {
-        MapViewport.WorldPoint point = viewport.worldAt(column, row, width, height);
-        int chunkX = Math.floorDiv(point.x(), 16);
-        int chunkZ = Math.floorDiv(point.z(), 16);
+    private static LevelChunk loaded(ClientLevel level, int chunkX, int chunkZ) {
         if (!level.hasChunk(chunkX, chunkZ)) {
-            return RawCell.unmapped();
+            return null;
         }
-        LevelChunk chunk = level.getChunkSource().getChunk(
-            chunkX, chunkZ, ChunkStatus.FULL, false);
-        if (chunk == null || chunk.isEmpty()) {
-            return RawCell.unmapped();
-        }
-
-        int elevation = chunk.getHeight(
-            Heightmap.Types.WORLD_SURFACE, point.x(), point.z()) - 1;
-        if (!level.isInsideBuildHeight(elevation)) {
-            return RawCell.unmapped();
-        }
-        BlockPos position = new BlockPos(point.x(), elevation, point.z());
-        BlockState state = chunk.getBlockState(position);
-        MapColor mapColor = state.getMapColor(chunk, position);
-        return new RawCell(true, elevation, mapColor);
+        LevelChunk chunk = level.getChunkSource().getChunk(chunkX, chunkZ, ChunkStatus.FULL, false);
+        return chunk == null || chunk.isEmpty() ? null : chunk;
     }
 
-    private static TerrainSnapshot.Cell paint(List<RawCell> raw, int index, int width) {
-        RawCell cell = raw.get(index);
-        if (!cell.mapped()) {
-            return TerrainSnapshot.Cell.unmapped(Tokens.Color.SURFACE_SUNKEN);
+    private static int color(boolean[] mapped, int[] elevations, MapColor[] mapColors, int index, int width) {
+        MapColor mapColor = mapColors[index];
+        if (mapColor == MapColor.NONE) {
+            return Tokens.Color.SURFACE_RAISED;
         }
-        MapColor.Brightness brightness = brightness(raw, index, width, cell.elevation());
-        int color = cell.mapColor() == MapColor.NONE
-            ? Tokens.Color.SURFACE_RAISED
-            : cell.mapColor().calculateARGBColor(brightness);
-        return TerrainSnapshot.Cell.mapped(color, cell.elevation());
+        return mapColor.calculateARGBColor(brightness(mapped, elevations, index, width));
     }
 
-    private static MapColor.Brightness brightness(
-            List<RawCell> raw, int index, int width, int elevation) {
-        if (index < width) {
+    private static MapColor.Brightness brightness(boolean[] mapped, int[] elevations, int index, int width) {
+        if (index < width || !mapped[index - width]) {
             return MapColor.Brightness.NORMAL;
         }
-        RawCell north = raw.get(index - width);
-        if (!north.mapped()) {
-            return MapColor.Brightness.NORMAL;
-        }
-        int slope = elevation - north.elevation();
+        int slope = elevations[index] - elevations[index - width];
         if (slope > 1) {
             return MapColor.Brightness.HIGH;
         }
@@ -91,11 +101,5 @@ public final class TerrainSampler {
             return MapColor.Brightness.LOW;
         }
         return MapColor.Brightness.NORMAL;
-    }
-
-    private record RawCell(boolean mapped, int elevation, MapColor mapColor) {
-        private static RawCell unmapped() {
-            return new RawCell(false, 0, MapColor.NONE);
-        }
     }
 }
