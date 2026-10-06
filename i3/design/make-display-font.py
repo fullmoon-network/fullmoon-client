@@ -19,7 +19,7 @@ from fontTools import subset
 from fontTools.ttLib import TTFont
 from fontTools.varLib import instancer
 
-SOURCE = pathlib.Path(__file__).resolve().parents[1].parent / "launcher/public/fonts/Hahmlet[wght].ttf"
+SOURCE = pathlib.Path(__file__).resolve().parents[1].parent / "launcher/fonts-src/Hahmlet[wght].ttf"
 OUT_DIR = pathlib.Path(__file__).resolve().parents[1] / "mod/src/main/resources/assets/fullmoon/font"
 FAMILY = "Fullmoon Serif"
 FACES = [
