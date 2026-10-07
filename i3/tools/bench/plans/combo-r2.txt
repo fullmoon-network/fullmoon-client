@@ -1,0 +1,6 @@
+combo title 1
+combo fly 1
+combo idle 1
+combo title 3
+combo fly 3
+combo idle 3

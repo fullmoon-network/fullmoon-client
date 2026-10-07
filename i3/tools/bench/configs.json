@@ -149,6 +149,18 @@
    "jvm_add": [
     "-Xms512M"
    ]
+  },
+  "combo": {
+   "jvm_remove": [
+    "-Xmx4096M",
+    "-Xms2048M"
+   ],
+   "jvm_add": [
+    "-Xmx3072M",
+    "-Xms2048M",
+    "-XX:+UseCompactObjectHeaders"
+   ],
+   "_doc": "the winners of the screening: compact object headers and a 3 GiB ceiling (the live set is ~0.3 GiB)"
   }
  }
 }
