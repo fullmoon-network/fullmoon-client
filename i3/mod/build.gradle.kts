@@ -72,6 +72,8 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // Reads the game's class files and the mixins to check that every injection target exists.
+    testImplementation("org.ow2.asm:asm-tree:9.8")
 }
 
 java {

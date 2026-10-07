@@ -76,9 +76,9 @@ abstract class TrueTypeGlyphProviderDefinitionMixin {
 
     @Redirect(
         method = "load",
-        at = @At(value = "INVOKE", target = "Lorg/lwjgl/system/MemoryUtil;memFree(Ljava/nio/Buffer;)V")
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/system/MemoryUtil;memFree(Ljava/nio/ByteBuffer;)V")
     )
-    private void fullmoon$free(java.nio.Buffer buffer) {
+    private void fullmoon$free(ByteBuffer buffer) {
         FontLoading.release(buffer);
     }
 }

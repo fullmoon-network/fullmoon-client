@@ -1,6 +1,6 @@
 package dev.fullmoon.client.mixin;
 
-import java.nio.Buffer;
+import java.nio.ByteBuffer;
 
 import com.mojang.blaze3d.font.TrueTypeGlyphProvider;
 
@@ -15,9 +15,9 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 abstract class TrueTypeGlyphProviderMixin {
     @Redirect(
         method = "close",
-        at = @At(value = "INVOKE", target = "Lorg/lwjgl/system/MemoryUtil;memFree(Ljava/nio/Buffer;)V")
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/system/MemoryUtil;memFree(Ljava/nio/ByteBuffer;)V")
     )
-    private void fullmoon$free(Buffer buffer) {
+    private void fullmoon$free(ByteBuffer buffer) {
         FontLoading.release(buffer);
     }
 }
