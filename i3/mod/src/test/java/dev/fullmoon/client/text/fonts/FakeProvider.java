@@ -47,7 +47,9 @@ final class FakeProvider implements GlyphProvider {
     @Override
     public IntSet getSupportedGlyphs() {
         IntSet set = new IntOpenHashSet();
-        advances.keySet().forEach(set::add);
+        for (int codepoint : advances.keySet()) {
+            set.add(codepoint);
+        }
         return set;
     }
 
