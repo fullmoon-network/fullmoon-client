@@ -11,7 +11,7 @@ Scenarios (see README.md for what each one measures):
     fly      rd 12: lobby flythrough 120 s, then /server survival and the 야생 flythrough 120 s
     mem      rd 6, NativeMemoryTracking=summary, 60 s idle, summary + diff (separate so NMT cannot skew timing)
     startup  JFR from JVM start, traced font/entrypoint methods, for the mod's share of start-up
-    parity-hud     steady-state screenshots of the HUD, HUD editor, map and /warp menu over a static view (no JFR)
+    parity-hud2    steady-state screenshots of the HUD, HUD editor, map and /warp menu over a static view (no JFR)
     parity-title   title screen + sidebar fixture and the dev pages, for pixel parity
     aot-train      one launch that writes the JDK 25 AOT cache
     dfps     focused vs unfocused 30 s windows (Dynamic FPS functional check)
@@ -407,19 +407,20 @@ class Run:
         """The 야생 leg only (the JVM-flag screens); same path and settle as `fly`."""
         self.s_fly(lobby=False)
 
-    def s_parity_hud(self) -> None:
+    def s_parity_hud2(self) -> None:
         """Steady-state screenshots of Fullmoon's in-world screens; no JFR, so nothing is timed.
 
         A spectator looking straight down at the plaza paving, noon and clear: the background is static, so a
         pixel that differs between two configs is the UI (or the config), not drifting clouds, animated water or
         the held compass. (parity-world, the first draft of this scenario, looked at the horizon and could not
-        separate the two.) The HUD's own live values (fps, ping, clock, play time) still change; parity.py masks
+        separate the two; parity-hud stood on the spawn where the other runner's client idles and filmed
+        its player model.) The HUD's own live values (fps, ping, clock, play time) still change; parity.py masks
         those boxes."""
         self.join_lobby(6)
         self.fix_world('lobby')
         rc = self.rc('lobby')
         rc.command(f'gamemode spectator {PLAYER}')
-        rc.command(f'tp {PLAYER} 0.5 73 80.5 180 90')
+        rc.command(f'tp {PLAYER} 0.5 73 60.5 180 90')  # 20 blocks off the spawn the other runner idles on
         time.sleep(40)
         self.clear_screens()
         mc.screenshot(self.out / 'hud-a.png')

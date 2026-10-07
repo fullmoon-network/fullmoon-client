@@ -181,6 +181,58 @@ def memory_table(runs: list[dict], markdown: bool) -> str:
     return table(rows, ['config', 'scenario', 'n', 'RSS MiB', 'RSS after GC', 'PSS MiB', 'anon MiB', 'live heap MiB'], markdown)
 
 
+def screen_table(runs: list[dict], base: str, markdown: bool, configs: list[str] | None = None) -> str:
+    """One row per config: change against the base config's mean, per metric. n is the number of runs behind the cell."""
+    cols = [  # (window, metric, header, kind) kind: pct | abs
+        ('fly-survival', 'avg_ms', '야생 frame ms', 'pct'), ('fly-survival', 'p99_ms', '야생 p99', 'pct'),
+        ('fly-survival', 'low1_fps', '야생 1% low', 'pct'), ('fly-lobby', 'avg_ms', 'lobby fly ms', 'pct'),
+        ('idle', 'avg_ms', 'idle ms', 'pct'), ('map', 'avg_ms', 'map ms', 'pct'), ('menu', 'avg_ms', 'menu ms', 'pct'),
+        ('fly-survival', 'alloc_mib_s', 'alloc MiB/s', 'pct'), ('fly-survival', 'gc_sum_ms', 'GC ms', 'abs'),
+        ('fly-survival', 'gc_max_ms', 'GC max ms', 'abs'), ('fly-survival', 'rss_mib', 'RSS MiB (end)', 'abs')]
+    vals: dict[tuple, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
+    for run in runs:
+        if run.get('status') != 'ok':
+            continue
+        for w in run.get('windows', {}):
+            m = window_metrics(run, w)
+            if m:
+                for key, v in m.items():
+                    if isinstance(v, float) and v == v:
+                        vals[(run['config'], w)][key].append(v)
+        ev = run.get('events', {})
+        if run['scenario'] == 'title' and 'title_s' in ev:
+            vals[(run['config'], 'title')]['title_s'].append(ev['title_s'])
+            vals[(run['config'], 'title')]['rss_title'].append(ev['rss_kib_at_title_plus10s'] / 1024)
+        if run['scenario'] in ('fly', 'flys') and 'world_visible_s' in ev:
+            vals[(run['config'], 'join')]['world_s'].append(ev['world_visible_s'])
+        if 'end' in run and run['scenario'] in ('fly', 'flys') and 'live_heap_mib' in run['end']:
+            vals[(run['config'], 'end')]['live_heap'].append(run['end']['live_heap_mib'])
+    cols += [('title', 'title_s', 'to title s', 'abs'), ('title', 'rss_title', 'RSS @title', 'abs'),
+             ('join', 'world_s', 'to world s', 'abs'), ('end', 'live_heap', 'live heap MiB', 'abs')]
+    names = sorted({c for c, _ in vals if c != base})
+    if configs:
+        names = [c for c in configs if c in names]
+    header = ['config'] + [c[2] for c in cols] + ['n (flys/title)']
+    rows = []
+    for cfg in [base] + names:
+        row = [cfg]
+        for w, key, _, kind in cols:
+            mine, ref = vals[(cfg, w)].get(key, []), vals[(base, w)].get(key, [])
+            if not mine:
+                row.append('-')
+            elif cfg == base:
+                row.append(f'{mean(mine):.1f} ±{spread_pct(mine):.1f}%')
+            elif not ref:
+                row.append(f'{mean(mine):.1f}')
+            elif kind == 'pct':
+                row.append(f'{100 * (mean(mine) / mean(ref) - 1):+.1f}%')
+            else:
+                row.append(f'{mean(mine) - mean(ref):+.1f}')
+        row.append(f"{len(vals[(cfg, 'fly-survival')].get('avg_ms', []))}/{len(vals[(cfg, 'title')].get('title_s', []))}")
+        rows.append(row)
+    return table(rows, header, markdown)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('runs', nargs='+', type=Path)
@@ -189,6 +241,7 @@ def main() -> int:
     ap.add_argument('--startup', action='store_true')
     ap.add_argument('--memory', action='store_true')
     ap.add_argument('--traces', action='store_true')
+    ap.add_argument('--screen', action='store_true')
     ap.add_argument('--markdown', action='store_true')
     a = ap.parse_args()
     runs = load_runs(a.runs)
@@ -197,6 +250,9 @@ def main() -> int:
         return 0
     if a.memory:
         print(memory_table(runs, a.markdown))
+        return 0
+    if a.screen:
+        print(screen_table(runs, a.base, a.markdown))
         return 0
     if a.traces:
         print(traces_table(runs, a.markdown))

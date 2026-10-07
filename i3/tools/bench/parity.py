@@ -23,7 +23,7 @@ import numpy as np
 from PIL import Image
 
 SHOTS = {'parity-title': ['title-sidebar', 'specimen', 'kit', 'list', 'hudeditor-title'],
-         'parity-hud': ['welcome', 'hud-a', 'hudeditor', 'map', 'menu']}
+         'parity-hud2': ['welcome', 'hud-a', 'hudeditor', 'map', 'menu']}
 
 
 # Live values on the HUD (x0, y0, x1, y1): fps, ping, wall clock, play time. They differ between any two runs.
@@ -140,7 +140,7 @@ def main() -> int:
 
     lines = ['| config | screen | verdict | differing px | base self-diff px | clusters the base never moves (px, x0,y0,x1,y1) |', '|---|---|---|---|---|---|']
     for cfg in a.configs:
-        for scen in ('parity-title', 'parity-hud'):
+        for scen in ('parity-title', 'parity-hud2'):
             for cand in find(cfg, scen):
                 runner = meta[cand]['runner']
                 bases = find(a.base, scen)
