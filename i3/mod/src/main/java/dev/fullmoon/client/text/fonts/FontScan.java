@@ -23,7 +23,7 @@ import it.unimi.dsi.fastutil.ints.IntSet;
  * <p>For every codepoint any provider of a set supports, the game loads the glyph from the first
  * provider that has it, twice over: once when the reload is prepared, to warm it, and once when
  * the set is selected, to learn which providers contribute and to index codepoints by advance
- * width. A full Hangul face supports 11,000 codepoints and the client has 27 sets, so a start-up
+ * width. A full Hangul face supports 11,000 codepoints and the client has 24 sets, so a start-up
  * rasterised some three hundred thousand glyph outlines that no screen ever draws. The warm-up
  * changes nothing a draw can see. The index is read only by obfuscated text, and the contributing
  * providers are decided by which codepoints a provider has, not by their glyphs. This is those two

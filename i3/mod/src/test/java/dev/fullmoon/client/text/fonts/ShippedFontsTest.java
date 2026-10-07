@@ -147,7 +147,7 @@ final class ShippedFontsTest {
 
     @Test
     void everyRoleIsBakedAtEveryScale() throws Exception {
-        assertEquals(27, roleFiles().size(), "nine roles at three scales");
+        assertEquals(24, roleFiles().size(), "eight roles at three scales");
         for (Path json : roleFiles()) {
             Definition definition = definition(json);
             int scale = Character.digit(definition.file().charAt(definition.file().length() - 6), 10);
