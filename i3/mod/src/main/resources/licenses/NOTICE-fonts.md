@@ -31,6 +31,14 @@ rasterises a ttf provider once and samples its atlas with nearest filtering, so 
 pixel-exact where the oversample equals the GUI scale; `Typeset` picks the provider whose suffix
 is the window's scale.
 
+Only the providers of the scale the window is at are opened when the game loads its resources.
+The other two scales' providers are opened when the window first moves to that scale (resizing it,
+changing the GUI scale option, toggling fullscreen), on a worker thread; see
+`dev.fullmoon.client.text.fonts` and the mixins under `dev.fullmoon.client.mixin`. Providers that
+name the same file share one native buffer, and the game's per-glyph warm-up of these font sets is
+skipped (the glyphs are loaded as they are drawn). `-Dfullmoon.fonts.eager=true` restores the
+game's own loading.
+
 ## Why the sans outlines are converted
 
 `TrueTypeGlyphProviderDefinition` asks FreeType for `FT_Get_Font_Format` and refuses anything
