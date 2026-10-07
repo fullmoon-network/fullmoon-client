@@ -28,7 +28,13 @@ SHOTS = {'parity-title': ['title-sidebar', 'specimen', 'kit', 'list', 'hudeditor
 
 # Live values on the HUD (x0, y0, x1, y1): fps, ping, wall clock, play time. They differ between any two runs.
 DYNAMIC = {'hud-a': [(24, 84, 141, 131), (1072, 84, 1257, 131), (1090, 24, 1257, 72), (880, 375, 1245, 415)],
-           'hudeditor': [(24, 84, 141, 131), (1072, 84, 1257, 131), (1090, 24, 1257, 72), (880, 375, 1245, 415)]}
+           'hudeditor': [(24, 84, 141, 131), (1072, 84, 1257, 131), (1090, 24, 1257, 72), (880, 375, 1245, 415)],
+           'hudeditor-title': [(24, 84, 141, 131), (1072, 84, 1257, 131), (1090, 24, 1257, 72)],
+           'title-sidebar': [(500, 240, 840, 278), (880, 480, 1245, 515)]}  # ping, play time
+# The title's background is a panorama that moves between any two captures, under translucent panels, so
+# whole-frame pixels cannot match. For these shots only the bright pixels (the text and glyph strokes) are compared.
+BRIGHT = {'title-sidebar'}
+BRIGHT_LUMA = 170
 
 
 def load(path: Path) -> np.ndarray:
@@ -67,36 +73,55 @@ def clusters(mask: np.ndarray, cell: int = 24) -> list[tuple[int, int, int, int,
     return sorted(out, reverse=True)
 
 
-def compare(candidate: Path, base: Path, noise: np.ndarray | None, dynamic=()) -> tuple[str, int, list]:
-    a, b = load(candidate), load(base)
-    if a.shape != b.shape:
-        return 'DIFFERS (size)', -1, []
-    diff = (np.abs(a - b).sum(axis=2) > 0)
-    total = int(diff.sum())
-    if total == 0:
-        return 'IDENTICAL', 0, []
-    beyond = diff & ~noise if noise is not None else diff
-    for x0, y0, x1, y1 in dynamic:
-        beyond[y0:y1 + 1, x0:x1 + 1] = False
-    if not beyond.any():
-        return 'NOISE-ONLY', total, []
-    return 'DIFFERS', int(beyond.sum()), clusters(beyond)[:4]
+def diff_mask(a: Path, b: Path, bright: bool = False) -> np.ndarray | None:
+    x, y = load(a), load(b)
+    if x.shape != y.shape:
+        return None
+    if bright:
+        lum = lambda im: im @ np.array([0.299, 0.587, 0.114])  # noqa: E731
+        return (lum(x) > BRIGHT_LUMA) ^ (lum(y) > BRIGHT_LUMA)
+    return np.abs(x - y).sum(axis=2) > 0
 
 
-def noise_mask(run_dir: Path, name: str, other_runs: list[Path]) -> np.ndarray | None:
-    """Pixels where the baseline disagrees with itself: hud-a vs hud-b, and the other baseline runs."""
-    mask = None
+def compare(candidate: Path, base: Path, noise_masks: list[np.ndarray], dynamic=(), bright: bool = False) -> tuple[str, int, int, list]:
+    """Verdict of candidate vs base given masks of how the base differs from itself (other captures of it).
+
+    n_cand: pixels that differ (outside the HUD's live-value boxes); n_noise: the most the base differs from
+    itself under the same rule. IDENTICAL: n_cand == 0. WITHIN NOISE: every differing pixel is one the base
+    also moves, or n_cand does not exceed the base's own movement. Otherwise DIFFERS, with the clusters of
+    pixels the base never moved."""
+    diff = diff_mask(candidate, base, bright)
+    if diff is None:
+        return 'DIFFERS (size)', -1, 0, []
+
+    def blank(mask):
+        mask = mask.copy()
+        for x0, y0, x1, y1 in dynamic:
+            mask[y0:y1 + 1, x0:x1 + 1] = False
+        return mask
+    diff = blank(diff)
+    n_cand = int(diff.sum())
+    if n_cand == 0:
+        return 'IDENTICAL', 0, 0, []
+    noise = np.zeros_like(diff)
+    n_noise = 0
+    for m in noise_masks:
+        m = blank(m)
+        noise |= m
+        n_noise = max(n_noise, int(m.sum()))
+    beyond = diff & ~noise
+    if not beyond.any() or n_cand <= n_noise:
+        return 'WITHIN NOISE', n_cand, n_noise, []
+    return 'DIFFERS', n_cand, n_noise, clusters(beyond)[:4]
+
+
+def noise_masks(run_dir: Path, name: str, others: list[Path], bright: bool = False) -> list[np.ndarray]:
+    """How the baseline differs from itself: hud-a vs hud-b in the same run, and its other captures."""
     pairs = []
     if name == 'hud-a' and (run_dir / 'hud-b.png').exists():
         pairs.append((run_dir / 'hud-a.png', run_dir / 'hud-b.png'))
-    pairs += [(run_dir / f'{name}.png', o / f'{name}.png') for o in other_runs if (o / f'{name}.png').exists()]
-    for x, y in pairs:
-        if x.exists() and y.exists():
-            a, b = load(x), load(y)
-            if a.shape == b.shape:
-                d = (np.abs(a - b).sum(axis=2) > 0)
-                mask = d if mask is None else (mask | d)
-    return mask
+    pairs += [(run_dir / f'{name}.png', o / f'{name}.png') for o in others if (o / f'{name}.png').exists()]
+    return [m for x, y in pairs if x.exists() and y.exists() and (m := diff_mask(x, y, bright)) is not None]
 
 
 def main() -> int:
@@ -113,7 +138,7 @@ def main() -> int:
     def find(cfg: str, scen: str) -> list[Path]:
         return [d for d, m in meta.items() if m['config'] == cfg and m['scenario'] == scen]
 
-    lines = ['| config | screen | verdict | pixels beyond noise | clusters (px, x0,y0,x1,y1) |', '|---|---|---|---|---|']
+    lines = ['| config | screen | verdict | differing px | base self-diff px | clusters the base never moves (px, x0,y0,x1,y1) |', '|---|---|---|---|---|---|']
     for cfg in a.configs:
         for scen in ('parity-title', 'parity-hud'):
             for cand in find(cfg, scen):
@@ -126,8 +151,8 @@ def main() -> int:
                 for name in SHOTS[scen]:
                     if not (cand / f'{name}.png').exists() or not (same[0] / f'{name}.png').exists():
                         continue
-                    verdict, n, boxes = compare(cand / f'{name}.png', same[0] / f'{name}.png', noise_mask(same[0], name, others), DYNAMIC.get(name, ()))
-                    lines.append(f'| {cfg} ({runner}) | {name} | {verdict} | {n} | {boxes if boxes else ""} |')
+                    verdict, n, nn, boxes = compare(cand / f'{name}.png', same[0] / f'{name}.png', noise_masks(same[0], name, others, name in BRIGHT), DYNAMIC.get(name, ()), name in BRIGHT)
+                    lines.append(f'| {cfg} ({runner}) | {name} | {verdict} | {n} | {nn} | {boxes if boxes else ""} |')
     text = '\n'.join(lines)
     print(text)
     if a.out:
