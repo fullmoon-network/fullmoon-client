@@ -174,7 +174,9 @@ pub fn plan(
     let mut args = Vec::new();
     // memory first so a user arg can still override it
     args.push(format!("-Xmx{}M", inst.memory_mb));
-    args.push(format!("-Xms{}M", (inst.memory_mb / 2).max(512)));
+    // G1 sizes eden from the committed heap; past 1.5 GiB a larger start only adds resident memory,
+    // not fewer collections (client bench, 2026-10-08), and -Xmx still lets the heap grow
+    args.push(format!("-Xms{}M", (inst.memory_mb / 2).clamp(512, 1536)));
     // product in JDK 25 (JEP 519), unknown to anything older; a game that asks for 25 cannot run on less
     if v.java_version.as_ref().is_some_and(|j| j.major_version >= 25) {
         args.push("-XX:+UseCompactObjectHeaders".into());
@@ -458,7 +460,7 @@ mod tests {
         let plan = plan(&version, &inst, &settings, &account, None, None).unwrap();
         assert_eq!(plan.program, PathBuf::from("/usr/bin/java"));
         assert!(plan.args.contains(&"-Xmx4096M".to_string()));
-        assert!(plan.args.contains(&"-Xms2048M".to_string()));
+        assert!(plan.args.contains(&"-Xms1536M".to_string()));
         assert!(plan.args.contains(&"-XX:+UseG1GC".to_string()));
         assert!(plan.args.contains(&"net.minecraft.client.main.Main".to_string()));
         assert!(plan.args.contains(&"--username".to_string()));
