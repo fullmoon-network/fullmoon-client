@@ -1,0 +1,123 @@
+{
+ "_doc": "base = the launcher's shipping set (Sodium, Lithium, Fabric API, the Fullmoon mod; minecraft-fabric-mcp is the harness's own control channel) with the launcher's JVM defaults. A config is base plus the listed changes.",
+ "jars": {
+  "fabric-api": "fabric-api-0.155.2%2B26.1.2.jar",
+  "sodium": "sodium-fabric-0.9.2%2Bmc26.1.2.jar",
+  "lithium": "lithium-fabric-0.24.7%2Bmc26.1.2.jar",
+  "mcp": "minecraft-fabric-mcp-1.1.0+26.1.2.jar",
+  "fullmoon": "fullmoon-client-3.2.0.jar",
+  "immediatelyfast": "ImmediatelyFast-Fabric-1.15.3+26.1.jar",
+  "ferritecore": "ferritecore-9.0.0-fabric.jar",
+  "entityculling": "entityculling-fabric-1.11.2-mc26.1.jar",
+  "cloth-config": "cloth-config-26.1.154.jar",
+  "moreculling": "moreculling-fabric-26.1.2-1.7.3.jar",
+  "badoptimizations": "BadOptimizations-2.4.1-26.1-fabric.jar",
+  "dynamic-fps": "dynamic-fps-3.11.7+minecraft-26.1.0-fabric.jar",
+  "krypton": "krypton-0.3.0.jar"
+ },
+ "base": {
+  "mods": [
+   "fabric-api",
+   "sodium",
+   "lithium",
+   "mcp",
+   "fullmoon"
+  ],
+  "jvm": [
+   "-Xmx4096M",
+   "-Xms2048M",
+   "-XX:+UseG1GC",
+   "-XX:+ParallelRefProcEnabled",
+   "-XX:MaxGCPauseMillis=200"
+  ]
+ },
+ "startup_filters": [
+  "dev.fullmoon.client.FullmoonClient::onInitializeClient"
+ ],
+ "configs": {
+  "base": {},
+  "nomod": {
+   "mods_remove": [
+    "fullmoon"
+   ]
+  },
+  "if": {
+   "mods_add": [
+    "immediatelyfast"
+   ]
+  },
+  "fc": {
+   "mods_add": [
+    "ferritecore"
+   ]
+  },
+  "ec": {
+   "mods_add": [
+    "entityculling"
+   ]
+  },
+  "mc": {
+   "mods_add": [
+    "cloth-config",
+    "moreculling"
+   ]
+  },
+  "bo": {
+   "mods_add": [
+    "badoptimizations"
+   ]
+  },
+  "df": {
+   "mods_add": [
+    "dynamic-fps"
+   ]
+  },
+  "kr": {
+   "mods_add": [
+    "krypton"
+   ]
+  },
+  "coh": {
+   "jvm_add": [
+    "-XX:+UseCompactObjectHeaders"
+   ]
+  },
+  "zgc": {
+   "jvm_remove": [
+    "-XX:+UseG1GC",
+    "-XX:+ParallelRefProcEnabled",
+    "-XX:MaxGCPauseMillis=200"
+   ],
+   "jvm_add": [
+    "-XX:+UseZGC"
+   ]
+  },
+  "pre": {
+   "jvm_remove": [
+    "-Xms2048M"
+   ],
+   "jvm_add": [
+    "-Xms4096M",
+    "-XX:+AlwaysPreTouch"
+   ]
+  },
+  "h3g": {
+   "jvm_remove": [
+    "-Xmx4096M",
+    "-Xms2048M"
+   ],
+   "jvm_add": [
+    "-Xmx3072M",
+    "-Xms2048M"
+   ]
+  },
+  "aot": {
+   "jvm_add": [
+    "-XX:AOTCache=${BENCH_HOME}/aot/fullmoon.aot"
+   ],
+   "train": [
+    "-XX:AOTCacheOutput=${BENCH_HOME}/aot/fullmoon.aot"
+   ]
+  }
+ }
+}

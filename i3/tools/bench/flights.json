@@ -1,0 +1,26 @@
+{
+  "_doc": "Scripted spectator flights. The driver sends `tp <player> x y z yaw pitch` over RCON at rate_hz along the polyline at constant speed, looping when the path is shorter than speed x duration. yaw faces the direction of travel (Minecraft: 0 = +z, 90 = -x).",
+  "lobby": {
+    "server": "lobby",
+    "rate_hz": 10,
+    "speed": 10.0,
+    "pitch": 8,
+    "waypoints": [
+      [0.5, 85, 80.5], [0.5, 85, -20.5], [39.5, 85, -30.5], [106.5, 85, 22.5], [75.5, 85, 50.5],
+      [4.5, 85, 95.5], [-92.5, 85, 20.5], [-27.5, 85, -23.5], [0.5, 85, -110.5], [0.5, 85, 80.5]
+    ],
+    "note": "Spawn -> rotunda -> casino wing -> east pavilion -> water garden -> exedra -> west wing -> bank -> moon gate -> spawn. The island is about 18x18 chunks, so at render distance 12 all of it is loaded before the window starts; this scenario is about drawing the densest built area, not about chunk loading."
+  },
+  "survival": {
+    "server": "survival",
+    "rate_hz": 10,
+    "speed": 10.0,
+    "pitch": 12,
+    "waypoints": [
+      [150, 100, 300], [150, 100, 470], [230, 100, 470], [230, 100, 330], [110, 100, 330],
+      [110, 100, 490], [40, 100, 490], [40, 100, 300], [150, 100, 300]
+    ],
+    "herd": {"per_waypoint": 14, "radius": 28, "types": ["cow", "sheep", "pig", "chicken", "horse"]},
+    "note": "Taecho village (centre 150,390; wall x 62..224, z 302..486) and the terrain around it. The replica's saved animals are few, so prep-world.py adds a fixed NoAI herd at each waypoint, the same one every run."
+  }
+}
