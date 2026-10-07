@@ -63,12 +63,16 @@ final class MixinTargetsTest {
         return null;
     }
 
-    private static List<AnnotationNode> invisible(List<AnnotationNode> annotations, String descriptor) {
+    /** The annotations of one type among those of either retention (the game's mixins mix them). */
+    @SafeVarargs
+    private static List<AnnotationNode> annotated(String descriptor, List<AnnotationNode>... lists) {
         List<AnnotationNode> out = new ArrayList<>();
-        if (annotations != null) {
-            for (AnnotationNode annotation : annotations) {
-                if (annotation.desc.equals(descriptor)) {
-                    out.add(annotation);
+        for (List<AnnotationNode> annotations : lists) {
+            if (annotations != null) {
+                for (AnnotationNode annotation : annotations) {
+                    if (annotation.desc.equals(descriptor)) {
+                        out.add(annotation);
+                    }
                 }
             }
         }
@@ -90,7 +94,7 @@ final class MixinTargetsTest {
         int checked = 0;
         for (String mixin : mixinClasses()) {
             ClassNode mixinNode = read(mixin);
-            AnnotationNode mixinAnnotation = invisible(mixinNode.invisibleAnnotations, "Lorg/spongepowered/asm/mixin/Mixin;").get(0);
+            AnnotationNode mixinAnnotation = annotated("Lorg/spongepowered/asm/mixin/Mixin;", mixinNode.invisibleAnnotations, mixinNode.visibleAnnotations).get(0);
             @SuppressWarnings("unchecked")
             List<Type> targets = (List<Type>) value(mixinAnnotation, "value");
             assertEquals(1, targets.size(), mixin);
@@ -98,8 +102,8 @@ final class MixinTargetsTest {
 
             for (MethodNode handler : mixinNode.methods) {
                 List<AnnotationNode> injectors = new ArrayList<>();
-                injectors.addAll(invisible(handler.invisibleAnnotations, "Lorg/spongepowered/asm/mixin/injection/Inject;"));
-                injectors.addAll(invisible(handler.invisibleAnnotations, "Lorg/spongepowered/asm/mixin/injection/Redirect;"));
+                injectors.addAll(annotated("Lorg/spongepowered/asm/mixin/injection/Inject;", handler.invisibleAnnotations, handler.visibleAnnotations));
+                injectors.addAll(annotated("Lorg/spongepowered/asm/mixin/injection/Redirect;", handler.invisibleAnnotations, handler.visibleAnnotations));
                 for (AnnotationNode injector : injectors) {
                     for (String name : methodNames(injector)) {
                         List<MethodNode> candidates = target.methods.stream().filter(m -> m.name.equals(name)).toList();
@@ -122,7 +126,7 @@ final class MixinTargetsTest {
                 }
             }
             for (FieldNode field : mixinNode.fields) {
-                if (!invisible(field.invisibleAnnotations, "Lorg/spongepowered/asm/mixin/Shadow;").isEmpty()) {
+                if (!annotated("Lorg/spongepowered/asm/mixin/Shadow;", field.invisibleAnnotations, field.visibleAnnotations).isEmpty()) {
                     assertTrue(target.fields.stream().anyMatch(f -> f.name.equals(field.name)),
                         mixin + " shadows " + field.name + ", which " + target.name + " has");
                 }
