@@ -175,6 +175,10 @@ pub fn plan(
     // memory first so a user arg can still override it
     args.push(format!("-Xmx{}M", inst.memory_mb));
     args.push(format!("-Xms{}M", (inst.memory_mb / 2).max(512)));
+    // product in JDK 25 (JEP 519), unknown to anything older; a game that asks for 25 cannot run on less
+    if v.java_version.as_ref().is_some_and(|j| j.major_version >= 25) {
+        args.push("-XX:+UseCompactObjectHeaders".into());
+    }
     args.extend(
         settings
             .java_args
@@ -459,5 +463,23 @@ mod tests {
         assert!(plan.args.contains(&"net.minecraft.client.main.Main".to_string()));
         assert!(plan.args.contains(&"--username".to_string()));
         assert!(plan.args.contains(&"Player123".to_string()));
+        assert!(!plan.args.contains(&"-XX:+UseCompactObjectHeaders".to_string()));
+
+        let on = |major| {
+            let mut v = version.clone();
+            v.java_version = Some(crate::version::JavaVersion {
+                component: "java-runtime-epsilon".into(),
+                major_version: major,
+            });
+            super::plan(&v, &inst, &settings, &account, None, None).unwrap().args
+        };
+        let java25 = on(25);
+        let compact = java25
+            .iter()
+            .position(|a| a == "-XX:+UseCompactObjectHeaders")
+            .expect("compact headers on Java 25");
+        let user = java25.iter().position(|a| a == "-XX:+UseG1GC").unwrap();
+        assert!(compact < user, "a user arg must be able to turn it back off");
+        assert!(!on(21).contains(&"-XX:+UseCompactObjectHeaders".to_string()));
     }
 }
