@@ -45,17 +45,14 @@ def load_runs(dirs: list[Path]) -> list[dict]:
     return runs
 
 
-HOST_REF_S = 14.3  # median seconds from process start to the MCP port answering, on a healthy runner
+def host_factor(window: dict) -> float:
+    """How much slower the host was during this window than an undisturbed one, from CPU steal.
 
-
-def host_factor(run: dict) -> float:
-    """How much slower this run's host was than a healthy one, from start-up alone.
-
-    The runners are burstable (m7i-flex) and their speed drifts by up to ~15% between runs with steal reading 0, so
-    the time from process start to the MCP port answering (Fabric loading, no rendering, independent of every
-    config tested here except AOT) is the speed probe each run carries. 1.0 = healthy."""
-    mcp = run.get('events', {}).get('mcp_up_s')
-    return mcp / HOST_REF_S if mcp else 1.0
+    The runners are burstable (m7i-flex): their speed drifts by 10-15% between runs. /proc/stat shows it as
+    steal time, which is 0 in a normal run and 6-14% in a slow one, so frame times are rescaled by 1/(1 - steal)
+    for the `--normalize` view. 1.0 = undisturbed."""
+    steal = window.get('steal_pct', 0.0) or 0.0
+    return 1.0 / max(0.5, 1.0 - steal / 100.0)
 
 
 def window_metrics(run: dict, label: str, normalize: bool = False) -> dict | None:
@@ -67,7 +64,7 @@ def window_metrics(run: dict, label: str, normalize: bool = False) -> dict | Non
     except json.JSONDecodeError:
         return None
     w = run['windows'][label]
-    k = host_factor(run) if normalize else 1.0
+    k = host_factor(w) if normalize else 1.0
     m = frame_stats(p['tick_start_ns'], p['tick_dur_ns'], p['render_dur_ns'], w['seconds'])
     if normalize:  # time-like metrics scale with the host, rates with its inverse
         for key in ('avg_ms', 'p50_ms', 'p95_ms', 'p99_ms', 'p999_ms', 'max_ms', 'runtick_avg_ms', 'render_avg_ms', 'render_p99_ms'):
@@ -76,10 +73,12 @@ def window_metrics(run: dict, label: str, normalize: bool = False) -> dict | Non
         for key in ('fps', 'low1_fps'):
             if key in m:
                 m[key] *= k
-    m['host_factor'] = host_factor(run)
+    m['host_factor'] = host_factor(w)
     rt = p['alloc'].get('Render thread')
     if rt and rt['ms'] > 0:
         m['alloc_mib_s'] = rt['bytes'] / MIB / (rt['ms'] / 1000)
+        if m.get('frames'):  # per frame, which does not move with how fast the host happens to be
+            m['alloc_mib_frame'] = rt['bytes'] / MIB / m['frames']
     gc = p['gc']
     m.update(gc_n=gc['count'], gc_sum_ms=gc['sum_pause_ms'], gc_max_ms=gc['max_pause_ms'])
     m['cpu_jvm_pct'] = 100 * (p['cpu']['jvm_user'] + p['cpu']['jvm_system']) if p['cpu']['jvm_user'] >= 0 else float('nan')
@@ -95,7 +94,7 @@ def window_metrics(run: dict, label: str, normalize: bool = False) -> dict | Non
 
 FRAME_COLS = [('fps', 'fps', '{:.2f}'), ('avg_ms', 'avg ms', '{:.1f}'), ('p50_ms', 'p50', '{:.1f}'), ('p95_ms', 'p95', '{:.1f}'),
               ('p99_ms', 'p99', '{:.1f}'), ('p999_ms', 'p99.9', '{:.1f}'), ('low1_fps', '1% low fps', '{:.2f}'),
-              ('render_avg_ms', 'render ms', '{:.1f}'), ('render_cpu_ms', 'render-thread CPU ms/frame', '{:.1f}'), ('alloc_mib_s', 'alloc MiB/s', '{:.2f}'),
+              ('render_avg_ms', 'render ms', '{:.1f}'), ('render_cpu_ms', 'render-thread CPU ms/frame', '{:.1f}'), ('alloc_mib_s', 'alloc MiB/s', '{:.2f}'), ('alloc_mib_frame', 'alloc MiB/frame', '{:.3f}'),
               ('gc_n', 'GCs', '{:.1f}'), ('gc_sum_ms', 'GC ms', '{:.0f}'), ('gc_max_ms', 'GC max', '{:.0f}'),
               ('rss_mib', 'RSS MiB', '{:.0f}'), ('steal_pct', 'steal %', '{:.2f}')]
 
@@ -113,7 +112,7 @@ def table(rows: list[list[str]], header: list[str], markdown: bool) -> str:
     return '\n'.join(lines)
 
 
-def perf_table(runs: list[dict], window: str, base: str, markdown: bool, cols=FRAME_COLS) -> str:
+def perf_table(runs: list[dict], window: str, base: str, markdown: bool, cols=FRAME_COLS, only: list[str] | None = None) -> str:
     by_cfg: dict[str, list[dict]] = defaultdict(list)
     for run in runs:
         if window in run.get('windows', {}):
@@ -123,7 +122,7 @@ def perf_table(runs: list[dict], window: str, base: str, markdown: bool, cols=FR
                 by_cfg[run['config']].append(m)
     if not by_cfg:
         return f'(no runs with window {window})'
-    order = [base] + sorted(c for c in by_cfg if c != base)
+    order = [base] + sorted(c for c in by_cfg if c != base and (not only or c in only))
     header = ['config', 'n'] + [c[1] for c in cols]
     rows = []
     for cfg in order:
@@ -203,13 +202,27 @@ def memory_table(runs: list[dict], markdown: bool) -> str:
     return table(rows, ['config', 'scenario', 'n', 'RSS MiB', 'RSS after GC', 'PSS MiB', 'anon MiB', 'live heap MiB'], markdown)
 
 
+def detail_table(runs: list[dict], config: str, windows: list[str], markdown: bool) -> str:
+    """Every run of one config, one row each: what the run-to-run spread is made of."""
+    rows = []
+    for run in sorted(runs, key=lambda r: r['run']):
+        if run['config'] != config or run.get('status') != 'ok':
+            continue
+        for w in windows:
+            m = window_metrics(run, w)
+            if m:
+                rows.append([run['run'], w, f"{m['fps']:.2f}", f"{m['avg_ms']:.1f}", f"{m['p99_ms']:.1f}", f"{m['low1_fps']:.2f}",
+                             f"{m.get('alloc_mib_s', float('nan')):.2f}", f"{m['gc_n']:.0f}", f"{m['gc_sum_ms']:.0f}", f"{m['steal_pct']:.1f}"])
+    return table(rows, ['run', 'window', 'fps', 'avg ms', 'p99 ms', '1% low fps', 'alloc MiB/s', 'GCs', 'GC ms', 'steal %'], markdown)
+
+
 def screen_table(runs: list[dict], base: str, markdown: bool, configs: list[str] | None = None, normalize: bool = False) -> str:
     """One row per config: change against the base config's mean, per metric. n is the number of runs behind the cell."""
     cols = [  # (window, metric, header, kind) kind: pct | abs
         ('fly-survival', 'avg_ms', '야생 frame ms', 'pct'), ('fly-survival', 'p99_ms', '야생 p99', 'pct'),
         ('fly-survival', 'low1_fps', '야생 1% low', 'pct'), ('fly-lobby', 'avg_ms', 'lobby fly ms', 'pct'),
         ('idle', 'avg_ms', 'idle ms', 'pct'), ('map', 'avg_ms', 'map ms', 'pct'), ('menu', 'avg_ms', 'menu ms', 'pct'),
-        ('fly-survival', 'alloc_mib_s', 'alloc MiB/s', 'pct'), ('fly-survival', 'gc_sum_ms', 'GC ms', 'abs'),
+        ('fly-survival', 'alloc_mib_frame', 'alloc MiB/frame', 'pct'), ('fly-survival', 'gc_sum_ms', 'GC ms', 'abs'),
         ('fly-survival', 'gc_max_ms', 'GC max ms', 'abs'), ('fly-survival', 'rss_mib', 'RSS MiB (end)', 'abs')]
     vals: dict[tuple, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
     for run in runs:
@@ -260,11 +273,13 @@ def main() -> int:
     ap.add_argument('runs', nargs='+', type=Path)
     ap.add_argument('--base', default='base')
     ap.add_argument('--window', action='append')
+    ap.add_argument('--only', action='append', help='restrict the per-window tables to these configs (plus the base)')
+    ap.add_argument('--runs-detail', action='store_true', help='one line per run of the base config: the run-to-run noise')
     ap.add_argument('--startup', action='store_true')
     ap.add_argument('--memory', action='store_true')
     ap.add_argument('--traces', action='store_true')
     ap.add_argument('--screen', action='store_true')
-    ap.add_argument('--normalize', action='store_true', help='scale frame metrics by each run\'s host-speed probe')
+    ap.add_argument('--normalize', action='store_true', help='rescale frame metrics by each window\'s CPU steal (slow-host windows)')
     ap.add_argument('--markdown', action='store_true')
     a = ap.parse_args()
     runs = load_runs(a.runs)
@@ -280,10 +295,13 @@ def main() -> int:
     if a.traces:
         print(traces_table(runs, a.markdown))
         return 0
+    if a.runs_detail:
+        print(detail_table(runs, a.base, a.window or ['fly-lobby', 'fly-survival', 'idle', 'map', 'menu'], a.markdown))
+        return 0
     windows = a.window or sorted({w for r in runs for w in r.get('windows', {})})
     for w in windows:
         print(f'\n## {w}\n')
-        print(perf_table(runs, w, a.base, a.markdown))
+        print(perf_table(runs, w, a.base, a.markdown, only=a.only))
     return 0
 
 

@@ -17,7 +17,9 @@ restored from backups. Nothing in it contacts production.
 | `fly` | 12 | a scripted spectator flight over the lobby, then `/server survival` and a flight over Taecho and the terrain around it with a fixed NoAI herd | 120 s, 120 s |
 | `mem` | 6 | `-XX:NativeMemoryTracking=summary`, 60 s idle, summary and diff (kept apart so NMT cannot skew timing) | 60 s |
 | `startup` | 6 | JFR from the first instruction with traced font and entrypoint methods | start to world |
-| `parity-title` | 6 | title with the sidebar fixture and the dev pages, screenshots only | n/a |
+| `parity-title` | 6 | title with the sidebar fixture and the dev pages (specimen, kit, list, HUD editor), screenshots only | n/a |
+| `parity-hud2` | 6 | spectator at (0.5,73,60.5) looking straight down: HUD, sidebar, HUD editor, map and menu, two HUD shots 4 s apart for the noise floor | n/a |
+| `flys` | 12 | the 야생 flight alone (spectator-first on arrival, dead-player check); `fly` includes it | 120 s |
 | `aot-train` | 6 | one launch that writes the JDK 25 AOT cache (`-XX:AOTCacheOutput`) | n/a |
 | `dfps`, `smoke` | 6 | focused vs unfocused windows (Dynamic FPS), and a join-and-idle functional check | 30 s / 40 s |
 
@@ -58,7 +60,8 @@ aws-burst ssh <id> 'bash bench/setup-runner.sh'
 
 # 3. accounts (one per runner), relay and RCON password (never printed)
 aws-burst ssh <replica-id> 'bash ~/seed-accounts.sh BenchA BenchB'
-REPLICA_IP=<ip> CLIENT_IPS="<ip1> <ip2>" ./relay.sh up
+REPLICA_IP=<ip> CLIENT_IPS="<ip1> <ip2>" ./relay.sh up   # Velocity 48291, RCON 25575/25576, flightd 48394
+aws-burst ssh <replica-id> 'cd ~ && setsid nohup python3 flightd.py </dev/null >flightd.log 2>&1 &'   # 10 Hz tp stream beside the server
 aws-burst ssh <replica-id> 'grep ^RCON_PASSWORD ~/replica/.secrets' | ssh ec2-user@<client> 'umask 077; cat > bench/rcon.env'
 aws-burst ssh <client-id> 'cd bench; set -a; . ./rcon.env; set +a; venv/bin/python prep-world.py'
 
@@ -95,3 +98,20 @@ work on the same two cores that run the render thread. So:
   costs are the JVM's, not the rasteriser's.
 * Present/vsync, driver overhead, buffer upload bandwidth and GPU memory are not exercised at all.
   ImmediatelyFast (batched immediate-mode drawing) and Sodium-style culling live there.
+
+### Host drift
+
+The runners are burstable (`m7i-flex`) and a whole instance can run 10 to 15% slower than its twin for
+hours. It shows as non-zero CPU steal in the window (6 to 14%, against 0 on a normal host) and as a
+longer `mcp_up_s`. Compare configs only inside one runner, repeat on a second, and use
+`summarize.py --screen --normalize` to rescale each window by 1/(1 - steal). The first "combined" config
+was misread as 13% slower for exactly this reason; it is why `combo` is measured against adjacent baselines.
+
+### Pitfalls the harness guards against
+
+* RCON breaks on pipelined packets over a relay, so `flightd.py` runs beside the server and sends one `tp` and waits.
+* A player who dies stays dead at the next login, which makes every later window bogus (about 30 fps). The
+  driver switches to spectator first on the 야생 server and fails the window if `Health:0.0f`.
+* Two clients share one replica; the other's avatar, join message and the sidebar's player count can appear
+  in frame. Parity masks the live boxes and compares text strokes against a base-versus-base noise floor.
+* Polling the MCP port faster than once per second right after login can freeze the client.

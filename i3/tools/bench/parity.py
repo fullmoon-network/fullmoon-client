@@ -31,9 +31,11 @@ DYNAMIC = {'hud-a': [(24, 84, 141, 131), (1072, 84, 1257, 131), (1090, 24, 1257,
            'hudeditor': [(24, 84, 141, 131), (1072, 84, 1257, 131), (1090, 24, 1257, 72), (880, 375, 1245, 415)],
            'hudeditor-title': [(24, 84, 141, 131), (1072, 84, 1257, 131), (1090, 24, 1257, 72)],
            'title-sidebar': [(500, 240, 840, 278), (880, 480, 1245, 515)]}  # ping, play time
-# The title's background is a panorama that moves between any two captures, under translucent panels, so
-# whole-frame pixels cannot match. For these shots only the bright pixels (the text and glyph strokes) are compared.
-BRIGHT = {'title-sidebar'}
+# These screens sit over a moving or blurred 3D background under translucent panels (the title's panorama; the
+# vanilla bars that show blurred behind the map and menu), so whole-frame pixels cannot match between any two
+# captures even of the same config. For them only the bright pixels (text and glyph strokes) are compared, which
+# checks layout, glyph shapes and positions but not panel tints. The dev pages are compared pixel for pixel.
+BRIGHT = {'title-sidebar', 'hud-a', 'hudeditor', 'map', 'menu', 'welcome'}
 BRIGHT_LUMA = 170
 
 
