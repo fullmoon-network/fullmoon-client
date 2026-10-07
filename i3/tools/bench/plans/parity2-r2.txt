@@ -1,0 +1,6 @@
+base parity-hud 1
+base parity-hud 3
+if parity-hud 1
+ec parity-hud 1
+mc parity-hud 1
+bo parity-hud 1

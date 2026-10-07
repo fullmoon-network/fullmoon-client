@@ -23,7 +23,12 @@ import numpy as np
 from PIL import Image
 
 SHOTS = {'parity-title': ['title-sidebar', 'specimen', 'kit', 'list', 'hudeditor-title'],
-         'parity-world': ['welcome', 'hud-a', 'hudeditor', 'map', 'menu']}
+         'parity-hud': ['welcome', 'hud-a', 'hudeditor', 'map', 'menu']}
+
+
+# Live values on the HUD (x0, y0, x1, y1): fps, ping, wall clock, play time. They differ between any two runs.
+DYNAMIC = {'hud-a': [(24, 84, 141, 131), (1072, 84, 1257, 131), (1090, 24, 1257, 72), (880, 375, 1245, 415)],
+           'hudeditor': [(24, 84, 141, 131), (1072, 84, 1257, 131), (1090, 24, 1257, 72), (880, 375, 1245, 415)]}
 
 
 def load(path: Path) -> np.ndarray:
@@ -62,7 +67,7 @@ def clusters(mask: np.ndarray, cell: int = 24) -> list[tuple[int, int, int, int,
     return sorted(out, reverse=True)
 
 
-def compare(candidate: Path, base: Path, noise: np.ndarray | None) -> tuple[str, int, list]:
+def compare(candidate: Path, base: Path, noise: np.ndarray | None, dynamic=()) -> tuple[str, int, list]:
     a, b = load(candidate), load(base)
     if a.shape != b.shape:
         return 'DIFFERS (size)', -1, []
@@ -71,6 +76,8 @@ def compare(candidate: Path, base: Path, noise: np.ndarray | None) -> tuple[str,
     if total == 0:
         return 'IDENTICAL', 0, []
     beyond = diff & ~noise if noise is not None else diff
+    for x0, y0, x1, y1 in dynamic:
+        beyond[y0:y1 + 1, x0:x1 + 1] = False
     if not beyond.any():
         return 'NOISE-ONLY', total, []
     return 'DIFFERS', int(beyond.sum()), clusters(beyond)[:4]
@@ -99,25 +106,27 @@ def main() -> int:
     ap.add_argument('configs', nargs='+')
     ap.add_argument('--out', type=Path)
     a = ap.parse_args()
-    dirs = sorted(p for p in a.runs.iterdir() if (p / 'run.json').exists())
+    import json
+    meta = {p: json.loads((p / 'run.json').read_text()) for p in sorted(a.runs.iterdir()) if (p / 'run.json').exists()}
+    meta = {p: m for p, m in meta.items() if m.get('status') == 'ok'}
 
     def find(cfg: str, scen: str) -> list[Path]:
-        return [d for d in dirs if d.name.split('-')[1] == cfg and d.name.split('-')[2] == scen]
+        return [d for d, m in meta.items() if m['config'] == cfg and m['scenario'] == scen]
 
     lines = ['| config | screen | verdict | pixels beyond noise | clusters (px, x0,y0,x1,y1) |', '|---|---|---|---|---|']
     for cfg in a.configs:
-        for scen in ('parity-title', 'parity-world'):
+        for scen in ('parity-title', 'parity-hud'):
             for cand in find(cfg, scen):
-                runner = cand.name.split('-')[0]
+                runner = meta[cand]['runner']
                 bases = find(a.base, scen)
-                same = [d for d in bases if d.name.split('-')[0] == runner]
+                same = [d for d in bases if meta[d]['runner'] == runner]
                 if not same:
                     continue
                 others = [d for d in bases if d is not same[0]]
                 for name in SHOTS[scen]:
                     if not (cand / f'{name}.png').exists() or not (same[0] / f'{name}.png').exists():
                         continue
-                    verdict, n, boxes = compare(cand / f'{name}.png', same[0] / f'{name}.png', noise_mask(same[0], name, others))
+                    verdict, n, boxes = compare(cand / f'{name}.png', same[0] / f'{name}.png', noise_mask(same[0], name, others), DYNAMIC.get(name, ()))
                     lines.append(f'| {cfg} ({runner}) | {name} | {verdict} | {n} | {boxes if boxes else ""} |')
     text = '\n'.join(lines)
     print(text)
