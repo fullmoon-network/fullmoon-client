@@ -45,7 +45,20 @@ def load_runs(dirs: list[Path]) -> list[dict]:
     return runs
 
 
-def window_metrics(run: dict, label: str) -> dict | None:
+HOST_REF_S = 14.3  # median seconds from process start to the MCP port answering, on a healthy runner
+
+
+def host_factor(run: dict) -> float:
+    """How much slower this run's host was than a healthy one, from start-up alone.
+
+    The runners are burstable (m7i-flex) and their speed drifts by up to ~15% between runs with steal reading 0, so
+    the time from process start to the MCP port answering (Fabric loading, no rendering, independent of every
+    config tested here except AOT) is the speed probe each run carries. 1.0 = healthy."""
+    mcp = run.get('events', {}).get('mcp_up_s')
+    return mcp / HOST_REF_S if mcp else 1.0
+
+
+def window_metrics(run: dict, label: str, normalize: bool = False) -> dict | None:
     parse = run['dir'] / f'{label}.parse.json'
     if not parse.exists():
         return None
@@ -54,7 +67,16 @@ def window_metrics(run: dict, label: str) -> dict | None:
     except json.JSONDecodeError:
         return None
     w = run['windows'][label]
+    k = host_factor(run) if normalize else 1.0
     m = frame_stats(p['tick_start_ns'], p['tick_dur_ns'], p['render_dur_ns'], w['seconds'])
+    if normalize:  # time-like metrics scale with the host, rates with its inverse
+        for key in ('avg_ms', 'p50_ms', 'p95_ms', 'p99_ms', 'p999_ms', 'max_ms', 'runtick_avg_ms', 'render_avg_ms', 'render_p99_ms'):
+            if key in m:
+                m[key] /= k
+        for key in ('fps', 'low1_fps'):
+            if key in m:
+                m[key] *= k
+    m['host_factor'] = host_factor(run)
     rt = p['alloc'].get('Render thread')
     if rt and rt['ms'] > 0:
         m['alloc_mib_s'] = rt['bytes'] / MIB / (rt['ms'] / 1000)
@@ -181,7 +203,7 @@ def memory_table(runs: list[dict], markdown: bool) -> str:
     return table(rows, ['config', 'scenario', 'n', 'RSS MiB', 'RSS after GC', 'PSS MiB', 'anon MiB', 'live heap MiB'], markdown)
 
 
-def screen_table(runs: list[dict], base: str, markdown: bool, configs: list[str] | None = None) -> str:
+def screen_table(runs: list[dict], base: str, markdown: bool, configs: list[str] | None = None, normalize: bool = False) -> str:
     """One row per config: change against the base config's mean, per metric. n is the number of runs behind the cell."""
     cols = [  # (window, metric, header, kind) kind: pct | abs
         ('fly-survival', 'avg_ms', '야생 frame ms', 'pct'), ('fly-survival', 'p99_ms', '야생 p99', 'pct'),
@@ -194,7 +216,7 @@ def screen_table(runs: list[dict], base: str, markdown: bool, configs: list[str]
         if run.get('status') != 'ok':
             continue
         for w in run.get('windows', {}):
-            m = window_metrics(run, w)
+            m = window_metrics(run, w, normalize)
             if m:
                 for key, v in m.items():
                     if isinstance(v, float) and v == v:
@@ -242,6 +264,7 @@ def main() -> int:
     ap.add_argument('--memory', action='store_true')
     ap.add_argument('--traces', action='store_true')
     ap.add_argument('--screen', action='store_true')
+    ap.add_argument('--normalize', action='store_true', help='scale frame metrics by each run\'s host-speed probe')
     ap.add_argument('--markdown', action='store_true')
     a = ap.parse_args()
     runs = load_runs(a.runs)
@@ -252,7 +275,7 @@ def main() -> int:
         print(memory_table(runs, a.markdown))
         return 0
     if a.screen:
-        print(screen_table(runs, a.base, a.markdown))
+        print(screen_table(runs, a.base, a.markdown, normalize=a.normalize))
         return 0
     if a.traces:
         print(traces_table(runs, a.markdown))

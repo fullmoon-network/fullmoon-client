@@ -1,0 +1,9 @@
+combo title 2
+combo fly 2
+combo idle 2
+base title 6
+base fly 6
+base idle 6
+combo title 3
+combo fly 3
+combo idle 3

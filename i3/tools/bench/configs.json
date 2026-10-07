@@ -152,6 +152,16 @@
   },
   "combo": {
    "jvm_remove": [
+    "-Xms2048M"
+   ],
+   "jvm_add": [
+    "-Xms512M",
+    "-XX:+UseCompactObjectHeaders"
+   ],
+   "_doc": "the screening's winners: compact object headers (allocation, live heap) and a 512 MiB initial heap (RSS); -Xmx stays 4096M"
+  },
+  "coh3g": {
+   "jvm_remove": [
     "-Xmx4096M",
     "-Xms2048M"
    ],
@@ -160,7 +170,7 @@
     "-Xms2048M",
     "-XX:+UseCompactObjectHeaders"
    ],
-   "_doc": "the winners of the screening: compact object headers and a 3 GiB ceiling (the live set is ~0.3 GiB)"
+   "_doc": "compact object headers and a 3 GiB ceiling; the first 'combined' attempt, measured while the r2 runner was ~15% slow"
   }
  }
 }

@@ -1,3 +1,0 @@
-combo title 2
-combo fly 2
-combo idle 2
