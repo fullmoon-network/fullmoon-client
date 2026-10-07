@@ -10,7 +10,7 @@ use crate::{
     error::Result,
     meta,
     model::{Account, GameState, GameStateValue, Instance, LogEvent, Settings},
-    paths, store,
+    paths, spec, store,
 };
 
 const MANAGED_INSTANCE_ID: &str = "fullmoon-managed";
@@ -36,9 +36,18 @@ pub struct AppState {
 
 impl AppState {
     pub async fn load() -> Result<Self> {
-        let settings: Settings = store::read_or(&paths::settings_file(), Settings::default).await;
-        let saved_instances: Vec<Instance> =
+        let mut settings: Settings =
+            store::read_or(&paths::settings_file(), Settings::default).await;
+        let mut saved_instances: Vec<Instance> =
             store::read_or(&paths::instances_file(), Vec::new).await;
+        // before the managed instance is made, so a first start gets the tuned heap too
+        if spec::tune_heap(&mut settings, &mut saved_instances, spec::total_memory_mb().await) {
+            // a save that fails only means the tuning runs again next start
+            let _ = store::write(&paths::settings_file(), &settings).await;
+            if !saved_instances.is_empty() {
+                let _ = store::write(&paths::instances_file(), &saved_instances).await;
+            }
+        }
         let (instances, created) = bootstrap_instances(saved_instances, &settings, &now_iso());
 
         if created {
