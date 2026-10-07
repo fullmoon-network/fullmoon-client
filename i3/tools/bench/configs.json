@@ -13,7 +13,9 @@
   "moreculling": "moreculling-fabric-26.1.2-1.7.3.jar",
   "badoptimizations": "BadOptimizations-2.4.1-26.1-fabric.jar",
   "dynamic-fps": "dynamic-fps-3.11.7+minecraft-26.1.0-fabric.jar",
-  "krypton": "krypton-0.3.0.jar"
+  "krypton": "krypton-0.3.0.jar",
+  "fullmoon-fonts-x2only": "fullmoon-client-3.2.0-fonts-x2only.jar",
+  "fullmoon-fonts-doubled": "fullmoon-client-3.2.0-fonts-doubled.jar"
  },
  "base": {
   "mods": [
@@ -32,7 +34,12 @@
   ]
  },
  "startup_filters": [
-  "dev.fullmoon.client.FullmoonClient::onInitializeClient"
+  "dev.fullmoon.client.FullmoonClient::onInitializeClient",
+  "net.minecraft.client.gui.font.providers.TrueTypeGlyphProviderDefinition::load",
+  "org.lwjgl.util.freetype.FreeType::FT_New_Memory_Face",
+  "com.mojang.blaze3d.platform.TextureUtil::readResource",
+  "net.minecraft.client.gui.font.FontManager::prepare",
+  "net.minecraft.client.gui.font.FontManager::apply"
  ],
  "configs": {
   "base": {},
@@ -117,6 +124,22 @@
    ],
    "train": [
     "-XX:AOTCacheOutput=${BENCH_HOME}/aot/fullmoon.aot"
+   ]
+  },
+  "fmfont11": {
+   "mods_remove": [
+    "fullmoon"
+   ],
+   "mods_add": [
+    "fullmoon-fonts-x2only"
+   ]
+  },
+  "fmfont66": {
+   "mods_remove": [
+    "fullmoon"
+   ],
+   "mods_add": [
+    "fullmoon-fonts-doubled"
    ]
   }
  }

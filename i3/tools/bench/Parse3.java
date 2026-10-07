@@ -33,6 +33,8 @@ public class Parse3 {
         return mod != null ? mod : mc ? "vanilla" : "jdk/lwjgl/native";
     }
 
+    static long nanos(java.time.Duration d) { try { return d.toNanos(); } catch (ArithmeticException e) { return -1; } }  // an unset minimum is Long.MAX_VALUE
+
     static String esc(String s) { return s.replace("\\", "\\\\").replace("\"", "\\\""); }
 
     static String arr(List<Long> v) {
@@ -77,8 +79,8 @@ public class Parse3 {
                     case "jdk.MethodTiming" -> {
                         RecordedMethod m = e.getValue("method");
                         timing.put(m.getType().getName() + "::" + m.getName(), new long[]{
-                            e.getLong("invocations"), ((java.time.Duration) e.getValue("average")).toNanos(),
-                            ((java.time.Duration) e.getValue("minimum")).toNanos(), ((java.time.Duration) e.getValue("maximum")).toNanos()});
+                            e.getLong("invocations"), nanos(e.getDuration("average")),
+                            nanos(e.getDuration("minimum")), nanos(e.getDuration("maximum"))});
                     }
                     case "jdk.ExecutionSample", "jdk.NativeMethodSample" -> {
                         RecordedThread th = e.getThread("sampledThread");

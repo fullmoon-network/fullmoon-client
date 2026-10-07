@@ -7,6 +7,7 @@
 Scenarios (see README.md for what each one measures):
     title    process start -> title screen, no world, no JFR
     idle     rd 6: in-world idle 120 s, map open 60 s, native menu open 60 s (+ parity screenshots)
+    flys     rd 12: the 야생 leg of fly only (JVM-flag screens)
     fly      rd 12: lobby flythrough 120 s, then /server survival and the 야생 flythrough 120 s
     mem      rd 6, NativeMemoryTracking=summary, 60 s idle, summary + diff (separate so NMT cannot skew timing)
     startup  JFR from JVM start, traced font/entrypoint methods, for the mod's share of start-up
@@ -118,7 +119,7 @@ class Run:
         self.args = args
         self.cfg = resolve(args.config)
         self.name = f'{args.runner}-{args.config}-{args.scenario}-r{args.rep}'
-        self.out = Path(args.out) / self.name
+        self.out = Path(args.out).resolve() / self.name
         shutil.rmtree(self.out, ignore_errors=True)
         self.out.mkdir(parents=True)
         self.game = self.out / 'game'
@@ -171,16 +172,26 @@ class Run:
 
     # -- start-up timeline --------------------------------------------------------------------
     def timeline(self, until_title: bool, timeout: float = 420) -> dict:
-        """Polls the MCP server until the title screen (no quickplay) or the world is drawn (quickplay)."""
-        ev = {}
-        seen = []
+        """Polls sense_screen over the MCP port until the title screen (no quickplay) or the world is drawn.
+
+        Quickplay polls once a second and only calls sense_screen: two calls every 250 ms during the login
+        froze the client's render thread after the welcome packet (reproduced twice, never at 3 s spacing),
+        so the world-side readings are deliberately coarse (1 s)."""
+        ev: dict = {}
+        seen: list = []
         deadline = time.time() + timeout
+        last_ok = time.time()
+        connected = False
         while time.time() < deadline:
             if self.proc.poll() is not None:
                 raise RuntimeError(f'client exited ({self.proc.returncode}) during start-up')
             sc = mc.screen_class()
             now = time.time() - self.t0
+            if sc is None and 'mcp_up_s' in ev and time.time() - last_ok > 90:
+                self.dump_threads()
+                raise TimeoutError('client stopped answering on the MCP port (hung)')
             if sc is not None:
+                last_ok = time.time()
                 ev.setdefault('mcp_up_s', now)
                 if not seen or seen[-1][1] != sc:
                     seen.append((round(now, 2), sc))
@@ -189,17 +200,23 @@ class Run:
                         ev['title_s'] = now
                         break
                 else:
-                    g = mc.in_game()
-                    if g:
+                    connected = connected or 'ConnectScreen' in sc
+                    if connected and not any(k in sc for k in ('ConnectScreen', 'GenericMessageScreen', 'ProgressScreen')):
                         ev.setdefault('in_game_s', now)
                         if 'LevelLoadingScreen' not in sc:
                             ev['world_visible_s'] = now
                             break
-            time.sleep(0.1 if until_title else 0.25)
+            time.sleep(0.1 if until_title else 1.0)
         else:
             raise TimeoutError('start-up timeline timed out')
         ev['screens'] = seen
         return ev
+
+    def dump_threads(self) -> None:
+        try:
+            (self.out / 'thread-dump.txt').write_text(mc.jcmd(self.pid, 'Thread.print', timeout=60))
+        except Exception as exc:  # the JVM may be too wedged to answer
+            (self.out / 'thread-dump.txt').write_text(f'jcmd failed: {exc}\n')
 
     def clear_screens(self, shot_welcome: bool = False, limit: int = 40) -> bool:
         for _ in range(limit):
@@ -260,36 +277,32 @@ class Run:
             'jfr_stop': stopped.splitlines()[-1:], 'file': jfr.name}
 
     def fly(self, flight_name: str, seconds: float, label: str) -> None:
+        """The `tp` stream is sent by flightd.py beside the server (see its docstring for why)."""
+        import socket
         spec = FLIGHTS[flight_name]
         flight = Flight(spec)
         rc = self.rc(spec['server'])
-        stats = {'sent': 0, 'max_lag_ms': 0.0}
+        stats: dict = {}
 
         def drive(duration: float) -> None:
-            t0 = time.monotonic()
-            i = 0
-            while i / flight.rate < duration:
-                due = t0 + i / flight.rate
-                wait = due - time.monotonic()
-                if wait > 0:
-                    time.sleep(wait)
-                else:
-                    stats['max_lag_ms'] = max(stats['max_lag_ms'], -wait * 1000)
-                x, y, z, yaw, pitch = flight.pose(i / flight.rate)
-                rc.send(f'tp {PLAYER} {x:.2f} {y:.2f} {z:.2f} {yaw:.1f} {pitch:.1f}')
-                stats['sent'] += 1
-                i += 1
+            with socket.create_connection(('127.0.0.1', 48394), timeout=15) as sock:
+                sock.settimeout(duration + 60)
+                io = sock.makefile('rw', encoding='utf-8')
+                io.write(f'FLY {flight_name} {duration} {PLAYER}\n')
+                io.flush()
+                assert io.readline().strip() == 'STARTED'
+                stats['done'] = io.readline().strip()
 
         x, y, z, yaw, pitch = flight.pose(0)
         rc.command(f'gamemode spectator {PLAYER}')
         rc.command(f'tp {PLAYER} {x:.2f} {y:.2f} {z:.2f} {yaw:.1f} {pitch:.1f}')
         time.sleep(12)  # let the first ring of chunks arrive and mesh before the window opens
-        # a cap on what the server holds around the player, for the entity-heavy 야생 path
+        # what the server holds around the player, for the entity-heavy 야생 path
         self.log['events'][f'{label}_entities_at_start'] = rc.command(
             f'execute at {PLAYER} if entity @e[type=!player,distance=..200]')
         self.window(label, seconds, driver=drive)
         self.log['windows'][label]['flight'] = {**stats, 'rate_hz': flight.rate, 'speed': flight.speed,
-                                               'path_length': round(flight.length, 1), 'rcon_replies': rc.received}
+                                               'path_length': round(flight.length, 1)}
 
     # -- end of run ---------------------------------------------------------------------------
     def end_metrics(self) -> None:
@@ -375,12 +388,17 @@ class Run:
         time.sleep(3)
         self.end_metrics()
 
-    def s_fly(self) -> None:
+    def s_flys(self) -> None:
+        """The 야생 leg only (the JVM-flag screens); same path and settle as `fly`."""
+        self.s_fly(lobby=False)
+
+    def s_fly(self, lobby: bool = True) -> None:
         self.join_lobby(12)
         self.fix_world('lobby')
-        time.sleep(30)
+        time.sleep(30 if lobby else 10)
         self.clear_screens()
-        self.fly('lobby', 120, 'fly-lobby')
+        if lobby:
+            self.fly('lobby', 120, 'fly-lobby')
         self.rc('lobby').command(f'gamemode adventure {PLAYER}')
         self.rc('lobby').command(f'tp {PLAYER} 0.5 73 80.5 180 0')
         time.sleep(3)
@@ -507,9 +525,14 @@ def main() -> int:
             continue
         print(time.strftime('%H:%M:%S'), 'start', key, flush=True)
         ns = argparse.Namespace(config=config, scenario=scenario, rep=int(rep), runner=a.runner, out=a.out)
-        run = Run(ns)
-        run.run()
-        print(time.strftime('%H:%M:%S'), 'end  ', key, run.log.get('status'), flush=True)
+        for attempt in (1, 2):  # a client that hangs under software GL is retried once
+            run = Run(ns)
+            run.run()
+            print(time.strftime('%H:%M:%S'), 'end  ', key, f'attempt {attempt}', run.log.get('status'), flush=True)
+            if run.log.get('status') == 'ok':
+                break
+            subprocess.run(['pkill', '-9', '-f', 'KnotClient'])
+            time.sleep(5)
         if run.log.get('status') == 'ok':  # a failed run is retried the next time the queue starts
             with done.open('a') as handle:
                 handle.write(key + '\n')

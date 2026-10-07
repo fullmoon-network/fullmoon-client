@@ -4,13 +4,13 @@
 #   replica 127.0.0.1:{48291,25575,25576} <-ssh -L- this PC 127.0.0.1:{48391,48392,48393} <-ssh -R- each client runner
 #
 # The burst security group admits ssh from the operator's /32 only, so runners cannot reach each other;
-# this machine carries the hop. 48291 is Velocity (the game), 25575/25576 are the lobby/survival RCON.
+# this machine carries the hop. 48291 is Velocity (the game), 25575/25576 the lobby/survival RCON, 48394 flightd.py.
 #   REPLICA_IP=<ip> CLIENT_IPS="<ip> <ip>" ./relay.sh up
 set -uo pipefail
 RUN_USER="${RUN_USER:-ec2-user}"
 ST="${RELAY_STATE:-$HOME/.cache/bench-relay}"; mkdir -p "$ST"
 KA=(-o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes -o BatchMode=yes)
-PORTS=(48291:48391 25575:48392 25576:48393)   # remote:local
+PORTS=(48291:48391 25575:48392 25576:48393 48394:48394)   # remote:local
 alive() { [ -f "$ST/$1.pid" ] && kill -0 "$(cat "$ST/$1.pid")" 2>/dev/null; }
 hop() { # name, host, forward flags...
   local name=$1 host=$2; shift 2

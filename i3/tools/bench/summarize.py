@@ -62,6 +62,9 @@ def window_metrics(run: dict, label: str) -> dict | None:
     m.update(gc_n=gc['count'], gc_sum_ms=gc['sum_pause_ms'], gc_max_ms=gc['max_pause_ms'])
     m['cpu_jvm_pct'] = 100 * (p['cpu']['jvm_user'] + p['cpu']['jvm_system']) if p['cpu']['jvm_user'] >= 0 else float('nan')
     m['steal_pct'] = w.get('steal_pct', float('nan'))
+    cpu = p['cpu']
+    if cpu['render_user'] >= 0 and 'avg_ms' in m:  # Java-side cost of a frame: what a fast GPU would leave as the limit
+        m['render_cpu_ms'] = m['avg_ms'] * (cpu['render_user'] + cpu['render_system'])
     m['rss_mib'] = (w.get('rss_kib_end') or 0) / 1024
     for name, v in p['timing'].items():
         m['t_' + name.split('.')[-1].replace('::', '.')] = v['avg_ns'] / 1e6
@@ -70,7 +73,7 @@ def window_metrics(run: dict, label: str) -> dict | None:
 
 FRAME_COLS = [('fps', 'fps', '{:.2f}'), ('avg_ms', 'avg ms', '{:.1f}'), ('p50_ms', 'p50', '{:.1f}'), ('p95_ms', 'p95', '{:.1f}'),
               ('p99_ms', 'p99', '{:.1f}'), ('p999_ms', 'p99.9', '{:.1f}'), ('low1_fps', '1% low fps', '{:.2f}'),
-              ('render_avg_ms', 'render ms', '{:.1f}'), ('alloc_mib_s', 'alloc MiB/s', '{:.2f}'),
+              ('render_avg_ms', 'render ms', '{:.1f}'), ('render_cpu_ms', 'render-thread CPU ms/frame', '{:.1f}'), ('alloc_mib_s', 'alloc MiB/s', '{:.2f}'),
               ('gc_n', 'GCs', '{:.1f}'), ('gc_sum_ms', 'GC ms', '{:.0f}'), ('gc_max_ms', 'GC max', '{:.0f}'),
               ('rss_mib', 'RSS MiB', '{:.0f}'), ('steal_pct', 'steal %', '{:.2f}')]
 
