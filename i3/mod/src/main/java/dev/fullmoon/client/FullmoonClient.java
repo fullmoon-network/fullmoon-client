@@ -32,9 +32,10 @@ import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import com.mojang.blaze3d.platform.InputConstants;
 
 /**
- * Client entrypoint. No mixins: every hook here is a public Fabric API surface, and the one
- * place this client needs something vanilla keeps to itself — the GUI render state — is opened
- * by a single access-widener line instead of an injected method.
+ * Client entrypoint. Every hook here is a public Fabric API surface, and the one place this
+ * client needs something vanilla keeps to itself — the GUI render state — is opened by a single
+ * access-widener line instead of an injected method. The only mixins are the four under
+ * {@code dev.fullmoon.client.mixin}, which cut the cost of loading this client's fonts.
  */
 public final class FullmoonClient implements ClientModInitializer {
     public static final String NAMESPACE = "fullmoon";

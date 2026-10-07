@@ -9,6 +9,8 @@ import java.util.function.ToIntFunction;
 
 import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.render.Painter;
+import dev.fullmoon.client.text.fonts.FontLoading;
+import dev.fullmoon.client.text.fonts.GuiScaleVariants;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -44,7 +46,7 @@ public final class Typeset {
     private static final String ELLIPSIS = "…";
 
     /** The GUI scales a provider set is baked for; any other scale takes the nearest of these. */
-    private static final int[] SCALES = {2, 3, 4};
+    private static final int[] SCALES = GuiScaleVariants.SCALES;
 
     /** Strings kept per face before its table is dropped; a screen of live text is a few hundred. */
     private static final int MEMO_LIMIT = 2048;
@@ -54,6 +56,7 @@ public final class Typeset {
     private static final Map<Tokens.Type.Role, Style[]> ROLE_STYLES = new IdentityHashMap<>();
     private static final Map<Style, Face> FACES = new IdentityHashMap<>();
     private static int epoch;
+    private static int warmedIndex = -1;
     /**
      * How far under the middle of its line box a face's baseline sits, as a share of the em:
      * (ascender − descender) / 2 in the face's own metrics, which is where the mockups' CSS line
@@ -84,17 +87,18 @@ public final class Typeset {
             }
             FONT_IDS.put(role, ids);
         }
-        return ids[scaleIndex(guiScale)];
+        int index = scaleIndex(guiScale);
+        if (index != warmedIndex) {
+            // The window moved to another scale: the providers baked for it are opened on a
+            // worker, because the game only opens the scale it started at.
+            warmedIndex = index;
+            FontLoading.warm(guiScale);
+        }
+        return ids[index];
     }
 
     private static int scaleIndex(int guiScale) {
-        int best = 0;
-        for (int i = 1; i < SCALES.length; i++) {
-            if (Math.abs(SCALES[i] - guiScale) < Math.abs(SCALES[best] - guiScale)) {
-                best = i;
-            }
-        }
-        return best;
+        return GuiScaleVariants.indexOf(guiScale);
     }
 
     /**
