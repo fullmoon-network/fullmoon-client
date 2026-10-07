@@ -50,6 +50,7 @@ public class Parse3 {
         Map<String, Integer> sampleCat = new TreeMap<>();
         Map<String, long[]> traces = new TreeMap<>();     // any other traced method -> {n, totalNs, maxNs, firstStartMs, lastEndMs}
         Map<String, Integer> allCat = new TreeMap<>(); int allSamples = 0;
+        Map<String, Integer> byThread = new HashMap<>(), leaf = new HashMap<>();
         Map<String, long[]> alloc = new HashMap<>();      // thread -> {firstBytes, firstTs, lastBytes, lastTs}
         int gcCount = 0; double gcSum = 0, gcMax = 0; Map<String, Integer> gcNames = new TreeMap<>();
         List<Long> heapAfterGc = new ArrayList<>(); List<Long> heapCommitted = new ArrayList<>();
@@ -88,6 +89,9 @@ public class Parse3 {
                         boolean ttf = false;
                         for (RecordedFrame f : st.getFrames()) { String c = f.getMethod().getType().getName(); if (c.contains("TrueTypeGlyphProvider") || c.startsWith("org.lwjgl.util.freetype")) { ttf = true; break; } }
                         allSamples++; allCat.merge(ttf ? "truetype" : cat(st.getFrames()), 1, Integer::sum);
+                        String tname = th.getJavaName() == null ? th.getOSName() : th.getJavaName();
+                        byThread.merge(tname.replaceAll("[-#]?\\d+$", ""), 1, Integer::sum);
+                        if (!st.getFrames().isEmpty()) { RecordedMethod lm = st.getFrames().get(0).getMethod(); leaf.merge(lm.getType().getName() + "::" + lm.getName(), 1, Integer::sum); }
                         if (t.equals("jdk.ExecutionSample") && "Render thread".equals(th.getJavaName())) { samples++; sampleCat.merge(cat(st.getFrames()), 1, Integer::sum); }
                     }
                     case "jdk.ThreadAllocationStatistics" -> {
@@ -143,6 +147,14 @@ public class Parse3 {
         for (var en : sampleCat.entrySet()) sb.append(",\"").append(esc(en.getKey())).append("\":").append(en.getValue());
         sb.append("},\"all_samples\":{\"total\":").append(allSamples);
         for (var en : allCat.entrySet()) sb.append(",\"").append(esc(en.getKey())).append("\":").append(en.getValue());
+        sb.append("},\"threads\":{");
+        first = true;
+        for (var en : byThread.entrySet().stream().sorted((x, y) -> y.getValue() - x.getValue()).limit(12).toList()) {
+            if (!first) sb.append(','); first = false; sb.append('"').append(esc(en.getKey())).append("\":").append(en.getValue()); }
+        sb.append("},\"hot\":{");
+        first = true;
+        for (var en : leaf.entrySet().stream().sorted((x, y) -> y.getValue() - x.getValue()).limit(30).toList()) {
+            if (!first) sb.append(','); first = false; sb.append('"').append(esc(en.getKey())).append("\":").append(en.getValue()); }
         sb.append("},\"traces\":{");
         first = true;
         for (var en : traces.entrySet()) {

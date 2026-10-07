@@ -141,6 +141,14 @@
    "mods_add": [
     "fullmoon-fonts-doubled"
    ]
+  },
+  "ms512": {
+   "jvm_remove": [
+    "-Xms2048M"
+   ],
+   "jvm_add": [
+    "-Xms512M"
+   ]
   }
  }
 }

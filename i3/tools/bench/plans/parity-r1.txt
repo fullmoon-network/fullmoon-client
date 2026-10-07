@@ -1,0 +1,7 @@
+base parity-world 1
+base parity-world 3
+if parity-world 1
+ec parity-world 1
+mc parity-world 1
+bo parity-world 1
+base parity-title 3

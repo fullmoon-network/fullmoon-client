@@ -138,8 +138,31 @@ def startup_table(runs: list[dict], markdown: bool) -> str:
         for key, _ in keys:
             vals = [e[key] for e in evs if key in e]
             row.append(f'{mean(vals):.1f} ±{spread_pct(vals):.1f}%' if vals else '-')
+        rss = [e['rss_kib_at_title_plus10s'] / 1024 for e in evs if 'rss_kib_at_title_plus10s' in e]
+        anon = [e['smaps_rollup_kib']['Anonymous'] / 1024 for e in evs if 'smaps_rollup_kib' in e and 'Anonymous' in e['smaps_rollup_kib']]
+        row += [f'{mean(rss):.0f} ±{spread_pct(rss):.1f}%' if rss else '-', f'{mean(anon):.0f} ±{spread_pct(anon):.1f}%' if anon else '-']
         rows.append(row)
-    return table(rows, ['config', 'scenario', 'n'] + [k[1] for k in keys], markdown)
+    return table(rows, ['config', 'scenario', 'n'] + [k[1] for k in keys] + ['RSS MiB @title+10s', 'anon MiB'], markdown)
+
+
+def traces_table(runs: list[dict], markdown: bool) -> str:
+    """The `startup` runs: how often and for how long each traced method ran, and where the samples fell."""
+    rows = []
+    for run in sorted(runs, key=lambda r: r['run']):
+        parse = run['dir'] / 'startup.parse.json'
+        if run['scenario'] != 'startup' or not parse.exists():
+            continue
+        p = json.loads(parse.read_text())
+        samples = p['all_samples']
+        total = samples.get('total', 0) or 1
+        for name, v in sorted(p['traces'].items()):
+            short = name.split('.')[-1]
+            span = (v['last_end_ms'] - v['first_ms']) if v['n'] else 0
+            rows.append([run['run'], short, str(v['n']), f"{v['total_ns'] / 1e6 / max(v['n'], 1):.1f}", f"{v['total_ns'] / 1e6:.0f}", f'{span}',
+                         ''])
+        rows.append([run['run'], 'samples: fullmoon / truetype / total', '', '', '', '',
+                     f"{samples.get('fullmoon', 0)} / {samples.get('truetype', 0)} / {samples.get('total', 0)} ({100 * (samples.get('fullmoon', 0) + samples.get('truetype', 0)) / total:.1f}%)"])
+    return table(rows, ['run', 'traced method', 'calls', 'mean ms', 'sum ms (all threads)', 'wall span ms', 'note'], markdown)
 
 
 def memory_table(runs: list[dict], markdown: bool) -> str:
@@ -165,6 +188,7 @@ def main() -> int:
     ap.add_argument('--window', action='append')
     ap.add_argument('--startup', action='store_true')
     ap.add_argument('--memory', action='store_true')
+    ap.add_argument('--traces', action='store_true')
     ap.add_argument('--markdown', action='store_true')
     a = ap.parse_args()
     runs = load_runs(a.runs)
@@ -173,6 +197,9 @@ def main() -> int:
         return 0
     if a.memory:
         print(memory_table(runs, a.markdown))
+        return 0
+    if a.traces:
+        print(traces_table(runs, a.markdown))
         return 0
     windows = a.window or sorted({w for r in runs for w in r.get('windows', {})})
     for w in windows:

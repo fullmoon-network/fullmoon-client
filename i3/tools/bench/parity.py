@@ -22,7 +22,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-SHOTS = ['title-sidebar', 'specimen', 'kit', 'list', 'hudeditor-title', 'welcome', 'hud-a', 'hudeditor', 'map', 'menu']
+SHOTS = {'parity-title': ['title-sidebar', 'specimen', 'kit', 'list', 'hudeditor-title'],
+         'parity-world': ['welcome', 'hud-a', 'hudeditor', 'map', 'menu']}
 
 
 def load(path: Path) -> np.ndarray:
@@ -105,7 +106,7 @@ def main() -> int:
 
     lines = ['| config | screen | verdict | pixels beyond noise | clusters (px, x0,y0,x1,y1) |', '|---|---|---|---|---|']
     for cfg in a.configs:
-        for scen in ('parity-title', 'idle'):
+        for scen in ('parity-title', 'parity-world'):
             for cand in find(cfg, scen):
                 runner = cand.name.split('-')[0]
                 bases = find(a.base, scen)
@@ -113,7 +114,7 @@ def main() -> int:
                 if not same:
                     continue
                 others = [d for d in bases if d is not same[0]]
-                for name in SHOTS:
+                for name in SHOTS[scen]:
                     if not (cand / f'{name}.png').exists() or not (same[0] / f'{name}.png').exists():
                         continue
                     verdict, n, boxes = compare(cand / f'{name}.png', same[0] / f'{name}.png', noise_mask(same[0], name, others))

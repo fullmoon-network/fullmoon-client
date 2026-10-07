@@ -11,6 +11,7 @@ Scenarios (see README.md for what each one measures):
     fly      rd 12: lobby flythrough 120 s, then /server survival and the 야생 flythrough 120 s
     mem      rd 6, NativeMemoryTracking=summary, 60 s idle, summary + diff (separate so NMT cannot skew timing)
     startup  JFR from JVM start, traced font/entrypoint methods, for the mod's share of start-up
+    parity-world   steady-state screenshots of the HUD, HUD editor, map and /warp menu (no JFR)
     parity-title   title screen + sidebar fixture and the dev pages, for pixel parity
     aot-train      one launch that writes the JDK 25 AOT cache
     dfps     focused vs unfocused 30 s windows (Dynamic FPS functional check)
@@ -303,12 +304,18 @@ class Run:
         rc.command(f'gamemode spectator {PLAYER}')
         rc.command(f'tp {PLAYER} {x:.2f} {y:.2f} {z:.2f} {yaw:.1f} {pitch:.1f}')
         if 'passed' not in rc.command(f'execute if entity @a[name={PLAYER},gamemode=spectator]'):
-            raise RuntimeError(f'{PLAYER} is not a live spectator on {spec["server"]}; the flight would measure a death screen')
+            raise RuntimeError(f'{PLAYER} is not a spectator on {spec["server"]}')
+        if 'passed' in rc.command(f'execute if data entity {PLAYER} {{Health:0.0f}}'):
+            # a player who died on the replica is still dead at the next login (death screen, no `tp`), which a
+            # flight would happily "measure" at 30 fps; their playerdata has to be deleted on the replica
+            raise RuntimeError(f'{PLAYER} is dead on {spec["server"]}; the flight would measure a death screen')
         time.sleep(12)  # let the first ring of chunks arrive and mesh before the window opens
         # what the server holds around the player, for the entity-heavy 야생 path
         self.log['events'][f'{label}_entities_at_start'] = rc.command(
             f'execute at {PLAYER} if entity @e[type=!player,distance=..200]')
+        mc.screenshot(self.out / f'{label}-start.png')
         self.window(label, seconds, driver=drive)
+        mc.screenshot(self.out / f'{label}-end.png')
         self.log['windows'][label]['flight'] = {**stats, 'rate_hz': flight.rate, 'speed': flight.speed,
                                                'path_length': round(flight.length, 1)}
 
@@ -376,16 +383,16 @@ class Run:
         mc.press('m', move=True)
         time.sleep(3)
         self.log['events']['map_screen'] = mc.screen_class()
-        mc.screenshot(self.out / 'map.png')
         self.window('map', 60)
+        mc.screenshot(self.out / 'map.png')  # taken after the window: the map is still fading in at +3 s
         mc.press('m', move=True)
         time.sleep(3)
         self.clear_screens()
         mc.say('warp')
         time.sleep(5)
         self.log['events']['menu_screen'] = mc.screen_class()
-        mc.screenshot(self.out / 'menu.png')
         self.window('menu', 60)
+        mc.screenshot(self.out / 'menu.png')
         mc.press('Escape', move=True)
         time.sleep(3)
         self.clear_screens()
@@ -399,6 +406,32 @@ class Run:
     def s_flys(self) -> None:
         """The 야생 leg only (the JVM-flag screens); same path and settle as `fly`."""
         self.s_fly(lobby=False)
+
+    def s_parity_world(self) -> None:
+        """Steady-state screenshots of Fullmoon's in-world screens; no JFR, so nothing is timed."""
+        self.join_lobby(6)
+        self.fix_world('lobby')
+        self.rc('lobby').command(f'tp {PLAYER} 0.5 73 80.5 180 0')
+        time.sleep(40)
+        self.clear_screens()
+        mc.screenshot(self.out / 'hud-a.png')
+        time.sleep(4)
+        mc.screenshot(self.out / 'hud-b.png')
+        mc.press('F10', move=True)
+        time.sleep(12)
+        mc.screenshot(self.out / 'hudeditor.png')
+        mc.press('Escape', move=True)
+        time.sleep(4)
+        mc.press('m', move=True)
+        time.sleep(15)  # the map fades in and its status line cycles; this is the steady state
+        mc.screenshot(self.out / 'map.png')
+        mc.press('m', move=True)
+        time.sleep(4)
+        self.clear_screens()
+        mc.say('warp')
+        time.sleep(15)
+        mc.screenshot(self.out / 'menu.png')
+        mc.press('Escape', move=True)
 
     def s_fly(self, lobby: bool = True) -> None:
         self.join_lobby(12)
