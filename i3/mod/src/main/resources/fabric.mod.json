@@ -19,6 +19,9 @@
     ]
   },
   "accessWidener": "fullmoon.accesswidener",
+  "mixins": [
+    "fullmoon.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=${loader_version}",
     "fabric-api": ">=${fabric_version}",
