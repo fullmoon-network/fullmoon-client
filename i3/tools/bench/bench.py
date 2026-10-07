@@ -239,8 +239,14 @@ class Run:
         return self.rcon[server]
 
     def on_survival(self) -> bool:
+        """True once the player is on the 야생 server. The first thing done to them there is spectator mode:
+        the saved position of the last flight is in the air and a survival player dies of the fall in ~3 s."""
         try:
-            return PLAYER in self.rc('survival').command('list')
+            rc = self.rc('survival')
+            if PLAYER not in rc.command('list'):
+                return False
+            rc.command(f'gamemode spectator {PLAYER}')
+            return True
         except OSError:
             return False
 
@@ -296,6 +302,8 @@ class Run:
         x, y, z, yaw, pitch = flight.pose(0)
         rc.command(f'gamemode spectator {PLAYER}')
         rc.command(f'tp {PLAYER} {x:.2f} {y:.2f} {z:.2f} {yaw:.1f} {pitch:.1f}')
+        if 'passed' not in rc.command(f'execute if entity @a[name={PLAYER},gamemode=spectator]'):
+            raise RuntimeError(f'{PLAYER} is not a live spectator on {spec["server"]}; the flight would measure a death screen')
         time.sleep(12)  # let the first ring of chunks arrive and mesh before the window opens
         # what the server holds around the player, for the entity-heavy 야생 path
         self.log['events'][f'{label}_entities_at_start'] = rc.command(
@@ -403,7 +411,7 @@ class Run:
         self.rc('lobby').command(f'tp {PLAYER} 0.5 73 80.5 180 0')
         time.sleep(3)
         mc.say('server survival')
-        self.wait_for(self.on_survival, 120, 2, 'the player on survival')
+        self.wait_for(self.on_survival, 120, 0.4, 'the player on survival')
         self.log['events']['survival_arrived_s'] = round(time.time() - self.t0, 1)
         time.sleep(10)
         self.clear_screens(limit=20)
@@ -451,6 +459,7 @@ class Run:
         cache = HOME / 'aot' / 'fullmoon.aot'
         cache.parent.mkdir(parents=True, exist_ok=True)
         cache.unlink(missing_ok=True)
+        self.cfg['jvm'] = [a for a in self.cfg['jvm'] if not a.startswith('-XX:AOTCache=')]  # the training run writes it
         self.join_lobby(6, extra_jvm=self.cfg['train'] + [f'-Xlog:aot*=info:file={self.out}/aot-train.log'])
         time.sleep(20)
         t = time.time()
@@ -523,6 +532,9 @@ def main() -> int:
         key = f'{a.runner}-{config}-{scenario}-r{rep}'
         if key in finished:
             continue
+        if (Path(a.out) / 'queue.stop').exists():  # pause between runs: touch it, wait for the run in flight, restart later
+            print(time.strftime('%H:%M:%S'), 'stop file seen, pausing', flush=True)
+            return 0
         print(time.strftime('%H:%M:%S'), 'start', key, flush=True)
         ns = argparse.Namespace(config=config, scenario=scenario, rep=int(rep), runner=a.runner, out=a.out)
         for attempt in (1, 2):  # a client that hangs under software GL is retried once
