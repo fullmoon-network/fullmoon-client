@@ -19,6 +19,7 @@ mod mods;
 mod offline;
 mod paths;
 mod ping;
+mod spec;
 mod state;
 mod store;
 mod version;

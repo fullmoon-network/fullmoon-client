@@ -11,7 +11,7 @@ use crate::{
     error::{Error, Result},
     hud, install, java, meta,
     model::*,
-    mods, offline, paths, ping,
+    mods, offline, paths, ping, spec,
     state::AppState,
     store,
 };
@@ -80,43 +80,7 @@ pub async fn java_detect() -> Result<Vec<JavaRuntime>> {
 /// otherwise happily offers a machine's entire RAM to one JVM.
 #[tauri::command]
 pub async fn system_memory_mb() -> Result<u64> {
-    #[cfg(windows)]
-    {
-        use windows_sys::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
-        let mut st = MEMORYSTATUSEX {
-            dwLength: std::mem::size_of::<MEMORYSTATUSEX>() as u32,
-            ..unsafe { std::mem::zeroed() }
-        };
-        // SAFETY: dwLength is set to the struct's own size, as the API requires
-        if unsafe { GlobalMemoryStatusEx(&mut st) } != 0 {
-            return Ok(st.ullTotalPhys / (1024 * 1024));
-        }
-    }
-    #[cfg(target_os = "linux")]
-    {
-        if let Ok(text) = tokio::fs::read_to_string("/proc/meminfo").await {
-            return Ok(meminfo_total_mb(&text));
-        }
-    }
-    Ok(0)
-}
-
-/// `MemTotal:       32768000 kB` in `/proc/meminfo`; 0 when the line is missing.
-#[cfg(any(target_os = "linux", test))]
-fn meminfo_total_mb(text: &str) -> u64 {
-    text.lines()
-        .find_map(|l| l.strip_prefix("MemTotal:"))
-        .and_then(|rest| rest.split_whitespace().next()?.parse::<u64>().ok())
-        .map_or(0, |kb| kb / 1024)
-}
-
-#[cfg(test)]
-mod linux_tests {
-    #[test]
-    fn meminfo_total_is_read_in_mb() {
-        assert_eq!(super::meminfo_total_mb("MemTotal:       16384000 kB\nMemFree: 1 kB\n"), 16000);
-        assert_eq!(super::meminfo_total_mb("nothing"), 0);
-    }
+    Ok(spec::total_memory_mb().await)
 }
 
 // ── versions / instances ──────────────────────────────────────
@@ -652,6 +616,9 @@ async fn start_game(
     cosmetics::materialize(&instance_id, &account.uuid).await?;
 
     let settings = state.settings.lock().await.clone();
+
+    let low = spec::low_spec(spec::total_memory_mb().await, spec::logical_cpus());
+    let _ = spec::seed_options(&paths::instance_minecraft_dir(&inst.id), &inst.version_id, low).await;
 
     /* Our own mod ships inside the launcher, so updating the launcher has to
        update the copy in the instance. Placing it only at install time left an

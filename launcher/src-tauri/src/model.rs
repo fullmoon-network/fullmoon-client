@@ -228,6 +228,9 @@ pub struct Settings {
     pub accent: String,
     pub language: String,
     pub telemetry: bool,
+    /// `spec::tune_heap` has looked at this install's RAM
+    #[serde(default)]
+    pub heap_tuned: bool,
 }
 
 impl Default for Settings {
@@ -241,6 +244,7 @@ impl Default for Settings {
             accent: env!("PINION_ACCENT").into(),
             language: "ko".into(),
             telemetry: false,
+            heap_tuned: false,
         }
     }
 }

@@ -446,6 +446,7 @@ mod tests {
             accent: "#F5D06E".into(),
             language: "ko".into(),
             telemetry: false,
+            heap_tuned: true,
         };
 
         let account = Account {
