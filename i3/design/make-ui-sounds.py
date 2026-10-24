@@ -23,6 +23,8 @@ import numpy as np
 SR = 44100
 SEED = 20260930
 PEAK_DBFS = -6.0
+# The select family plays on every move under the keyboard, so it sits well below the one-off cues.
+PEAK_DBFS_BY_CUE = {"focus": -13.0, "tab": -11.0, "confirm": -9.0, "back": -9.0}
 FADE_IN_MS = 3.0
 FADE_OUT_MS = 25.0
 LIMIT_MS = {"open": 220.0, "close": 220.0}  # every other cue ≤ 260 ms
@@ -61,15 +63,15 @@ def unit_noise(rng: np.random.Generator, n: int, lo_hz: float, hi_hz: float) -> 
     return x / np.sqrt(np.mean(x * x))
 
 
-def note(n, freq, partials, tau_ms, start_ms=0.0, level=1.0) -> np.ndarray:
-    """sine + weak partials; 3 ms raised-cosine attack, exponential decay. `freq` may be a glide array."""
+def note(n, freq, partials, tau_ms, start_ms=0.0, level=1.0, attack_ms=FADE_IN_MS) -> np.ndarray:
+    """sine + weak partials; raised-cosine attack (3 ms unless given), exponential decay. `freq` may be a glide array."""
     s = ms(start_ms)
     m = n - s
     f = np.broadcast_to(np.asarray(freq, dtype=float), (m,))
     phase = 2.0 * math.pi * np.cumsum(f) / SR
     body = sum(a * np.sin(k * phase) for k, a in partials)
     env = np.exp(-np.arange(m) / SR / (tau_ms / 1000.0))
-    env[: ms(FADE_IN_MS)] *= ramp(ms(FADE_IN_MS))
+    env[: ms(attack_ms)] *= ramp(ms(attack_ms))
     out = np.zeros(n)
     out[s:] = level * body * env
     return out
@@ -83,28 +85,32 @@ def touch(rng, n, cutoff_hz, length_ms, start_ms=0.0, level=0.2) -> np.ndarray:
     return out
 
 
-def focus(rng):  # single soft tick
-    n = ms(35)
-    return note(n, 1050.0, [(1, 1.0), (2, 0.08)], 9.0) + touch(rng, n, 3500.0, 3.0, level=0.18)
+# The select family is a soft wooden mallet in C: low fundamentals, slow attacks, a dark faint touch.
+# Every cue draws from one generator in CUES order, so each touch keeps the length and count it had
+# before: a longer or an extra one would shift the noise of every cue after it.
+WOOD = [(1, 1.0), (2, 0.06), (3, 0.015)]
 
 
-def tab(rng):  # mid click, brighter touch than focus
-    n = ms(55)
-    return note(n, 800.0, [(1, 1.0), (2, 0.16), (3, 0.05)], 13.0) + touch(rng, n, 6500.0, 4.0, level=0.3)
+def focus(rng):  # single soft tick, E5
+    n = ms(80)
+    return note(n, 659.0, WOOD, 20.0, attack_ms=6.0) + touch(rng, n, 1400.0, 3.0, level=0.05)
 
 
-def confirm(rng):  # two notes rising, second softer
-    n = ms(140)
-    p = [(1, 1.0), (2, 0.12), (3, 0.04)]
-    return (note(n, 660.0, p, 40.0) + touch(rng, n, 3000.0, 3.0, level=0.12)
-            + note(n, 990.0, p, 40.0, start_ms=60.0, level=0.72) + touch(rng, n, 3000.0, 3.0, 60.0, 0.08))
+def tab(rng):  # a lower tick, C5
+    n = ms(100)
+    return note(n, 523.0, WOOD, 26.0, attack_ms=6.0) + touch(rng, n, 1200.0, 4.0, level=0.05)
 
 
-def back(rng):  # two notes falling
-    n = ms(120)
-    p = [(1, 1.0), (2, 0.10)]
-    return (note(n, 990.0, p, 35.0) + touch(rng, n, 3000.0, 3.0, level=0.12)
-            + note(n, 660.0, p, 38.0, start_ms=50.0, level=0.8) + touch(rng, n, 2500.0, 3.0, 50.0, 0.08))
+def confirm(rng):  # two notes rising a third, second softer
+    n = ms(220)
+    return (note(n, 523.0, WOOD, 55.0, attack_ms=7.0) + touch(rng, n, 1400.0, 3.0, level=0.04)
+            + note(n, 659.0, WOOD, 65.0, start_ms=70.0, level=0.72, attack_ms=7.0) + touch(rng, n, 1400.0, 3.0, 70.0, 0.03))
+
+
+def back(rng):  # the same third falling
+    n = ms(200)
+    return (note(n, 659.0, WOOD, 50.0, attack_ms=7.0) + touch(rng, n, 1200.0, 3.0, level=0.04)
+            + note(n, 523.0, WOOD, 55.0, start_ms=60.0, level=0.75, attack_ms=7.0) + touch(rng, n, 1200.0, 3.0, 60.0, 0.03))
 
 
 def breath(rng, n, up_ms, dark_first):
@@ -158,13 +164,13 @@ CUES = {"focus": focus, "confirm": confirm, "back": back, "open": open_,
         "close": close, "error": error, "tab": tab, "reel": reel, "win": win, "lose": lose}
 
 
-def finish(x: np.ndarray) -> np.ndarray:
-    """3 ms fade-in; ≥25 ms exponential release to −60 dB with the last 1 ms tied to zero; peak −6 dBFS."""
+def finish(x: np.ndarray, peak_dbfs: float = PEAK_DBFS) -> np.ndarray:
+    """3 ms fade-in; ≥25 ms exponential release to −60 dB with the last 1 ms tied to zero; peak at `peak_dbfs`."""
     fi, fo, tail = ms(FADE_IN_MS), ms(FADE_OUT_MS), ms(1.0)
     x[:fi] *= ramp(fi)
     x[-fo:] *= np.exp(np.linspace(0.0, math.log(1e-3), fo))
     x[-tail:] *= ramp(tail)[::-1]
-    return x * (10 ** (PEAK_DBFS / 20) / np.max(np.abs(x)))
+    return x * (10 ** (peak_dbfs / 20) / np.max(np.abs(x)))
 
 
 def write_wav(path: pathlib.Path, x: np.ndarray) -> None:
@@ -188,7 +194,7 @@ def main() -> int:
     print(f"wrote {OUT_DIR.relative_to(OUT_DIR.parents[7])}")
     with tempfile.TemporaryDirectory(prefix="fullmoon-ui-sounds-") as tmp:
         for name, make in CUES.items():
-            x = finish(make(rng))
+            x = finish(make(rng), PEAK_DBFS_BY_CUE.get(name, PEAK_DBFS))
             limit = LIMIT_MS.get(name, DEFAULT_LIMIT_MS)
             if len(x) > ms(limit):
                 raise SystemExit(f"{name}: {len(x) / SR * 1000:.1f} ms exceeds {limit:.0f} ms")
