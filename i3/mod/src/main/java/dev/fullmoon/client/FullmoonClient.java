@@ -7,6 +7,7 @@ import dev.fullmoon.client.menu.ServerMenuSample;
 import dev.fullmoon.client.menu.ServerMenuScreen;
 import dev.fullmoon.client.network.FullmoonChannel;
 import dev.fullmoon.client.prefs.ClientPrefs;
+import dev.fullmoon.client.season.SeasonSample;
 import dev.fullmoon.client.settings.SettingsScreen;
 import dev.fullmoon.client.sound.GameSounds;
 import dev.fullmoon.client.text.Typeset;
@@ -59,6 +60,7 @@ public final class FullmoonClient implements ClientModInitializer {
     private static final KeyMapping MAP = key("map", InputConstants.KEY_M);
 
     private static boolean fixtureShown;
+    private static boolean seasonFixtureShown;
 
     @Override
     public void onInitializeClient() {
@@ -151,6 +153,12 @@ public final class FullmoonClient implements ClientModInitializer {
                 if (!ServerMenuSample.waypoints().isEmpty()) {
                     client.setScreen(new WarpScreen(title));
                 }
+            }
+            // A season fixture draws reward and mission items, which cannot be built before a
+            // world has bound their components, so it waits for one.
+            if (!seasonFixtureShown && client.player != null && client.screen == null) {
+                seasonFixtureShown = true;
+                SeasonSample.requested().ifPresent(pass -> client.setScreen(SeasonSample.screen(null, pass)));
             }
         });
 

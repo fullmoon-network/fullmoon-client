@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import dev.fullmoon.client.FullmoonClient;
 import dev.fullmoon.client.menu.ServerMenuScreen;
+import dev.fullmoon.client.season.SeasonScreen;
 import dev.fullmoon.client.warp.WarpScreen;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -37,6 +38,10 @@ public final class FullmoonChannel {
         new AtomicReference<>(BridgeState.disconnected());
     /** The capture rig's switch: it rebuilds the concept mockup from the snapshot the client drew. */
     private static final boolean MENU_DUMP = Boolean.getBoolean("fullmoon.menuDump");
+    /** The optional surfaces this client draws, so a server knows it may send them. */
+    private static final List<String> FEATURES = List.of("season_v1", "season_hud");
+    /** What the server was last told about the season widget; a new login starts from not shown. */
+    private static volatile boolean seasonHudSent;
 
     private FullmoonChannel() {}
 
@@ -80,6 +85,10 @@ public final class FullmoonChannel {
 
     public static BridgeState state() {
         return STATE.get();
+    }
+
+    public static Optional<BridgeState.SeasonFeed> season() {
+        return STATE.get().season();
     }
 
     public static boolean requestWarp(BridgeProtocol.Waypoint waypoint) {
@@ -126,11 +135,54 @@ public final class FullmoonChannel {
         }
     }
 
+    public static boolean requestSeasonAction(String sessionId, long revision, SeasonProtocol.Action action) {
+        if (STATE.get().mode() != BridgeState.Mode.ACTIVE) {
+            return false;
+        }
+        try {
+            ClientPlayNetworking.send(new Envelope(SeasonProtocol.action(sessionId, revision, action)));
+            LOG.info("Sent fullmoon:v1 season action {} revision {} ({})", sessionId, revision, action);
+            return true;
+        } catch (RuntimeException error) {
+            LOG.error("Failed to send fullmoon:v1 season action {}", sessionId, error);
+            return false;
+        }
+    }
+
+    public static void closeSeason(String sessionId, long revision) {
+        if (STATE.get().mode() != BridgeState.Mode.ACTIVE) {
+            return;
+        }
+        try {
+            ClientPlayNetworking.send(new Envelope(SeasonProtocol.close(sessionId, revision)));
+            LOG.info("Sent fullmoon:v1 season close {}", sessionId);
+        } catch (RuntimeException error) {
+            LOG.error("Failed to send fullmoon:v1 season close {}", sessionId, error);
+        }
+    }
+
+    /** Tells the server whether the season widget is on the HUD, once per change. */
+    public static void seasonHud(boolean visible) {
+        if (visible == seasonHudSent || STATE.get().mode() != BridgeState.Mode.ACTIVE) {
+            return;
+        }
+        try {
+            ClientPlayNetworking.send(new Envelope(SeasonProtocol.hud(visible)));
+            seasonHudSent = visible;
+            LOG.info("Sent fullmoon:v1 season hud visible={}", visible);
+        } catch (RuntimeException error) {
+            LOG.error("Failed to send fullmoon:v1 season hud", error);
+        }
+    }
+
     private static void connect() {
         STATE.set(BridgeState.connected(System.currentTimeMillis()));
+        seasonHudSent = false;
         try {
-            ClientPlayNetworking.send(new Envelope(BridgeProtocol.hello(clientVersion())));
-            LOG.info("Sent fullmoon:v1 hello (proto {})", BridgeProtocol.VERSION);
+            List<BridgeProtocol.Pack> packs = ClientPacks.active();
+            ClientPlayNetworking.send(new Envelope(BridgeProtocol.hello(clientVersion(), FEATURES, packs)));
+            LOG.info("Sent fullmoon:v1 hello (proto {}, features {}, packs {})", BridgeProtocol.VERSION,
+                FEATURES, packs);
         } catch (RuntimeException error) {
             LOG.error("Failed to send fullmoon:v1 hello", error);
         }
@@ -166,6 +218,13 @@ public final class FullmoonChannel {
         } else if (message instanceof BridgeProtocol.TpResult result && after != before) {
             LOG.info("Received fullmoon:v1 warp result {} ({})", result.id(),
                 result.ok() ? "accepted" : result.reason());
+        } else if (message instanceof SeasonProtocol.Progress progress) {
+            if (before.season().isEmpty() != after.season().isEmpty()) {
+                LOG.info("Received fullmoon:v1 season progress (level {}, tracked {})", progress.level(),
+                    progress.tracked().map(SeasonProtocol.Goal::id).orElse("none"));
+            }
+        } else if (message instanceof SeasonProtocol.Open open) {
+            openSeason(before, open);
         } else if (message instanceof CasinoProtocol.Result result && after != before) {
             LOG.info("Received fullmoon:v1 casino result {} ({})", result.game().wireName(),
                 result.won() ? "won x" + result.payoutMultiplier() : "lost");
@@ -228,6 +287,8 @@ public final class FullmoonChannel {
         if (client.screen instanceof ServerMenuScreen current) {
             client.setScreen(current.menuId().equals(open.id())
                 ? current.refreshed(open) : current.replacedBy(open));
+        } else if (client.screen instanceof SeasonScreen season) {
+            client.setScreen(new ServerMenuScreen(season.parentScreen(), open));
         } else {
             client.setScreen(new ServerMenuScreen(client.screen, open));
         }
@@ -236,6 +297,29 @@ public final class FullmoonChannel {
         if (MENU_DUMP) {
             LOG.info("fullmoon:v1 menu snapshot {}", open);
         }
+    }
+
+    private static void openSeason(BridgeState state, SeasonProtocol.Open open) {
+        if (state.mode() != BridgeState.Mode.ACTIVE || open.proto() != state.serverProtocol()) {
+            return;
+        }
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null) {
+            return;
+        }
+        if (client.screen instanceof SeasonScreen current && current.sessionId().equals(open.id())) {
+            current.update(open);
+        } else {
+            Screen parent = client.screen;
+            if (parent instanceof ServerMenuScreen menu) {
+                parent = menu.parentScreen();
+            } else if (parent instanceof SeasonScreen season) {
+                parent = season.parentScreen();
+            }
+            client.setScreen(new SeasonScreen(parent, open));
+        }
+        LOG.info("Opened fullmoon:v1 season pass {} revision {} ({} levels, tab {})",
+            open.id(), open.revision(), open.levels().size(), SeasonProtocol.wire(open.tab()));
     }
 
     private static void closeMenu(BridgeState state, MenuProtocol.Close close) {
