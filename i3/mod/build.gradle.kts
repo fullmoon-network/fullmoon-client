@@ -44,6 +44,9 @@ loom {
         providers.gradleProperty("quick_play_server").orNull?.let { server ->
             programArgs("--quickPlayMultiplayer", server)
         }
+        providers.gradleProperty("quick_play_world").orNull?.let { world ->
+            programArgs("--quickPlaySingleplayer", world)
+        }
         providers.gradleProperty("lobby").orNull?.let { lobby ->
             vmArg("-Dfullmoon.lobby=$lobby")
         }

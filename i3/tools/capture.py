@@ -20,7 +20,8 @@ the machine: the geometry sizes the Xvfb and the client window as one number, si
 smaller than the display is a photograph with a mat around it, and gui scale is on `auto` in any
 fresh options.txt — and run/ is not in the repo.
 
-A shot is a name and the things done before it is photographed: a key by its keysym, `type=TEXT`,
+A shot is a name and the things done before it is photographed: a key by its keysym (held keys
+joined with `+`, as in `Control_L+Tab`), `type=TEXT`,
 `wait=SECONDS`, `move=XxY`, `click[=left|middle|right]` or `scroll=up|down`. The pointer verbs are
 there because a cursor-anchored zoom and a click on a row are claims about where the pointer was,
 and a keyboard-only rig can only photograph the claims it cannot make.
@@ -45,6 +46,8 @@ HERE = pathlib.Path(__file__).resolve().parent
 MOD = HERE.parent / "mod"
 
 READY = re.compile(r"Created: \S+ .*minecraft:textures/atlas")
+JOINED = re.compile(r"joined the game")
+WORLD = "capture"
 SETTLE = 8.0
 FRAME_SETTLE = 1.0
 TIMEOUT = 240.0
@@ -81,6 +84,9 @@ def main():
     ap.add_argument("--lobby", default="127.0.0.1:25565",
                     help="address the title screen pings and joins; the default keeps captures off "
                          "the production lobby (default: %(default)s)")
+    ap.add_argument("--world", type=pathlib.Path,
+                    help="a world directory to copy into run/saves and open by quick play, for "
+                         "fixtures that draw items, which need a world to build them in")
     ap.add_argument("--dev-screen",
                     help="open a fixture of a server-driven screen after boot (e.g. casino-menu)")
     ap.add_argument("--gap", type=float, default=0.6,
@@ -97,13 +103,20 @@ def main():
     number = args.display.lstrip(":")
     xauth = f"/tmp/i3-xauth{number}"
     pathlib.Path(xauth).write_text("")
-    pin(MOD / "run" / "options.txt", {
+    settings = {
         "guiScale": args.scale,
         "fullscreen": "false",
         "lang": args.language,
         "chatVisibility": "2",
         "tutorialStep": "none",
-    })
+        # run/ is not in the repo, and a first launch opens on the accessibility onboarding screen.
+        "onboardAccessibility": "false",
+    }
+    if args.world:
+        stage_world(args.world, MOD / "run" / "saves" / WORLD)
+        # An unfocused window pauses a singleplayer world, and the pause menu is a screen over it.
+        settings["pauseOnLostFocus"] = "false"
+    pin(MOD / "run" / "options.txt", settings)
     print(f"{width}x{height} at scale {args.scale} "
           f"= {width // args.scale}x{height // args.scale} gui px", flush=True)
 
@@ -124,15 +137,19 @@ def main():
             if args.server:
                 command.append(f"-Pquick_play_server={args.server}")
             command.append(f"-Plobby={args.lobby}")
+            if args.world:
+                command.append(f"-Pquick_play_world={WORLD}")
             if args.dev_screen:
                 command.append(f"-Pdev_screen={args.dev_screen}")
             client = subprocess.Popen(
                 command,
                 cwd=MOD, env=env, stdout=sink, stderr=subprocess.STDOUT,
                 start_new_session=True)
-            wait_for_atlas(log, client)
+            wait_for(READY, "atlas", log, client)
+            if args.world:
+                wait_for(JOINED, "join", log, client)
 
-        print(f"atlases up; settling {SETTLE:.0f}s", flush=True)
+        print(f"{'world' if args.world else 'atlases'} up; settling {SETTLE:.0f}s", flush=True)
         time.sleep(SETTLE)
 
         d = xdisplay.Display(args.display)
@@ -188,29 +205,54 @@ def pin(options, settings):
     options.write_text("\n".join(kept + [f"{k}:{v}" for k, v in settings.items()]) + "\n")
 
 
-def wait_for_atlas(log, client):
+def stage_world(source, destination):
+    """Copy a world for one run, so the original is never opened, locked or saved over.
+
+    A server keeps each dimension as a world of its own with its own world_gen_settings.dat;
+    singleplayer reads one copy at the root and refuses to load without it.
+    """
+    if not (source / "level.dat").is_file():
+        sys.exit(f"no level.dat in {source}")
+    if destination.exists():
+        shutil.rmtree(destination)
+    shutil.copytree(source, destination, ignore=shutil.ignore_patterns("session.lock"))
+    settings = pathlib.Path("data", "minecraft", "world_gen_settings.dat")
+    overworld = source / "dimensions" / "minecraft" / "overworld" / settings
+    if not (destination / settings).exists() and overworld.exists():
+        (destination / settings).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(overworld, destination / settings)
+
+
+def wait_for(line, what, log, client):
     deadline = time.monotonic() + TIMEOUT
     while time.monotonic() < deadline:
         if client.poll() is not None:
-            sys.exit(f"client exited {client.returncode} before drawing; see {log}")
-        if READY.search(log.read_text(errors="replace")):
+            sys.exit(f"client exited {client.returncode} before the {what}; see {log}")
+        if line.search(log.read_text(errors="replace")):
             return
         time.sleep(1.0)
-    sys.exit(f"no atlas line in {TIMEOUT:.0f}s; see {log}")
+    sys.exit(f"no {what} line in {TIMEOUT:.0f}s; see {log}")
 
 
 def tap(d, name):
+    codes = [keycode(d, part) for part in name.split("+")]
+    for code in codes:
+        xtest.fake_input(d, X.KeyPress, code)
+        d.sync()
+        time.sleep(0.05)
+    for code in reversed(codes):
+        xtest.fake_input(d, X.KeyRelease, code)
+        d.sync()
+
+
+def keycode(d, name):
     keysym = XK.string_to_keysym(name)
     if keysym == X.NoSymbol:
         sys.exit(f"no keysym named {name!r}")
     code = d.keysym_to_keycode(keysym)
     if not code:
         sys.exit(f"{name} is not on this keyboard")
-    xtest.fake_input(d, X.KeyPress, code)
-    d.sync()
-    time.sleep(0.05)
-    xtest.fake_input(d, X.KeyRelease, code)
-    d.sync()
+    return code
 
 
 BUTTONS = {"left": 1, "middle": 2, "right": 3, "up": 4, "down": 5}
