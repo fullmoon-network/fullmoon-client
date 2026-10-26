@@ -57,6 +57,14 @@ public final class SeasonItems {
         painter.gfx().pose().popMatrix();
     }
 
+    /**
+     * The model string as custom model data: the first string, which is the one a pack's
+     * {@code minecraft:select} on {@code minecraft:custom_model_data} reads when it names no index.
+     */
+    static CustomModelData modelData(String model) {
+        return new CustomModelData(List.of(), List.of(), List.of(model), List.of());
+    }
+
     private static ItemStack build(String material, String model) {
         Identifier id = Identifier.tryParse(material);
         if (id == null) {
@@ -69,8 +77,7 @@ public final class SeasonItems {
         try {
             ItemStack stack = new ItemStack(item);
             if (!model.isEmpty()) {
-                stack.set(DataComponents.CUSTOM_MODEL_DATA,
-                    new CustomModelData(List.of(), List.of(), List.of(model), List.of()));
+                stack.set(DataComponents.CUSTOM_MODEL_DATA, modelData(model));
             }
             return stack;
         } catch (NullPointerException unbound) {

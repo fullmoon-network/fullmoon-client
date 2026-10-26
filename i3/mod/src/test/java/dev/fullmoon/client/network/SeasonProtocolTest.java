@@ -29,7 +29,11 @@ final class SeasonProtocolTest {
           {"level":2,"at":11,
            "free":{"kind":"cosmetic","label":"달빛 곡괭이","id":"moonlight_pickaxe","model":"fullmoon.skin.moonlight_pickaxe.1",
                    "material":"minecraft:iron_pickaxe","state":"claimable"},
-           "plus":null}],
+           "plus":null},
+          {"level":5,"at":64,
+           "free":{"kind":"won","label":"8천원","material":"minecraft:gold_nugget","state":"locked"},
+           "plus":{"kind":"cosmetic","label":"초승달 검","id":"crescent_sword","model":"fullmoon.skin.crescent_sword.1",
+                   "material":"minecraft:iron_sword","state":"locked"}}],
          "missions":{
           "daily":[{"id":"daily_coal","name":"석탄 캐기","material":"minecraft:coal","progress":12,"goal":32,"unit":"개",
                     "xp":30,"tier":0,"tiers":1,"done":false,"plusExtra":false,"tracked":true,"trackable":true}],
@@ -53,8 +57,9 @@ final class SeasonProtocolTest {
         assertEquals("XP", pass.point());
         assertEquals(Optional.empty(), pass.me().balance());
         assertEquals(1.0f, pass.me().fraction());
-        assertEquals(2, pass.levels().size());
+        assertEquals(3, pass.levels().size());
         assertEquals(1, pass.indexOf(2));
+        assertEquals(2, pass.indexOf(5));
         assertEquals(-1, pass.indexOf(3));
 
         SeasonProtocol.Reward title = pass.levels().get(0).reward(SeasonProtocol.Track.PLUS).orElseThrow();
@@ -77,6 +82,24 @@ final class SeasonProtocolTest {
 
         assertEquals(Optional.of("돈이 조금 모자라요"), pass.plus().reason());
         assertEquals(new SeasonProtocol.Notice(SeasonProtocol.Tone.OK, "보상을 받았어요"), pass.notice().orElseThrow());
+    }
+
+    /** Level 5's Plus cell as the server's own golden snapshot writes it. */
+    @Test
+    void aCosmeticCellCarriesItsItemAndModelString() {
+        SeasonProtocol.Level five = open(PASS).levels().get(2);
+        SeasonProtocol.Reward sword = five.reward(SeasonProtocol.Track.PLUS).orElseThrow();
+        SeasonProtocol.Reward money = five.reward(SeasonProtocol.Track.FREE).orElseThrow();
+
+        assertEquals(SeasonProtocol.Kind.COSMETIC, sword.kind());
+        assertEquals("초승달 검", sword.label());
+        assertEquals("crescent_sword", sword.cosmetic());
+        assertEquals("fullmoon.skin.crescent_sword.1", sword.model());
+        assertEquals("minecraft:iron_sword", sword.material());
+        assertEquals(SeasonProtocol.Status.LOCKED, sword.status());
+        assertEquals("", money.model(), "only a cosmetic dresses its item");
+        assertEquals("season_open level 2 plus id is required",
+            error(PASS.replace("\"id\":\"crescent_sword\",", "")));
     }
 
     @Test
