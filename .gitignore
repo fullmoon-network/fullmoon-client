@@ -40,3 +40,6 @@ i3/mod/run/
 
 # python bytecode (i3 design scripts)
 __pycache__/
+
+# test runs of the mod write rolled game logs here
+i3/mod/logs/

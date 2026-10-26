@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -221,6 +222,54 @@ final class BridgeStateTest {
         assertTrue(active().casino().isEmpty());
     }
 
+    @Test
+    void seasonProgressWaitsForTheHandshakeAndLevelZeroHidesTheFeed() {
+        SeasonProtocol.Progress progress = season(goal("daily_coal"), Optional.empty(), Optional.empty());
+
+        assertTrue(BridgeState.apply(BridgeState.connected(1_000), progress, 1_100).season().isEmpty());
+        BridgeState shown = BridgeState.apply(active(), progress, 2_000);
+        assertEquals(27, shown.season().orElseThrow().level());
+        assertEquals(95f / 147f, shown.season().orElseThrow().fraction());
+        BridgeState hidden = BridgeState.apply(shown, new SeasonProtocol.Progress(
+            1, 0, 0, 0, Optional.empty(), Optional.empty(), Optional.empty()), 2_100);
+        assertTrue(hidden.season().isEmpty());
+    }
+
+    @Test
+    void aRecentMissionStaysThreeSecondsThroughLaterUpdates() {
+        BridgeState moved = BridgeState.apply(active(),
+            season(goal("daily_coal"), Optional.of(goal("daily_iron")), Optional.empty()), 2_000);
+        BridgeState later = BridgeState.apply(moved,
+            season(goal("daily_coal"), Optional.empty(), Optional.empty()), 3_000);
+        BridgeState.SeasonFeed feed = later.season().orElseThrow();
+
+        assertEquals("daily_iron", feed.liveRecent(4_999).orElseThrow().id());
+        assertTrue(feed.liveRecent(5_000).isEmpty());
+        BridgeState again = BridgeState.apply(later,
+            season(goal("daily_coal"), Optional.of(goal("daily_iron")), Optional.empty()), 4_500);
+        assertTrue(again.season().orElseThrow().liveRecent(7_000).isPresent());
+    }
+
+    @Test
+    void aRecentMissionThatBecameTheTrackedOneIsNotShownTwice() {
+        BridgeState moved = BridgeState.apply(active(),
+            season(goal("daily_coal"), Optional.of(goal("daily_iron")), Optional.empty()), 2_000);
+        BridgeState tracked = BridgeState.apply(moved,
+            season(goal("daily_iron"), Optional.empty(), Optional.empty()), 2_500);
+
+        assertTrue(tracked.season().orElseThrow().liveRecent(2_600).isEmpty());
+    }
+
+    @Test
+    void aFinishedStageFlashesForTwoSeconds() {
+        BridgeState flashed = BridgeState.apply(active(), season(goal("daily_coal"), Optional.empty(),
+            Optional.of(new SeasonProtocol.Flash("daily_coal", "석탄 캐기 완료"))), 2_000);
+        BridgeState.SeasonFeed feed = flashed.season().orElseThrow();
+
+        assertEquals("석탄 캐기 완료", feed.liveFlash(3_999).orElseThrow().label());
+        assertTrue(feed.liveFlash(4_000).isEmpty());
+    }
+
     private static BridgeState active() {
         return BridgeState.apply(
             BridgeState.connected(1_000), new BridgeProtocol.Welcome(1), 1_100);
@@ -245,5 +294,14 @@ final class BridgeStateTest {
     private static CasinoProtocol.Result coin(int proto, boolean won) {
         return new CasinoProtocol.Result(
             proto, CasinoProtocol.Game.COINFLIP, won, won ? 2 : 0, new CasinoProtocol.Coin());
+    }
+
+    private static SeasonProtocol.Progress season(SeasonProtocol.Goal tracked, Optional<SeasonProtocol.Goal> recent,
+            Optional<SeasonProtocol.Flash> flash) {
+        return new SeasonProtocol.Progress(1, 27, 95, 147, Optional.of(tracked), recent, flash);
+    }
+
+    private static SeasonProtocol.Goal goal(String id) {
+        return new SeasonProtocol.Goal(id, id, "minecraft:coal", 13, 32, "개", false);
     }
 }

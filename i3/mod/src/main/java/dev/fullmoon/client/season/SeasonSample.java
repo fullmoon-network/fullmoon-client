@@ -26,7 +26,7 @@ import net.minecraft.client.gui.screens.Screen;
  */
 public final class SeasonSample {
     public static final String PROPERTY = "fullmoon.devScreen";
-    /** The widget's sample replays on this period: two seconds of a finished stage, then the recent line. */
+    /** The widget's sample replays on this period: a finished stage for two seconds, then the recent line for three. */
     private static final long HUD_LOOP = 6_000;
     private static final long FLASH_SHOWN = 2_000;
 
@@ -101,10 +101,9 @@ public final class SeasonSample {
             .map(SeasonProtocol.Progress.class::cast)
             .map(p -> {
                 long start = now - now % HUD_LOOP;
-                boolean flashing = now - start < FLASH_SHOWN;
-                return new BridgeState.SeasonFeed(p.level(), p.into(), p.step(), p.tracked(), p.recent(),
-                    flashing ? start - BridgeState.SEASON_RECENT_MILLIS : now, p.flash(),
-                    flashing ? start : start - BridgeState.SEASON_FLASH_MILLIS);
+                long recentAt = now - start < FLASH_SHOWN ? start - BridgeState.SEASON_RECENT_MILLIS : start + FLASH_SHOWN;
+                return new BridgeState.SeasonFeed(p.level(), p.into(), p.step(), p.tracked(), p.recent(), recentAt,
+                    p.flash(), start);
             });
     }
 
