@@ -128,14 +128,16 @@ mod tests {
         let ids: Vec<&str> = cfg.elements.keys().map(String::as_str).collect();
         assert_eq!(
             ids,
-            ["armor", "clock", "coords", "effects", "fps", "keystrokes", "ping", "tps"]
+            ["armor", "clock", "coords", "effects", "fps", "keystrokes", "ping", "season", "tps"]
         );
         assert_eq!(cfg.grid_snap, 4);
 
         let coords = &cfg.elements["coords"];
-        assert_eq!((coords.enabled, coords.anchor.as_str(), coords.offset_x, coords.offset_y), (true, "TOP_LEFT", 16, 56));
+        assert_eq!((coords.enabled, coords.anchor.as_str(), coords.offset_x, coords.offset_y), (true, "TOP_LEFT", 8, 8));
         let effects = &cfg.elements["effects"];
         assert_eq!((effects.enabled, effects.anchor.as_str(), effects.offset_x, effects.offset_y), (false, "TOP_RIGHT", 16, 134));
+        let season = &cfg.elements["season"];
+        assert_eq!((season.enabled, season.anchor.as_str(), season.offset_x, season.offset_y), (true, "TOP_LEFT", 8, 48));
         for (id, state) in &cfg.elements {
             assert!(ANCHORS.contains(&state.anchor.as_str()), "{id}");
             assert_eq!(state.scale, 1.0, "{id}");
@@ -165,11 +167,11 @@ mod tests {
         assert_eq!(json["gridSnap"], 4);
         let fps = &json["elements"]["fps"];
         assert_eq!(fps["anchor"], "TOP_LEFT");
-        assert_eq!(fps["offsetX"], 16);
-        assert_eq!(fps["offsetY"], 82);
+        assert_eq!(fps["offsetX"], 8);
+        assert_eq!(fps["offsetY"], 28);
         assert_eq!(fps["enabled"], true);
         assert_eq!(fps["scale"], 1.0);
-        assert!(json["elements"].as_object().unwrap().len() == 8);
+        assert!(json["elements"].as_object().unwrap().len() == 9);
         assert!(json["modules"].is_null(), "the percent contract is gone, not renamed");
 
         let _ = std::fs::remove_dir_all(&root);
@@ -187,7 +189,7 @@ mod tests {
         // an element from a client newer than this launcher is not ours to delete
         assert_eq!(cfg.elements["lantern"].anchor, "CENTER");
         // and one the file never mentioned keeps what the catalogue says
-        assert_eq!(cfg.elements["coords"].offset_y, 56);
+        assert_eq!(cfg.elements["coords"].offset_y, 8);
         assert_eq!(cfg.grid_snap, 8);
     }
 
@@ -203,8 +205,8 @@ mod tests {
     fn bytes_we_cannot_read_show_the_default_rather_than_half_a_layout() {
         for bytes in [&b""[..], b"not json at all", br#"{"elements":{"fps":{"enabled":true}}}"#] {
             let cfg = merge(defaults(), bytes);
-            assert_eq!(cfg.elements.len(), 8);
-            assert_eq!(cfg.elements["fps"].offset_y, 82);
+            assert_eq!(cfg.elements.len(), 9);
+            assert_eq!(cfg.elements["fps"].offset_y, 28);
         }
         // a snap of zero would divide the editor's grid by nothing
         assert_eq!(merge(defaults(), br#"{"gridSnap":0}"#).grid_snap, 4);

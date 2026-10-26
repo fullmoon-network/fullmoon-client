@@ -13,12 +13,15 @@ public record BridgeState(
         List<BridgeProtocol.Waypoint> waypoints,
         Optional<PendingWarp> pendingWarp,
         Optional<WarpOutcome> warpOutcome,
-        Optional<CasinoReveal> casino) {
+        Optional<CasinoReveal> casino,
+        Optional<SeasonFeed> season) {
     public static final long HANDSHAKE_TIMEOUT_MILLIS = 5_000;
     public static final long METRICS_STALE_MILLIS = 5_000;
     public static final long WARP_TIMEOUT_MILLIS = 5_000;
     public static final long WARP_OUTCOME_MILLIS = 4_000;
     public static final long CASINO_CARD_MILLIS = 4_500;
+    public static final long SEASON_RECENT_MILLIS = 3_000;
+    public static final long SEASON_FLASH_MILLIS = 2_000;
 
     public BridgeState {
         Objects.requireNonNull(mode, "mode");
@@ -28,6 +31,7 @@ public record BridgeState(
         Objects.requireNonNull(pendingWarp, "pendingWarp");
         Objects.requireNonNull(warpOutcome, "warpOutcome");
         Objects.requireNonNull(casino, "casino");
+        Objects.requireNonNull(season, "season");
     }
 
     public enum Mode {
@@ -78,6 +82,41 @@ public record BridgeState(
         }
     }
 
+    /**
+     * What the season widget follows: the level and the tracked mission as last sent, and the two
+     * short-lived lines with the moment each arrived. A message that carries no recent mission or
+     * no finished stage leaves the one on screen to run out its own time.
+     */
+    public record SeasonFeed(
+            int level,
+            long into,
+            long step,
+            Optional<SeasonProtocol.Goal> tracked,
+            Optional<SeasonProtocol.Goal> recent,
+            long recentAt,
+            Optional<SeasonProtocol.Flash> flash,
+            long flashAt) {
+        public SeasonFeed {
+            Objects.requireNonNull(tracked, "tracked");
+            Objects.requireNonNull(recent, "recent");
+            Objects.requireNonNull(flash, "flash");
+        }
+
+        public float fraction() {
+            return step <= 0 ? 0.0f : Math.clamp((float) into / step, 0.0f, 1.0f);
+        }
+
+        /** The recent line while it lasts, unless it has since become the tracked mission. */
+        public Optional<SeasonProtocol.Goal> liveRecent(long now) {
+            return recent.filter(goal -> now - recentAt < SEASON_RECENT_MILLIS
+                && tracked.map(t -> !t.id().equals(goal.id())).orElse(true));
+        }
+
+        public Optional<SeasonProtocol.Flash> liveFlash(long now) {
+            return flash.filter(value -> now - flashAt < SEASON_FLASH_MILLIS);
+        }
+    }
+
     public static BridgeState disconnected() {
         return empty(Mode.DISCONNECTED, 0, 0);
     }
@@ -111,6 +150,9 @@ public record BridgeState(
         if (message instanceof CasinoProtocol.Result result) {
             return casino(state, new CasinoReveal(result, now));
         }
+        if (message instanceof SeasonProtocol.Progress progress) {
+            return season(state, progress, now);
+        }
         return state;
     }
 
@@ -123,7 +165,7 @@ public record BridgeState(
         return new BridgeState(
             state.mode, state.serverProtocol, state.connectedAt, state.metrics, state.notice,
             state.waypoints, Optional.of(new PendingWarp(waypointId, now)), Optional.empty(),
-            state.casino);
+            state.casino, state.season);
     }
 
     public static BridgeState failWarp(
@@ -185,7 +227,7 @@ public record BridgeState(
         }
         return new BridgeState(
             Mode.ACTIVE, welcome.proto(), state.connectedAt, Optional.empty(), Optional.empty(),
-            welcome.waypoints(), Optional.empty(), Optional.empty(), Optional.empty());
+            welcome.waypoints(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
     }
 
     private static BridgeState metrics(
@@ -198,7 +240,7 @@ public record BridgeState(
             sync.revision(), sync.ticksPerSecond(), sync.tickMilliseconds(), now);
         return new BridgeState(
             state.mode, state.serverProtocol, state.connectedAt, Optional.of(next), state.notice,
-            state.waypoints, state.pendingWarp, state.warpOutcome, state.casino);
+            state.waypoints, state.pendingWarp, state.warpOutcome, state.casino, state.season);
     }
 
     private static BridgeState notice(
@@ -208,14 +250,14 @@ public record BridgeState(
             now, now + incoming.durationMillis());
         return new BridgeState(
             state.mode, state.serverProtocol, state.connectedAt, state.metrics, Optional.of(next),
-            state.waypoints, state.pendingWarp, state.warpOutcome, state.casino);
+            state.waypoints, state.pendingWarp, state.warpOutcome, state.casino, state.season);
     }
 
     private static BridgeState waypoints(
             BridgeState state, List<BridgeProtocol.Waypoint> waypoints) {
         return new BridgeState(
             state.mode, state.serverProtocol, state.connectedAt, state.metrics, state.notice,
-            waypoints, state.pendingWarp, state.warpOutcome, state.casino);
+            waypoints, state.pendingWarp, state.warpOutcome, state.casino, state.season);
     }
 
     private static BridgeState warpResult(
@@ -231,18 +273,34 @@ public record BridgeState(
     private static BridgeState casino(BridgeState state, CasinoReveal reveal) {
         return new BridgeState(
             state.mode, state.serverProtocol, state.connectedAt, state.metrics, state.notice,
-            state.waypoints, state.pendingWarp, state.warpOutcome, Optional.of(reveal));
+            state.waypoints, state.pendingWarp, state.warpOutcome, Optional.of(reveal), state.season);
+    }
+
+    private static BridgeState season(BridgeState state, SeasonProtocol.Progress progress, long now) {
+        Optional<SeasonFeed> next = Optional.empty();
+        if (!progress.hidden()) {
+            Optional<SeasonFeed> was = state.season;
+            Optional<SeasonProtocol.Goal> recent = progress.recent().or(() -> was.flatMap(SeasonFeed::recent));
+            long recentAt = progress.recent().isPresent() ? now : was.map(SeasonFeed::recentAt).orElse(0L);
+            Optional<SeasonProtocol.Flash> flash = progress.flash().or(() -> was.flatMap(SeasonFeed::flash));
+            long flashAt = progress.flash().isPresent() ? now : was.map(SeasonFeed::flashAt).orElse(0L);
+            next = Optional.of(new SeasonFeed(progress.level(), progress.into(), progress.step(),
+                progress.tracked(), recent, recentAt, flash, flashAt));
+        }
+        return new BridgeState(
+            state.mode, state.serverProtocol, state.connectedAt, state.metrics, state.notice,
+            state.waypoints, state.pendingWarp, state.warpOutcome, state.casino, next);
     }
 
     private static BridgeState withWarpOutcome(BridgeState state, WarpOutcome outcome) {
         return new BridgeState(
             state.mode, state.serverProtocol, state.connectedAt, state.metrics, state.notice,
-            state.waypoints, Optional.empty(), Optional.of(outcome), state.casino);
+            state.waypoints, Optional.empty(), Optional.of(outcome), state.casino, state.season);
     }
 
     private static BridgeState empty(Mode mode, int serverProtocol, long connectedAt) {
         return new BridgeState(
             mode, serverProtocol, connectedAt, Optional.empty(), Optional.empty(), List.of(),
-            Optional.empty(), Optional.empty(), Optional.empty());
+            Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
     }
 }

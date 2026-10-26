@@ -4,8 +4,10 @@ import dev.fullmoon.client.FullmoonClient;
 import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.menu.ServerMenuScreen;
 import dev.fullmoon.client.render.Painter;
+import dev.fullmoon.client.season.SeasonScreen;
 import dev.fullmoon.client.warp.WarpScreen;
 
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
@@ -31,6 +33,7 @@ public final class HudOverlay {
             }
         });
         ScoreboardSidebar.init();
+        ClientTickEvents.END_CLIENT_TICK.register(SeasonMissionHud::report);
         // A bet is placed from a casino menu, so the result lands while that screen is still up;
         // the HUD layer is skipped under any screen and would hold the card until it expired.
         ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) ->
@@ -47,7 +50,8 @@ public final class HudOverlay {
      */
     public static boolean underGlass() {
         return Minecraft.getInstance().screen instanceof ServerMenuScreen
-            || Minecraft.getInstance().screen instanceof WarpScreen;
+            || Minecraft.getInstance().screen instanceof WarpScreen
+            || Minecraft.getInstance().screen instanceof SeasonScreen;
     }
 
     private static void render(GuiGraphicsExtractor gfx, DeltaTracker deltaTracker) {

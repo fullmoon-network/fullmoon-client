@@ -430,6 +430,7 @@ const ko = {
       tps: "서버 틱",
       armor: "방어구 상태",
       effects: "상태 효과",
+      season: "시즌 미션",
     },
   },
   console: {

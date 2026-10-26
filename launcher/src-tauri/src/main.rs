@@ -16,6 +16,7 @@ mod meta;
 mod model;
 mod modlock;
 mod mods;
+mod packs;
 mod offline;
 mod paths;
 mod ping;

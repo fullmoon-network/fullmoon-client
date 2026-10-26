@@ -1276,3 +1276,50 @@ boxes (name 8 px, facts 3 px high). Run 36617844770 re-shot everything after it:
 `cb68209` checks (help line, 궁궐 order) passing. The server menu now rises and falls through
 `render/Fade` like the route screen; `CHANGELOG.md` carries the v0.3.0 notes. Evidence:
 `i3/docs/evidence/phaseB/title-*-pair.jpg`, `*-1080p-pair.jpg`, `glide-title-1080p.gif`.
+
+## 2026-10-26 · P12 — the season pass, native
+
+The server's season pass has been a stack of chest menus and a boss bar. This phase gives the
+client its own surface for it and a HUD widget that replaces the bar, over five new `fullmoon:v1`
+messages documented in `docs/BRIDGE.md`. The client asks for them by name — `hello` now carries
+`features` (`season_v1`, `season_hud`) and the resource packs it has switched on — so a server never
+sends a surface a client did not say it draws, and an older client's hello is unchanged.
+
+`SeasonScreen` is one pane in the glass vocabulary with three pages under a tab rail. The reward
+track is read sideways, the way the pass is laid out on the server: a column per level, the free
+cell above the rail and the Plus cell below it, the rail itself a row of moons that fill as the
+levels pass, and the current level's column washed and captioned. The track opens a third of the
+way in on the cell the player most likely came for — the nearest claimable one, else the current
+level — and the cursor walks cells with the arrows, rows with up and down, five columns a page.
+Gold is reserved for "this can be taken now", the cursor is the primary ink ring the rest of the
+client uses, and Plus wears its own purple. Missions are one
+scrolled list in three captioned sections with the period's reset time beside each caption; the
+side column says what the chosen mission is worth and why it cannot be tracked when it cannot.
+The Plus page lists the perks and buys on two presses, because the server asks for the second.
+
+The client judges nothing. Every amount, time, name and state arrives finished, the point's name
+included, and the screen never builds a money string; a press sends one action against the
+revision on screen and waits for the next snapshot, which replaces the page in place and keeps the
+cursor on the same level and row. A malformed field rejects the whole snapshot, like `menu_open`.
+
+`SeasonMissionHud` is the ninth HUD element: a level line whose moon fills toward the next level,
+the tracked mission's count and bar, and under it for a moment a finished stage (two seconds) or a
+mission that just moved (three), fading over the last beat. It reports whether it is on screen,
+once per change, and while it is the server leaves its boss bar out. The launcher's HUD editor
+draws it from the mod's own editor sample, and the hud tests that had been skipped in CI as stale
+against the catalogue match it again and run.
+
+Cosmetic rewards are drawn as the vanilla item wearing the model string the server names, so the
+skins show where the season pack is switched on and the plain item shows where it is not. The pack
+is not in the jar. The launcher fetches it beside the mods: it reads the pack's one-line sha1 file
+first and fetches the zip only when the copy on disk is a different file, so a new pack needs no
+new launcher; no sha1 keeps the copy on disk and no copy launches without one. It switches the pack
+on in `options.txt` once per instance, after the low-spec seed, and never again — a pack the player
+turns off stays off. `hello.packs` names only a pack the game has selected, with the sha1 of the
+file actually on disk.
+
+The fixtures (`season-plus`, `season-free`, `season-claim`) are fifty levels built from season 1's
+own reward table and decoded through the same decoder a live snapshot goes through. They draw items,
+which need a world, so the capture rig can now copy a world into `run/saves` and quick-play it, hold
+keys together for Ctrl+Tab, and `tools/season-capture.sh` photographs every page of each fixture
+at both design sizes.

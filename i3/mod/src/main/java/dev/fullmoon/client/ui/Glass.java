@@ -115,6 +115,14 @@ public final class Glass {
         painter.check(cx, cy, MARK, Tokens.Stroke.GLYPH, color);
     }
 
+    /** A padlock, six by seven, in the ink of whatever would open it. */
+    public static void lockMark(Painter painter, float cx, float cy, int color) {
+        float left = Math.round(cx - 3.0f);
+        float top = Math.round(cy - MARK / 2.0f);
+        painter.border(left + 1, top, 4, 4, Tokens.Radius.NONE, Tokens.Stroke.HAIR, color);
+        painter.fill(left, top + 3, 6, 4, color);
+    }
+
     /** A mouse, seven by ten, with its left button filled: the glyph before "클릭". */
     public static void mouse(Painter painter, float x, float y, int color) {
         painter.border(x, y, 7, 10, Tokens.Radius.MOUSE, Tokens.Stroke.HAIR, color);
@@ -134,6 +142,11 @@ public final class Glass {
         }
         int textX = x + MARK + Tokens.Space.SNUG + 1;
         return textX - x + Typeset.draw(painter, Tokens.Type.STRONG, text, textX, y, color);
+    }
+
+    /** The width {@link #markedLine} will take for {@code text}, so a line can be set right-aligned. */
+    public static int markedWidth(String text) {
+        return MARK + Tokens.Space.SNUG + 1 + Typeset.width(Tokens.Type.STRONG, text);
     }
 
     /** A command a player types, as a chip: strong ink on a faint ground. Returns the width. */

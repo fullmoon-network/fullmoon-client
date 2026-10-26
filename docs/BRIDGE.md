@@ -29,6 +29,23 @@ without completing the handshake. There is no renegotiation within a session.
 A protocol mismatch disables bridge features for the session and leaves the vanilla fallback active.
 Additive fields that old readers can safely ignore do not require a protocol bump.
 
+`hello` may also name the optional surfaces the client draws and the resource packs it has switched
+on. Both are omitted when empty, so a server that predates them reads the hello it always read:
+
+```text
+C -> S  {"type":"hello","proto":1,"client":"fullmoon","version":"3.3.0",
+         "features":["season_v1","season_hud"],
+         "packs":[{"id":"fullmoon-gui","sha1":"175de05a740e46b47a2db6533c3d217c1c14cb19"}]}
+```
+
+- `features` entries match `[a-z0-9][a-z0-9._-]{0,31}`. `season_v1` asks for the native season pass
+  screen; `season_hud` asks for `season_progress`. A server sends neither surface to a client that
+  did not name it.
+- `packs` lists only packs that are selected in the game's resource pack list at login, each with
+  the sha1 of the file actually on disk. A pack that was downloaded but switched off is not listed.
+  The server compares the sha1 with the pack it publishes; a match means the player sees the pack's
+  art, so presentation that depends on it can be sent. It is never authorization.
+
 ## Messages
 
 | Direction | Type | Purpose |
@@ -42,6 +59,11 @@ Additive fields that old readers can safely ignore do not require a protocol bum
 | C -> S | `menu_action` | Request one action advertised by the current menu snapshot. |
 | C -> S | `menu_close` | Notify the server that the current native menu was dismissed. |
 | S -> C | `casino_result` | Present one bet the server has already settled. |
+| S -> C | `season_open` | Open or replace the season pass snapshot. |
+| C -> S | `season_action` | Request one season action against the snapshot on screen. |
+| C -> S | `season_close` | Notify the server that the season pass was dismissed. |
+| S -> C | `season_progress` | Update the HUD's season mission widget. |
+| C -> S | `season_hud` | Report whether the season widget is on the player's HUD. |
 
 ### Waypoints
 
@@ -156,6 +178,116 @@ Rules:
 7. A newer result replaces the one on screen. The card lives for 4.5 seconds and is also drawn
    over open screens, since the bet is placed from a menu.
 
+### Season pass
+
+`season_open` carries the whole pass as the server sees it, for a client that sent `season_v1`.
+Every amount, time and name arrives as finished text (`label`, `price`, `balance`, `endsIn`); the
+client never formats money or derives a state. `terms.point` is the current name of the season's
+point, which the client prints after point figures.
+
+```json
+{
+  "type": "season_open",
+  "id": "4b1d0c3e9a",
+  "revision": 3,
+  "tab": "track",
+  "season": {"id": "s1", "name": "시즌 1", "phase": "live", "endsIn": "17일 남음",
+             "endsAt": "2026-12-28T06:00:00+09:00"},
+  "terms": {"point": "XP"},
+  "me": {"level": 27, "maxLevel": 50, "xp": 1690, "into": 95, "step": 147, "plus": true,
+         "claimable": 3, "balance": "약 7만 8천원"},
+  "levels": [
+    {"level": 10, "at": 216,
+     "free": {"kind": "title", "label": "초승달", "color": "yellow", "material": "minecraft:name_tag",
+              "state": "claimed"},
+     "plus": {"kind": "cosmetic", "label": "초승달 검", "id": "crescent_sword",
+              "model": "fullmoon.skin.crescent_sword.1", "material": "minecraft:iron_sword",
+              "state": "claimable"}}
+  ],
+  "missions": {
+    "daily": [{"id": "daily_coal", "name": "석탄 캐기", "material": "minecraft:coal", "progress": 12,
+               "goal": 32, "unit": "개", "xp": 30, "tier": 0, "tiers": 1, "done": false,
+               "plusExtra": false, "tracked": true, "trackable": true, "discord": false}],
+    "weekly": [],
+    "season": [],
+    "resets": {"daily": "3시간 12분", "weekly": "2일 4시간"}
+  },
+  "plus": {"owned": true, "price": "40만원", "canBuy": false, "confirming": false,
+           "perks": ["레벨마다 플러스 보상이 하나씩 더 있어요"], "reason": null},
+  "notice": {"tone": "ok", "text": "보상을 받았어요"}
+}
+```
+
+- `tab` is `track`, `missions` or `plus`. `season.phase` is `upcoming`, `live` or `claim`, and
+  `endsIn`/`endsAt` give the next boundary of that phase.
+- `me.level` is `0..maxLevel` (at most 200); `step` is at least 1 and `into` is `0..step`. At the
+  last level `into` equals `step`. `balance` may be `null` when the server could not read it.
+- `levels` is non-empty and strictly increasing within `1..maxLevel`. Either cell may be `null`.
+- A reward's `kind` is `won`, `title` or `cosmetic`, and its `state` is `claimed`, `claimable`,
+  `locked`, `plus_locked` (bought with Plus) or `pending` (held until the server's daily limit
+  resets). `color` is a vanilla chat colour name. A `cosmetic` names its `id` and the item
+  `model` string; the client draws `material` with that string as its custom model data, so a
+  client with the pack sees the skin and one without sees the plain item.
+- Mission ids are unique across the three lists. `tier` is the number of stages done, `0..tiers`.
+  `trackable` and `discord` default to `false`; an untrackable mission shows no track control.
+  `resets` may be `null`.
+- `plus.confirming` is `true` after the first `buy_plus`: the server waits for a second press and
+  sends a `confirming:false` snapshot when the window lapses. `reason` says why `canBuy` is false.
+- `notice` is optional, `tone` `ok` or `error`.
+- A malformed field rejects the whole snapshot, like `menu_open`. Limits: 200 levels, 16 missions per
+  list, 8 perks.
+
+The client sends one action at a time against the revision on screen, and waits for the next
+snapshot before sending another:
+
+```text
+C -> S  {"type":"season_action","id":"...","revision":3,"action":"claim","level":10,"track":"plus"}
+C -> S  {"type":"season_action","id":"...","revision":3,"action":"claim_all"}
+C -> S  {"type":"season_action","id":"...","revision":3,"action":"buy_plus"}
+C -> S  {"type":"season_action","id":"...","revision":3,"action":"track","mission":"daily_coal"}
+C -> S  {"type":"season_action","id":"...","revision":3,"action":"untrack"}
+C -> S  {"type":"season_action","id":"...","revision":3,"action":"tab","tab":"missions"}
+C -> S  {"type":"season_close","id":"...","revision":3}
+```
+
+Rules:
+
+1. `id` and `revision` follow the menu rules: an unpredictable session, a monotonic revision, stale
+   or replayed requests rejected.
+2. The server runs the same path as the season chest menus for every action; the snapshot is not
+   authorization, and every claim, purchase and tracking change is re-validated.
+3. An answered action produces a fresh `season_open` with the same `id`; the client replaces the
+   screen in place and keeps the player's position on it.
+
+### Season widget
+
+`season_progress` feeds the HUD widget of a client that sent `season_hud`. The server sends it after
+the handshake and whenever the tracked mission moves (at most once a second), the level changes,
+a period rolls over, or the tracked mission changes.
+
+```json
+{"type":"season_progress","level":27,"into":95,"step":147,
+ "tracked":{"id":"daily_coal","name":"석탄 캐기","material":"minecraft:coal","progress":13,"goal":32,
+            "unit":"개","done":false},
+ "recent":{"id":"daily_iron","name":"철광석 캐기","material":"minecraft:raw_iron","progress":6,"goal":16,
+           "unit":"개","done":false},
+ "flash":{"mission":"daily_coal","label":"석탄 캐기 완료"}}
+{"type":"season_progress","level":0,"tracked":null}
+```
+
+- `tracked`, `recent` and `flash` may be `null`. `recent` is a mission that just moved and is not the
+  tracked one; the widget shows it for three seconds. `flash` marks a finished stage; the widget
+  shows its `label` for two seconds. A later update without them does not cut either short.
+- `level` `0` means there is no season to show, and the widget hides.
+
+```text
+C -> S  {"type":"season_hud","visible":true}
+```
+
+`season_hud` is sent once per change. `visible` is true while the widget is switched on and has a
+season to show; while it is, the server leaves out its progress boss bar, since the widget replaces
+it. Toasts, chat lines and sounds are unchanged.
+
 ## Vanilla fallback
 
 - `/항로` (alias `/route`) lists and executes the same registered waypoint IDs through the same
@@ -164,6 +296,8 @@ Rules:
   publishes an empty list, and the route screen says so instead of failing.
 - Every server-owned menu retains its ChestGUI inventory. The server opens it when the player has no
   completed handshake, the bridge is unavailable, or a menu snapshot exceeds the channel limit.
+- The season pass keeps its chest menus and its progress boss bar for a player whose `hello` did not
+  name `season_v1` or `season_hud`.
 - Native and fallback surfaces expose the same actions. Client detection never changes the feature
   set.
 

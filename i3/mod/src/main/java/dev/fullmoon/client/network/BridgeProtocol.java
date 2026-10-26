@@ -36,6 +36,8 @@ public final class BridgeProtocol {
     private static final int WORLD_VERTICAL_LIMIT = 2_048;
     private static final Pattern WAYPOINT_ID =
         Pattern.compile("[a-z0-9][a-z0-9._-]{0,63}");
+    private static final Pattern FEATURE = Pattern.compile("[a-z0-9][a-z0-9._-]{0,31}");
+    private static final Pattern SHA1 = Pattern.compile("[0-9a-f]{40}");
 
     private BridgeProtocol() {}
 
@@ -108,6 +110,18 @@ public final class BridgeProtocol {
         }
     }
 
+    /** A resource pack the client has switched on, by name and by the SHA-1 of its archive. */
+    public record Pack(String id, String sha1) {
+        public Pack {
+            if (id == null || !FEATURE.matcher(id).matches()) {
+                throw new IllegalArgumentException("pack id is invalid");
+            }
+            if (sha1 == null || !SHA1.matcher(sha1).matches()) {
+                throw new IllegalArgumentException("pack sha1 must be 40 lowercase hex digits");
+            }
+        }
+    }
+
     public record Unknown(int proto, String type) implements Message {}
 
     public enum Severity {
@@ -136,9 +150,22 @@ public final class BridgeProtocol {
     }
 
     public static byte[] hello(String clientVersion) {
+        return hello(clientVersion, List.of(), List.of());
+    }
+
+    /**
+     * The handshake, with the optional surfaces this client draws and the resource packs it has
+     * switched on. Both are additive: a server that predates them reads the hello it always read.
+     */
+    public static byte[] hello(String clientVersion, List<String> features, List<Pack> packs) {
         String error = helloError(clientVersion);
         if (!error.isEmpty()) {
             throw new IllegalArgumentException(error);
+        }
+        for (String feature : features) {
+            if (!FEATURE.matcher(feature).matches()) {
+                throw new IllegalArgumentException("hello feature is invalid");
+            }
         }
 
         JsonObject json = new JsonObject();
@@ -146,6 +173,21 @@ public final class BridgeProtocol {
         json.addProperty("proto", VERSION);
         json.addProperty("client", "fullmoon");
         json.addProperty("version", clientVersion);
+        if (!features.isEmpty()) {
+            JsonArray names = new JsonArray();
+            features.forEach(names::add);
+            json.add("features", names);
+        }
+        if (!packs.isEmpty()) {
+            JsonArray list = new JsonArray();
+            for (Pack pack : packs) {
+                JsonObject entry = new JsonObject();
+                entry.addProperty("id", pack.id());
+                entry.addProperty("sha1", pack.sha1());
+                list.add(entry);
+            }
+            json.add("packs", list);
+        }
         return json.toString().getBytes(StandardCharsets.UTF_8);
     }
 
@@ -210,6 +252,8 @@ public final class BridgeProtocol {
             case "menu_open" -> MenuProtocol.decodeOpen(json);
             case "menu_close" -> MenuProtocol.decodeClose(json);
             case "casino_result" -> CasinoProtocol.decodeResult(json);
+            case "season_open" -> SeasonProtocol.decodeOpen(json);
+            case "season_progress" -> SeasonProtocol.decodeProgress(json);
             default -> decodeUnknown(json, type);
         };
     }

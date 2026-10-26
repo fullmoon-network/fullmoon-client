@@ -44,6 +44,9 @@ loom {
         providers.gradleProperty("quick_play_server").orNull?.let { server ->
             programArgs("--quickPlayMultiplayer", server)
         }
+        providers.gradleProperty("quick_play_world").orNull?.let { world ->
+            programArgs("--quickPlaySingleplayer", world)
+        }
         providers.gradleProperty("lobby").orNull?.let { lobby ->
             vmArg("-Dfullmoon.lobby=$lobby")
         }
@@ -97,6 +100,7 @@ fun verifiedCoreClasses() = files(sourceSets.main.get().output.asFileTree.matchi
         "dev/fullmoon/client/settings/SettingSearch*",
         "dev/fullmoon/client/network/BridgeProtocol*",
         "dev/fullmoon/client/network/BridgeState*",
+        "dev/fullmoon/client/network/SeasonProtocol*",
         "dev/fullmoon/client/warp/WarpRoutes*",
         "dev/fullmoon/client/map/MapLayout*",
         "dev/fullmoon/client/map/MapViewport*",
@@ -104,6 +108,10 @@ fun verifiedCoreClasses() = files(sourceSets.main.get().output.asFileTree.matchi
         "dev/fullmoon/client/map/TerrainSample.class",
         "dev/fullmoon/client/map/WorldNames*",
         "dev/fullmoon/client/map/MapMarkers*",
+        "dev/fullmoon/client/season/SeasonLayout*",
+        "dev/fullmoon/client/season/TrackLayout*",
+        "dev/fullmoon/client/season/MissionLayout*",
+        "dev/fullmoon/client/season/SeasonCopy*",
     )
 })
 

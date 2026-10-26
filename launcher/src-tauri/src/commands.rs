@@ -11,7 +11,7 @@ use crate::{
     error::{Error, Result},
     hud, install, java, meta,
     model::*,
-    mods, offline, paths, ping, spec,
+    mods, offline, packs, paths, ping, spec,
     state::AppState,
     store,
 };
@@ -619,6 +619,8 @@ async fn start_game(
 
     let low = spec::low_spec(spec::total_memory_mb().await, spec::logical_cpus());
     let _ = spec::seed_options(&paths::instance_minecraft_dir(&inst.id), &inst.version_id, low).await;
+    // after the seed, which only writes an options.txt that does not exist yet
+    let _ = packs::apply(&state.http, &instance_id, &inst.version_id).await;
 
     /* Our own mod ships inside the launcher, so updating the launcher has to
        update the copy in the instance. Placing it only at install time left an
