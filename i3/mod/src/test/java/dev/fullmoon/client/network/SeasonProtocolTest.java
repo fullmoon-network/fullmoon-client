@@ -109,7 +109,7 @@ final class SeasonProtocolTest {
         assertEquals("season_open level 1 free model is required",
             error(PASS.replace("\"model\":\"fullmoon.skin.moonlight_pickaxe.1\",", "")));
         assertEquals("season_open level 0 plus color is invalid",
-            error(PASS.replace("light_purple", "#ff00ff")));
+            error(PASS.replace("light_purple", "Purple!")));
         assertEquals("season_open level 0 free material is invalid",
             error(PASS.replace("minecraft:gold_nugget", "Gold Nugget")));
         assertEquals("season_open mission id is duplicated: daily_coal",

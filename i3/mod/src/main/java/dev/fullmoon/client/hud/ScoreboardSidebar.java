@@ -237,7 +237,7 @@ public final class ScoreboardSidebar {
             return 0;
         }
         int named = namedColor(color.serialize());
-        return named != 0 ? named : 0xFF000000 | color.getValue();
+        return named != 0 ? named : 0xFF000000 | color.getValue(); // TOKENS-OK: opaque alpha over a server RGB
     }
 
     /** A named chat colour as the token it means on the glass, or 0 for a name that is not one. */

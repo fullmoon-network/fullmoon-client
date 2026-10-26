@@ -48,10 +48,10 @@ final class ScoreboardSidebarTest {
     @Test
     void aLineSplitsIntoLabelAndValueAtItsLastSpace() {
         ScoreboardSidebar.Split split = ScoreboardSidebar.split(List.of(
-            new ScoreboardSidebar.Run("소지금 ", 0), new ScoreboardSidebar.Run("2억원", 0xFF123456)));
+            new ScoreboardSidebar.Run("소지금 ", 0), new ScoreboardSidebar.Run("2억원", 0xFF123456))); // TOKENS-OK
         assertEquals("소지금", split.label());
         assertEquals("2억원", split.value());
-        assertEquals(0xFF123456, split.valueColor());
+        assertEquals(0xFF123456, split.valueColor()); // TOKENS-OK
 
         ScoreboardSidebar.Split whole = ScoreboardSidebar.split(List.of(new ScoreboardSidebar.Run("오늘도 즐겁게", 0)));
         assertEquals("오늘도 즐겁게", whole.label(), "a sentence in one colour is all label");
@@ -62,10 +62,10 @@ final class ScoreboardSidebarTest {
         assertEquals("1명", figure.value());
 
         ScoreboardSidebar.Split coloured = ScoreboardSidebar.split(List.of(
-            new ScoreboardSidebar.Run("위치 ", 0xFFAAAAAA), new ScoreboardSidebar.Run("로비", 0xFF7FD8E8)));
+            new ScoreboardSidebar.Run("위치 ", 0xFFAAAAAA), new ScoreboardSidebar.Run("로비", 0xFF7FD8E8))); // TOKENS-OK
         assertEquals("위치", coloured.label());
         assertEquals("로비", coloured.value());
-        assertEquals(0xFF7FD8E8, coloured.valueColor());
+        assertEquals(0xFF7FD8E8, coloured.valueColor()); // TOKENS-OK
 
         ScoreboardSidebar.Split trailing = ScoreboardSidebar.split(List.of(new ScoreboardSidebar.Run("위치 ", 0)));
         assertEquals("위치", trailing.label());
