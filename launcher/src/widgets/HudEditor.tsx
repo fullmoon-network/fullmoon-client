@@ -47,10 +47,12 @@ const CHIPS: Record<string, { key?: string; value?: string; dot?: boolean; moon?
   effects: { key: "FX", value: "신속 II · 02:45" },
 };
 
-/** The two elements whose size the client fixes rather than measures. */
+/** The elements whose size the client fixes rather than measures. */
 const FIXED: Record<string, { w: number; h: number }> = {
   keystrokes: { w: 76, h: 92 },
   armor: { w: 142, h: 20 },
+  // SeasonMissionHud at rest: the level line and one tracked mission
+  season: { w: 168, h: 42 },
 };
 
 const NUDGE: Record<string, { dx: number; dy: number }> = {
@@ -75,6 +77,30 @@ function Armor() {
           <span className="hud-armor-bar" style={{ width: Math.max(2, Math.trunc((34 - 4) * (pct / 100))) }} />
         </span>
       ))}
+    </span>
+  );
+}
+
+/** `SeasonMissionHud`'s editor sample: level 27 at 95 of 147, tracking 13 of 32 coal. The item icon
+ *  is the game's own art, which the launcher does not carry, so the row starts where its text does. */
+function Season() {
+  return (
+    <span className="hud-season">
+      <span className="hud-season-head">
+        <svg className="hud-moon" width="8" height="8" viewBox="-4 -4 8 8" aria-hidden>
+          <MoonDisc r={4} lit={95 / 147} waxing />
+        </svg>
+        <span className="hud-v">27</span>
+        <span className="hud-k">레벨</span>
+        <span className="hud-season-figure">95 / 147</span>
+        <span className="hud-season-rule" style={{ width: Math.round(156 * (95 / 147)) }} />
+      </span>
+      <span className="hud-season-row">
+        <span className="hud-v">석탄 캐기</span>
+        <span className="hud-season-figure">13 / 32개</span>
+        <span className="hud-season-track" />
+        <span className="hud-season-bar" style={{ width: Math.round(156 * (13 / 32)) }} />
+      </span>
     </span>
   );
 }
@@ -377,7 +403,15 @@ export function HudEditor({ instanceId }: { instanceId: string }) {
                   onKeyDown={(e) => onKey(e, id)}
                   onFocus={() => setSel(id)}
                 >
-                  {id === "keystrokes" ? <Keystrokes /> : id === "armor" ? <Armor /> : <Chip id={id} now={now} />}
+                  {id === "keystrokes" ? (
+                    <Keystrokes />
+                  ) : id === "armor" ? (
+                    <Armor />
+                  ) : id === "season" ? (
+                    <Season />
+                  ) : (
+                    <Chip id={id} now={now} />
+                  )}
                   {sel === id && (
                     <>
                       <i className="hud-tick tl" />

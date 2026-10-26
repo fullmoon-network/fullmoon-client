@@ -36,7 +36,7 @@ public final class SeasonMissionHud extends BaseHudElement {
         Optional.empty(), 0, Optional.empty(), 0);
 
     public SeasonMissionHud() {
-        super(ID, "시즌 미션", "서버", true, Anchor.TOP_LEFT, Tokens.Space.COZY,
+        super("season", "시즌 미션", "서버", true, Anchor.TOP_LEFT, Tokens.Space.COZY,
             Tokens.Space.COZY + (Tokens.Size.HUD_CHIP + Tokens.Space.SNUG) * 2);
     }
 

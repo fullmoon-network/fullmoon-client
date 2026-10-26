@@ -15,6 +15,9 @@ pub const OLD_DEFAULT_HEAP_MB: u32 = 4096;
 /// The game version whose option names and data version `FAST_OPTIONS` uses.
 pub const FAST_OPTIONS_VERSION: &str = "26.1.2";
 
+/// The data version an `options.txt` written for `FAST_OPTIONS_VERSION` carries.
+pub const OPTIONS_DATA_VERSION: u32 = 4790;
+
 /// MC 26.1.2's own Fast graphics preset (`GraphicsPreset.apply`), as the game
 /// writes it. `version` has to be present: without it the data fixer treats the
 /// file as older than presets and rewrites the preset to custom.
@@ -199,7 +202,7 @@ mod tests {
 
     #[test]
     fn the_fast_preset_is_the_one_the_game_writes() {
-        assert!(FAST_OPTIONS.starts_with("version:4790\n"));
+        assert!(FAST_OPTIONS.starts_with(&format!("version:{OPTIONS_DATA_VERSION}\n")));
         assert!(FAST_OPTIONS.contains("graphicsPreset:\"fast\"\n"));
         assert!(FAST_OPTIONS.contains("renderDistance:8\n"));
         assert!(FAST_OPTIONS.lines().all(|l| l.split_once(':').is_some()));

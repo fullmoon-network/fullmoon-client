@@ -60,6 +60,15 @@
       "project": "lithium"
     }
   },
+  "packs": [
+    {
+      "id": "fullmoon-gui",
+      "file": "fullmoon-gui.zip",
+      "url": "https://fullmoon.ink/packs/fullmoon-gui.zip",
+      "sha1Url": "https://fullmoon.ink/packs/fullmoon-gui.sha1",
+      "game": "26.1.2"
+    }
+  ],
   "cosmetics": [
     {
       "id": "aero-cape",
@@ -285,6 +294,13 @@
         "anchor": "TOP_RIGHT",
         "offsetX": 16,
         "offsetY": 134,
+        "scale": 1
+      },
+      "season": {
+        "enabled": true,
+        "anchor": "TOP_LEFT",
+        "offsetX": 8,
+        "offsetY": 48,
         "scale": 1
       }
     },

@@ -35,6 +35,10 @@ pub struct InstanceModState {
     /// mod id → the jar this launcher put in `mods/` for it.
     #[serde(default)]
     pub managed: BTreeMap<String, String>,
+    /// Resource packs this launcher has switched on in `options.txt`. Each is switched on once;
+    /// after that the game's pack list is the player's to change.
+    #[serde(default)]
+    pub packs: Vec<String>,
 }
 
 pub async fn state(instance_id: &str) -> InstanceModState {

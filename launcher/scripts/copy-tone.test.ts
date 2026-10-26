@@ -80,9 +80,10 @@ test("views carry no Korean of their own; it all goes through the dictionary", (
       else if (name.endsWith(".tsx")) views.push(p);
     }
   })(join(root, "src"));
-  // a language's own name is how a picker lets a reader find it; the effects chip's demo reading is
-  // the mod's own editor text (StatusEffectsHud), which the HUD stage shows verbatim
-  const allowed = new Set(["한국어", "신속 II · 02:45"]);
+  // a language's own name is how a picker lets a reader find it; the effects chip's and the season
+  // widget's demo readings are the mod's own editor text (StatusEffectsHud, SeasonMissionHud),
+  // which the HUD stage shows verbatim
+  const allowed = new Set(["한국어", "신속 II · 02:45", "레벨", "석탄 캐기", "13 / 32개"]);
   const found = views.flatMap((f) =>
     literals(readFileSync(f, "utf8"))
       .concat([...readFileSync(f, "utf8").matchAll(/>([^<>{}]*[가-힣][^<>{}]*)</g)].map((m) => m[1].trim()))
