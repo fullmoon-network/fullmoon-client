@@ -69,6 +69,7 @@ public final class HudOverlay {
         }
         long now = System.currentTimeMillis();
         ServerNoticeOverlay.draw(painter, now);
+        DarkZoneOverlay.draw(painter, now);
         CasinoResultOverlay.draw(painter, now);
     }
 }

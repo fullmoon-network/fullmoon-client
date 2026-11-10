@@ -88,6 +88,9 @@ public final class BridgeProtocol {
         }
     }
 
+    /** The player is standing in a server-marked dark zone. Presentation only. */
+    public record DarkZone(int proto, boolean active) implements Message {}
+
     public record Waypoint(
             String id,
             String name,
@@ -210,6 +213,7 @@ public final class BridgeProtocol {
             case "menu_open" -> MenuProtocol.decodeOpen(json);
             case "menu_close" -> MenuProtocol.decodeClose(json);
             case "casino_result" -> CasinoProtocol.decodeResult(json);
+            case "dark_zone" -> decodeDarkZone(json);
             default -> decodeUnknown(json, type);
         };
     }
@@ -292,6 +296,18 @@ public final class BridgeProtocol {
             return DecodeResult.failure("notice duration_ms must be between 1000 and 10000");
         }
         return DecodeResult.success(new Notice(proto, id, title, body, severity, duration));
+    }
+
+    private static DecodeResult decodeDarkZone(JsonObject json) {
+        Integer proto = integer(json, "proto");
+        if (proto == null || proto < 0) {
+            return DecodeResult.failure("dark_zone proto must be a non-negative integer");
+        }
+        Boolean active = booleanValue(json, "active");
+        if (active == null) {
+            return DecodeResult.failure("dark_zone active must be a boolean");
+        }
+        return DecodeResult.success(new DarkZone(proto, active));
     }
 
     private static String noticeTextError(String id, String title, String body) {

@@ -328,6 +328,24 @@ final class BridgeProtocolTest {
     }
 
     @Test
+    void darkZoneRequiresABooleanAndCarriesNoPlace() {
+        BridgeProtocol.Message entered = BridgeProtocol.decode(
+            "{\"type\":\"dark_zone\",\"proto\":1,\"active\":true}".getBytes(StandardCharsets.UTF_8))
+            .message().orElseThrow();
+        BridgeProtocol.DarkZone zone = (BridgeProtocol.DarkZone) entered;
+
+        assertEquals(1, zone.proto());
+        assertTrue(zone.active());
+        assertFalse(((BridgeProtocol.DarkZone) BridgeProtocol.decode(
+            "{\"type\":\"dark_zone\",\"proto\":1,\"active\":false,\"x\":1}".getBytes(StandardCharsets.UTF_8))
+            .message().orElseThrow()).active());
+        assertEquals("dark_zone active must be a boolean", decodeError(
+            "{\"type\":\"dark_zone\",\"proto\":1,\"active\":\"yes\"}"));
+        assertEquals("dark_zone proto must be a non-negative integer", decodeError(
+            "{\"type\":\"dark_zone\",\"active\":true}"));
+    }
+
+    @Test
     void decoderRequiresAnObjectType() {
         assertEquals("payload is not a JSON object", decodeError("[]"));
         assertEquals("payload type is required", decodeError("{}"));

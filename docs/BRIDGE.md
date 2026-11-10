@@ -156,6 +156,21 @@ Rules:
 7. A newer result replaces the one on screen. The card lives for 4.5 seconds and is also drawn
    over open screens, since the bet is placed from a menu.
 
+### `dark_zone`
+
+The player stepped into or out of an operator dark-zone mark. Presentation only: the zone guard
+still decides PVP and block breaking. The payload has no coordinates, world, or chunk.
+
+```json
+{"type":"dark_zone","proto":1,"active":true}
+```
+
+1. `proto` is required and must be a non-negative integer. `active` must be a boolean.
+2. `active` true shows the strip. `active` false hides it. A repeat of the same value changes nothing.
+3. A new session starts outside. Disconnect clears the strip.
+4. Sneak-to-split pickup is not a message. The server decides how many items a pickup takes, and
+   the client must not predict or rewrite that count.
+
 ## Vanilla fallback
 
 - `/항로` (alias `/route`) lists and executes the same registered waypoint IDs through the same
@@ -166,6 +181,8 @@ Rules:
   completed handshake, the bridge is unavailable, or a menu snapshot exceeds the channel limit.
 - Native and fallback surfaces expose the same actions. Client detection never changes the feature
   set.
+- A player without a handshake gets one action-bar line on entering a dark zone, and a clear line
+  on leaving. The Fullmoon client draws the strip instead and does not also show that line.
 
 ## Server authority requirements
 
