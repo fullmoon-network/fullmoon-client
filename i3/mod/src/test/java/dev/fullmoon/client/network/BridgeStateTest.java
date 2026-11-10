@@ -221,6 +221,22 @@ final class BridgeStateTest {
         assertTrue(active().casino().isEmpty());
     }
 
+    @Test
+    void darkZoneFollowsTheServerAndClearsOnANewSession() {
+        BridgeState active = active();
+        BridgeProtocol.DarkZone entered = new BridgeProtocol.DarkZone(1, true);
+        BridgeProtocol.DarkZone still = new BridgeProtocol.DarkZone(1, true);
+        BridgeProtocol.DarkZone left = new BridgeProtocol.DarkZone(1, false);
+
+        BridgeState inside = BridgeState.apply(active, entered, 2_000);
+        assertTrue(inside.darkZone());
+        assertSame(inside, BridgeState.apply(inside, still, 2_100));
+        assertFalse(BridgeState.apply(inside, left, 2_200).darkZone());
+        assertSame(active, BridgeState.apply(active, new BridgeProtocol.DarkZone(2, true), 2_000));
+        assertFalse(BridgeState.apply(active, entered, 2_000).equals(BridgeState.disconnected()));
+        assertFalse(active().darkZone());
+    }
+
     private static BridgeState active() {
         return BridgeState.apply(
             BridgeState.connected(1_000), new BridgeProtocol.Welcome(1), 1_100);

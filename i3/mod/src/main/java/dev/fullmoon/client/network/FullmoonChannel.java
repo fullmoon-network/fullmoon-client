@@ -62,6 +62,12 @@ public final class FullmoonChannel {
         return BridgeState.liveNotice(STATE.get(), now);
     }
 
+    /** True while the server says this player is standing in a dark zone. */
+    public static boolean darkZone() {
+        BridgeState state = STATE.get();
+        return state.mode() == BridgeState.Mode.ACTIVE && state.darkZone();
+    }
+
     public static List<BridgeProtocol.Waypoint> waypoints() {
         return STATE.get().waypoints();
     }
@@ -166,6 +172,8 @@ public final class FullmoonChannel {
         } else if (message instanceof BridgeProtocol.TpResult result && after != before) {
             LOG.info("Received fullmoon:v1 warp result {} ({})", result.id(),
                 result.ok() ? "accepted" : result.reason());
+        } else if (message instanceof BridgeProtocol.DarkZone zone && after != before) {
+            LOG.info("Received fullmoon:v1 dark zone ({})", zone.active() ? "inside" : "outside");
         } else if (message instanceof CasinoProtocol.Result result && after != before) {
             LOG.info("Received fullmoon:v1 casino result {} ({})", result.game().wireName(),
                 result.won() ? "won x" + result.payoutMultiplier() : "lost");
