@@ -1,18 +1,18 @@
 /* What `mods::apply` last put in an instance's `mods/`, and how it knew the
-   jars were right. Every Play used to resolve each mod over the network, one
-   after another, and re-read every jar to hash it. The lock lets a launch with
-   nothing new to learn skip both:
+jars were right. Every Play used to resolve each mod over the network, one
+after another, and re-read every jar to hash it. The lock lets a launch with
+nothing new to learn skip both:
 
-   - a downloaded mod is trusted for `TTL` after the network last confirmed it
-     as the newest build, as long as the jar on disk still has the size and
-     mtime it had when it was hashed;
-   - the bundled mod needs no network, but is only re-hashed when the shipped
-     copy or the installed copy changed on disk.
+- a downloaded mod is trusted for `TTL` after the network last confirmed it
+  as the newest build, as long as the jar on disk still has the size and
+  mtime it had when it was hashed;
+- the bundled mod needs no network, but is only re-hashed when the shipped
+  copy or the installed copy changed on disk.
 
-   The TTL is 12 hours: mods for a fixed game version are republished rarely,
-   so a player who launches twice in an evening resolves once, and a new build
-   still lands within a day at worst. A lock that does not match is never an
-   error — it just means "ask again". */
+The TTL is 12 hours: mods for a fixed game version are republished rarely,
+so a player who launches twice in an evening resolves once, and a new build
+still lands within a day at worst. A lock that does not match is never an
+error — it just means "ask again". */
 use std::{
     collections::BTreeMap,
     path::Path,
@@ -44,7 +44,10 @@ impl Stamp {
             .ok()
             .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
             .map_or(0, |d| d.as_millis() as u64);
-        Some(Self { size: meta.len(), mtime_ms })
+        Some(Self {
+            size: meta.len(),
+            mtime_ms,
+        })
     }
 }
 
@@ -78,12 +81,18 @@ pub fn now_secs() -> u64 {
 
 /// A lock for another game version describes other jars, so it reads as empty.
 pub async fn load(instance_id: &str, game: &str) -> ModLock {
-    let lock: ModLock =
-        store::read_or(&paths::instance_mod_lock_file(instance_id), ModLock::default).await;
+    let lock: ModLock = store::read_or(
+        &paths::instance_mod_lock_file(instance_id),
+        ModLock::default,
+    )
+    .await;
     if lock.game == game {
         lock
     } else {
-        ModLock { game: game.to_string(), mods: BTreeMap::new() }
+        ModLock {
+            game: game.to_string(),
+            mods: BTreeMap::new(),
+        }
     }
 }
 
@@ -103,7 +112,13 @@ impl ModLock {
 
     /// The bundled copy already in place: neither side moved since it was
     /// compared, so there is nothing to hash.
-    pub fn bundled_current(&self, id: &str, file: &str, jar: Option<&Stamp>, origin: &Stamp) -> bool {
+    pub fn bundled_current(
+        &self,
+        id: &str,
+        file: &str,
+        jar: Option<&Stamp>,
+        origin: &Stamp,
+    ) -> bool {
         match (self.mods.get(id), jar) {
             (Some(e), Some(jar)) => {
                 e.file == file && &e.jar == jar && e.origin.as_ref() == Some(origin)
@@ -114,10 +129,16 @@ impl ModLock {
 
     /// The jar a network lookup named is the one already installed and
     /// verified — nothing to download or re-hash.
-    pub fn same_download(&self, id: &str, file: &str, jar: Option<&Stamp>, sha1: Option<&str>) -> bool {
+    pub fn same_download(
+        &self,
+        id: &str,
+        file: &str,
+        jar: Option<&Stamp>,
+        sha1: Option<&str>,
+    ) -> bool {
         match (self.mods.get(id), jar) {
             (Some(e), Some(jar)) => {
-                e.file == file && &e.jar == jar && sha1.map_or(true, |s| s == e.sha1)
+                e.file == file && &e.jar == jar && sha1.is_none_or(|s| s == e.sha1)
             }
             _ => false,
         }
@@ -135,7 +156,10 @@ mod tests {
     }
 
     fn lock_with(resolved_at: u64) -> ModLock {
-        let mut lock = ModLock { game: "26.1.2".into(), ..ModLock::default() };
+        let mut lock = ModLock {
+            game: "26.1.2".into(),
+            ..ModLock::default()
+        };
         lock.mods.insert(
             "sodium".into(),
             Locked {
@@ -155,34 +179,57 @@ mod tests {
     #[test]
     fn a_recent_untouched_jar_skips_the_lookup() {
         let lock = lock_with(1_000);
-        assert!(lock.trusted("sodium", F, &stamp(100, 5), 1_000 + H).is_some());
+        assert!(lock
+            .trusted("sodium", F, &stamp(100, 5), 1_000 + H)
+            .is_some());
     }
 
     #[test]
     fn the_lookup_returns_once_the_ttl_has_passed() {
         let lock = lock_with(1_000);
-        assert!(lock.trusted("sodium", F, &stamp(100, 5), 1_000 + TTL.as_secs() - 1).is_some());
-        assert!(lock.trusted("sodium", F, &stamp(100, 5), 1_000 + TTL.as_secs()).is_none());
+        assert!(lock
+            .trusted("sodium", F, &stamp(100, 5), 1_000 + TTL.as_secs() - 1)
+            .is_some());
+        assert!(lock
+            .trusted("sodium", F, &stamp(100, 5), 1_000 + TTL.as_secs())
+            .is_none());
     }
 
     #[test]
     fn a_jar_that_changed_on_disk_is_not_trusted() {
         let lock = lock_with(1_000);
-        assert!(lock.trusted("sodium", F, &stamp(101, 5), 1_000 + H).is_none());
-        assert!(lock.trusted("sodium", F, &stamp(100, 6), 1_000 + H).is_none());
+        assert!(lock
+            .trusted("sodium", F, &stamp(101, 5), 1_000 + H)
+            .is_none());
+        assert!(lock
+            .trusted("sodium", F, &stamp(100, 6), 1_000 + H)
+            .is_none());
     }
 
     #[test]
     fn another_file_name_or_an_unknown_mod_is_not_trusted() {
         let lock = lock_with(1_000);
-        assert!(lock.trusted("sodium", "sodium-fabric-0.9.0.jar", &stamp(100, 5), 1_000 + H).is_none());
-        assert!(lock.trusted("lithium", F, &stamp(100, 5), 1_000 + H).is_none());
+        assert!(lock
+            .trusted(
+                "sodium",
+                "sodium-fabric-0.9.0.jar",
+                &stamp(100, 5),
+                1_000 + H
+            )
+            .is_none());
+        assert!(lock
+            .trusted("lithium", F, &stamp(100, 5), 1_000 + H)
+            .is_none());
     }
 
     #[test]
     fn a_clock_set_back_or_an_unconfirmed_entry_is_stale() {
-        assert!(lock_with(10_000).trusted("sodium", F, &stamp(100, 5), 5_000).is_none());
-        assert!(lock_with(0).trusted("sodium", F, &stamp(100, 5), 10).is_none());
+        assert!(lock_with(10_000)
+            .trusted("sodium", F, &stamp(100, 5), 5_000)
+            .is_none());
+        assert!(lock_with(0)
+            .trusted("sodium", F, &stamp(100, 5), 10)
+            .is_none());
     }
 
     #[test]
@@ -203,9 +250,18 @@ mod tests {
         e.origin = Some(stamp(900, 7));
         let jar = stamp(100, 5);
         assert!(lock.bundled_current("sodium", F, Some(&jar), &stamp(900, 7)));
-        assert!(!lock.bundled_current("sodium", F, Some(&jar), &stamp(901, 7)), "launcher update");
-        assert!(!lock.bundled_current("sodium", F, Some(&stamp(100, 6)), &stamp(900, 7)), "edited jar");
-        assert!(!lock.bundled_current("sodium", F, None, &stamp(900, 7)), "deleted jar");
+        assert!(
+            !lock.bundled_current("sodium", F, Some(&jar), &stamp(901, 7)),
+            "launcher update"
+        );
+        assert!(
+            !lock.bundled_current("sodium", F, Some(&stamp(100, 6)), &stamp(900, 7)),
+            "edited jar"
+        );
+        assert!(
+            !lock.bundled_current("sodium", F, None, &stamp(900, 7)),
+            "deleted jar"
+        );
     }
 
     #[test]

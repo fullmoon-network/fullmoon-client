@@ -1,13 +1,13 @@
 /* The download engine. Three rules it never breaks:
 
-   - a file that is already on disk with the right SHA1 is never fetched again,
-     so a second install is seconds, not minutes;
-   - bytes land in a temp file and are only renamed into place after the hash
-     checks out, so an interrupted run can never leave a corrupt jar that
-     looks installed;
-   - progress is reported from the bytes actually written, not from a count of
-     finished files, because 3000 tiny assets and one 38 MB client jar are not
-     the same kind of work. */
+- a file that is already on disk with the right SHA1 is never fetched again,
+  so a second install is seconds, not minutes;
+- bytes land in a temp file and are only renamed into place after the hash
+  checks out, so an interrupted run can never leave a corrupt jar that
+  looks installed;
+- progress is reported from the bytes actually written, not from a count of
+  finished files, because 3000 tiny assets and one 38 MB client jar are not
+  the same kind of work. */
 use std::{
     path::{Path, PathBuf},
     sync::{
@@ -18,9 +18,11 @@ use std::{
 
 use futures::{stream, StreamExt};
 use sha1::{Digest, Sha1};
-use tokio::io::AsyncWriteExt;
 
-use crate::error::{Error, Result};
+use crate::{
+    atomic::TempFile,
+    error::{Error, Result},
+};
 
 #[derive(Debug, Clone)]
 pub struct Item {
@@ -76,38 +78,63 @@ async fn fetch_one(client: &reqwest::Client, item: &Item, progress: &Progress) -
         tokio::fs::create_dir_all(parent).await?;
     }
 
-    let tmp = item.path.with_extension("part");
-    let res = client.get(&item.url).send().await?;
+    /* The temp file is exclusively created under a random name, so two
+    downloads of the same artifact - two launcher processes preparing the same
+    instance - cannot write into each other's file. The finished temp is
+    renamed over the destination without the destination being removed first,
+    so a failed replacement keeps the previous good copy. */
+    let name = item
+        .path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("download");
+    let mut temp =
+        TempFile::create(item.path.parent().unwrap_or_else(|| Path::new(".")), name).await?;
+    let res = client.get(&item.url).send().await;
+    if let Err(e) = res {
+        return Err(temp.discard(e.into()).await);
+    }
+    let res = res.unwrap();
     if !res.status().is_success() {
-        return Err(Error::Invalid(format!("{} → HTTP {}", item.url, res.status())));
+        return Err(temp
+            .discard(Error::Invalid(format!(
+                "{} → HTTP {}",
+                item.url,
+                res.status()
+            )))
+            .await);
     }
 
-    let mut file = tokio::fs::File::create(&tmp).await?;
     let mut hasher = Sha1::new();
     let mut stream = res.bytes_stream();
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk?;
-        hasher.update(&chunk);
-        file.write_all(&chunk).await?;
-        progress.done_bytes.fetch_add(chunk.len() as u64, Ordering::Relaxed);
-    }
-    file.flush().await?;
-    drop(file);
-
-    if let Some(want) = &item.sha1 {
-        let got = hex::encode(hasher.finalize());
-        if &got != want {
-            let _ = tokio::fs::remove_file(&tmp).await;
-            return Err(Error::Invalid(format!(
-                "checksum mismatch for {}: expected {want}, got {got}",
-                item.path.display()
-            )));
+        match chunk {
+            Ok(chunk) => match temp.write_all(&chunk).await {
+                Ok(()) => {
+                    hasher.update(&chunk);
+                    progress
+                        .done_bytes
+                        .fetch_add(chunk.len() as u64, Ordering::Relaxed);
+                }
+                Err(e) => return Err(temp.discard(e).await),
+            },
+            Err(e) => return Err(temp.discard(e.into()).await),
         }
     }
 
-    let _ = tokio::fs::remove_file(&item.path).await;
-    tokio::fs::rename(&tmp, &item.path).await?;
-    Ok(())
+    let got = hex::encode(hasher.finalize());
+    if let Some(want) = &item.sha1 {
+        if &got != want {
+            return Err(temp
+                .discard(Error::Invalid(format!(
+                    "checksum mismatch for {}: expected {want}, got {got}",
+                    item.path.display()
+                )))
+                .await);
+        }
+    }
+
+    temp.commit(&item.path).await
 }
 
 /// Fetch everything missing, `concurrency` at a time. Returns the number of
@@ -118,7 +145,9 @@ pub async fn fetch_all(
     concurrency: usize,
     progress: Arc<Progress>,
 ) -> Result<usize> {
-    progress.total_files.fetch_add(items.len() as u64, Ordering::Relaxed);
+    progress
+        .total_files
+        .fetch_add(items.len() as u64, Ordering::Relaxed);
 
     let client = client.clone();
     let results: Vec<Result<bool>> = stream::iter(items)
@@ -159,7 +188,110 @@ pub fn total_size(items: &[Item]) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::TempDir;
     use sha1::{Digest, Sha1};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    /// Every temp file this module leaves behind is named `.<stem>.<pid>.<uuid>.part`.
+    async fn leftover_parts(dir: &Path) -> Vec<String> {
+        let mut names = Vec::new();
+        let mut entries = tokio::fs::read_dir(dir).await.unwrap();
+        while let Some(entry) = entries.next_entry().await.unwrap() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name.ends_with(".part") {
+                names.push(name);
+            }
+        }
+        names
+    }
+
+    #[tokio::test]
+    async fn a_failed_fetch_leaves_the_destination_and_cleans_its_temp() {
+        let dir = TempDir::new("download_failed_fetch");
+        tokio::fs::create_dir_all(dir.path()).await.unwrap();
+        // a directory as the destination cannot be replaced; anything a
+        // failed download might have written there must stay untouched
+        let destination = dir.path().join("artifact.jar");
+        tokio::fs::create_dir_all(&destination).await.unwrap();
+        tokio::fs::write(destination.join("marker"), b"previous")
+            .await
+            .unwrap();
+
+        let item = Item {
+            // port 1 is reserved; nothing can answer there
+            url: "http://127.0.0.1:1/artifact.jar".to_string(),
+            path: destination.clone(),
+            sha1: None,
+            size: 0,
+        };
+
+        let result = fetch_one(&reqwest::Client::new(), &item, &Progress::default()).await;
+
+        assert!(result.is_err());
+        assert!(destination.is_dir());
+        assert_eq!(
+            tokio::fs::read(destination.join("marker")).await.unwrap(),
+            b"previous"
+        );
+        assert!(leftover_parts(dir.path()).await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_checksum_mismatch_never_reaches_the_destination() {
+        let dir = TempDir::new("download_checksum");
+        tokio::fs::create_dir_all(dir.path()).await.unwrap();
+        let destination = dir.path().join("artifact.jar");
+        tokio::fs::write(&destination, b"previous good bytes")
+            .await
+            .unwrap();
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            let mut buf = [0_u8; 1024];
+            loop {
+                if socket.read(&mut buf).await.unwrap_or(0) == 0 {
+                    break;
+                }
+                if buf.windows(4).any(|w| w == b"\r\n\r\n") {
+                    break;
+                }
+            }
+            let body = b"hostile bytes";
+            let head = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            let _ = socket.write_all(head.as_bytes()).await;
+            let _ = socket.write_all(body).await;
+        });
+
+        let item = Item {
+            url: format!("http://{addr}/artifact.jar"),
+            path: destination.clone(),
+            sha1: Some("0123456789abcdef0123456789abcdef01234567".to_string()),
+            size: 13,
+        };
+
+        let result = fetch_one(&reqwest::Client::new(), &item, &Progress::default()).await;
+        server.await.unwrap();
+
+        match result {
+            Err(Error::Invalid(message)) => assert!(
+                message.contains("checksum mismatch"),
+                "unexpected error: {message}"
+            ),
+            other => panic!("expected a checksum mismatch, got {other:?}"),
+        }
+        assert_eq!(
+            tokio::fs::read(&destination).await.unwrap(),
+            b"previous good bytes"
+        );
+        assert!(leftover_parts(dir.path()).await.is_empty());
+    }
 
     #[tokio::test]
     async fn sha1_of_calculates_correct_hash() {
@@ -184,7 +316,9 @@ mod tests {
         let temp_dir = std::env::temp_dir().join("fullmoon_test_corrupt");
         let _ = tokio::fs::create_dir_all(&temp_dir).await;
         let test_file = temp_dir.join("corrupt_asset.jar");
-        tokio::fs::write(&test_file, b"corrupted bytes").await.unwrap();
+        tokio::fs::write(&test_file, b"corrupted bytes")
+            .await
+            .unwrap();
 
         let item = Item {
             url: "https://example.com/asset.jar".to_string(),
@@ -193,7 +327,10 @@ mod tests {
             size: 15,
         };
 
-        assert!(!already_good(&item).await, "corrupted asset with mismatched sha1 must be rejected");
+        assert!(
+            !already_good(&item).await,
+            "corrupted asset with mismatched sha1 must be rejected"
+        );
 
         let _ = tokio::fs::remove_dir_all(&temp_dir).await;
     }
@@ -217,7 +354,10 @@ mod tests {
             size: content.len() as u64,
         };
 
-        assert!(already_good(&item).await, "valid asset with matching sha1 must be accepted");
+        assert!(
+            already_good(&item).await,
+            "valid asset with matching sha1 must be accepted"
+        );
 
         let _ = tokio::fs::remove_dir_all(&temp_dir).await;
     }

@@ -136,6 +136,19 @@ public final class Glass {
         return textX - x + Typeset.draw(painter, Tokens.Type.STRONG, text, textX, y, color);
     }
 
+    /** The width {@link #markedLine} will take for {@code text}, so a line can be set right-aligned. */
+    public static int markedWidth(String text) {
+        return MARK + Tokens.Space.SNUG + 1 + Typeset.width(Tokens.Type.STRONG, text);
+    }
+
+    /** A padlock, six by seven, in the ink of whatever would open it. */
+    public static void lockMark(Painter painter, float cx, float cy, int color) {
+        float left = Math.round(cx - 3.0f);
+        float top = Math.round(cy - MARK / 2.0f);
+        painter.border(left + 1, top, 4, 4, Tokens.Radius.NONE, Tokens.Stroke.HAIR, color);
+        painter.fill(left, top + 3, 6, 4, color);
+    }
+
     /** A command a player types, as a chip: strong ink on a faint ground. Returns the width. */
     public static int codeChip(Painter painter, int x, int y, String command) {
         int w = Typeset.width(Tokens.Type.STRONG, command) + Tokens.Space.SNUG * 2;

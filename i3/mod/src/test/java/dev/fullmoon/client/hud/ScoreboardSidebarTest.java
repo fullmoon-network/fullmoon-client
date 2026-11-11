@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import dev.fullmoon.client.layout.Box;
+import dev.fullmoon.client.render.Rgb;
 
 /** The live rehearsal (2026-09-27) saw the keystrokes cover the sidebar at 1280x720, gui scale 2. */
 final class ScoreboardSidebarTest {
@@ -48,10 +49,10 @@ final class ScoreboardSidebarTest {
     @Test
     void aLineSplitsIntoLabelAndValueAtItsLastSpace() {
         ScoreboardSidebar.Split split = ScoreboardSidebar.split(List.of(
-            new ScoreboardSidebar.Run("소지금 ", 0), new ScoreboardSidebar.Run("2억원", 0xFF123456)));
+            new ScoreboardSidebar.Run("소지금 ", 0), new ScoreboardSidebar.Run("2억원", Rgb.opaque(0x123456))));
         assertEquals("소지금", split.label());
         assertEquals("2억원", split.value());
-        assertEquals(0xFF123456, split.valueColor());
+        assertEquals(Rgb.opaque(0x123456), split.valueColor());
 
         ScoreboardSidebar.Split whole = ScoreboardSidebar.split(List.of(new ScoreboardSidebar.Run("오늘도 즐겁게", 0)));
         assertEquals("오늘도 즐겁게", whole.label(), "a sentence in one colour is all label");
@@ -62,10 +63,10 @@ final class ScoreboardSidebarTest {
         assertEquals("1명", figure.value());
 
         ScoreboardSidebar.Split coloured = ScoreboardSidebar.split(List.of(
-            new ScoreboardSidebar.Run("위치 ", 0xFFAAAAAA), new ScoreboardSidebar.Run("로비", 0xFF7FD8E8)));
+            new ScoreboardSidebar.Run("위치 ", Rgb.opaque(0xAAAAAA)), new ScoreboardSidebar.Run("로비", Rgb.opaque(0x7FD8E8))));
         assertEquals("위치", coloured.label());
         assertEquals("로비", coloured.value());
-        assertEquals(0xFF7FD8E8, coloured.valueColor());
+        assertEquals(Rgb.opaque(0x7FD8E8), coloured.valueColor());
 
         ScoreboardSidebar.Split trailing = ScoreboardSidebar.split(List.of(new ScoreboardSidebar.Run("위치 ", 0)));
         assertEquals("위치", trailing.label());

@@ -1,5 +1,5 @@
 /* The wire types. These mirror `launcher/src/core/bindings.ts` field for
-   field — that file is the contract, and the UI is written against it. */
+field — that file is the contract, and the UI is written against it. */
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};

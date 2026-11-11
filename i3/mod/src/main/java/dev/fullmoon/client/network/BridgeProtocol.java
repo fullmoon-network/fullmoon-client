@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -20,6 +21,7 @@ import com.google.gson.JsonPrimitive;
 public final class BridgeProtocol {
     public static final int VERSION = 1;
     public static final int MAX_PAYLOAD_BYTES = 32_767;
+    private static final int MAX_TYPE_HINT_LENGTH = 64;
 
     private static final int MAX_CLIENT_VERSION_LENGTH = 32;
     private static final int MAX_NOTICE_ID_LENGTH = 64;
@@ -27,6 +29,8 @@ public final class BridgeProtocol {
     private static final int MAX_NOTICE_BODY_LENGTH = 160;
     private static final int MIN_NOTICE_DURATION_MILLIS = 1_000;
     private static final int MAX_NOTICE_DURATION_MILLIS = 10_000;
+    private static final int MAX_FEATURES = 32;
+    private static final int MAX_PACKS = 8;
     private static final int MAX_WAYPOINTS = 128;
     private static final int MAX_WAYPOINT_ID_LENGTH = 64;
     private static final int MAX_WAYPOINT_TEXT_LENGTH = 64;
@@ -36,6 +40,10 @@ public final class BridgeProtocol {
     private static final int WORLD_VERTICAL_LIMIT = 2_048;
     private static final Pattern WAYPOINT_ID =
         Pattern.compile("[a-z0-9][a-z0-9._-]{0,63}");
+    /** The server's feature grammar: one lowercase word, digits and underscores after the first. */
+    private static final Pattern FEATURE = Pattern.compile("[a-z][a-z0-9_]{0,31}");
+    private static final Pattern PACK_ID = Pattern.compile("[a-z0-9][a-z0-9._-]{0,63}");
+    private static final Pattern SHA1 = Pattern.compile("[0-9a-f]{40}");
 
     private BridgeProtocol() {}
 
@@ -108,6 +116,20 @@ public final class BridgeProtocol {
         }
     }
 
+    /** A resource pack the client has switched on, by stable server id and archive SHA-1. */
+    public record Pack(String id, String sha1) {
+        public Pack {
+            Objects.requireNonNull(id, "id");
+            Objects.requireNonNull(sha1, "sha1");
+            if (!PACK_ID.matcher(id).matches()) {
+                throw new IllegalArgumentException("pack id is invalid");
+            }
+            if (!SHA1.matcher(sha1).matches()) {
+                throw new IllegalArgumentException("pack sha1 must be 40 lowercase hex digits");
+            }
+        }
+    }
+
     public record Unknown(int proto, String type) implements Message {}
 
     public enum Severity {
@@ -136,17 +158,74 @@ public final class BridgeProtocol {
     }
 
     public static byte[] hello(String clientVersion) {
+        return hello(clientVersion, List.of(), List.of());
+    }
+
+    /**
+     * The handshake with the optional surfaces this client draws and the resource packs it has
+     * switched on. Both fields are additive under proto 1; a server that predates them reads the
+     * same hello it always read. Features are deduplicated, packs keep the first entry per id.
+     */
+    public static byte[] hello(String clientVersion, List<String> features, List<Pack> packs) {
         String error = helloError(clientVersion);
         if (!error.isEmpty()) {
             throw new IllegalArgumentException(error);
         }
+        List<String> named = featureNames(features);
+        List<Pack> reported = packEntries(packs);
 
         JsonObject json = new JsonObject();
         json.addProperty("type", "hello");
         json.addProperty("proto", VERSION);
         json.addProperty("client", "fullmoon");
         json.addProperty("version", clientVersion);
+        if (!named.isEmpty()) {
+            JsonArray names = new JsonArray();
+            named.forEach(names::add);
+            json.add("features", names);
+        }
+        if (!reported.isEmpty()) {
+            JsonArray list = new JsonArray();
+            for (Pack pack : reported) {
+                JsonObject entry = new JsonObject();
+                entry.addProperty("id", pack.id());
+                entry.addProperty("sha1", pack.sha1());
+                list.add(entry);
+            }
+            json.add("packs", list);
+        }
         return json.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private static List<String> featureNames(List<String> features) {
+        Objects.requireNonNull(features, "features");
+        Set<String> unique = new LinkedHashSet<>();
+        for (String feature : features) {
+            if (feature == null || !FEATURE.matcher(feature).matches()) {
+                throw new IllegalArgumentException("hello feature is invalid");
+            }
+            unique.add(feature);
+        }
+        if (unique.size() > MAX_FEATURES) {
+            throw new IllegalArgumentException("hello features exceed 32 entries");
+        }
+        return List.copyOf(unique);
+    }
+
+    private static List<Pack> packEntries(List<Pack> packs) {
+        Objects.requireNonNull(packs, "packs");
+        if (packs.size() > MAX_PACKS) {
+            throw new IllegalArgumentException("hello packs exceed 8 entries");
+        }
+        Set<String> ids = new HashSet<>();
+        List<Pack> unique = new ArrayList<>(packs.size());
+        for (Pack pack : packs) {
+            Objects.requireNonNull(pack, "pack");
+            if (ids.add(pack.id())) {
+                unique.add(pack);
+            }
+        }
+        return List.copyOf(unique);
     }
 
     public static byte[] teleportRequest(String waypointId) {
@@ -210,8 +289,37 @@ public final class BridgeProtocol {
             case "menu_open" -> MenuProtocol.decodeOpen(json);
             case "menu_close" -> MenuProtocol.decodeClose(json);
             case "casino_result" -> CasinoProtocol.decodeResult(json);
+            case "season_open" -> SeasonProtocol.decodeOpen(json);
+            case "season_progress" -> SeasonProtocol.decodeProgress(json);
             default -> decodeUnknown(json, type);
         };
+    }
+
+    /**
+     * Best-effort name of the message type in a payload the decoder refused, so the channel can
+     * tell the player which surface failed to open. It trusts nothing: any parse trouble, an
+     * oversized payload, or a missing or oversized type name is empty.
+     */
+    public static Optional<String> rejectedType(byte[] payload) {
+        if (payload == null || payload.length == 0 || payload.length > MAX_PAYLOAD_BYTES) {
+            return Optional.empty();
+        }
+        try {
+            JsonElement element = JsonParser.parseString(new String(payload, StandardCharsets.UTF_8));
+            if (!element.isJsonObject()) {
+                return Optional.empty();
+            }
+            JsonElement type = element.getAsJsonObject().get("type");
+            if (type != null && type.isJsonPrimitive() && type.getAsJsonPrimitive().isString()) {
+                String name = type.getAsString();
+                if (!name.isEmpty() && name.length() <= MAX_TYPE_HINT_LENGTH) {
+                    return Optional.of(name);
+                }
+            }
+            return Optional.empty();
+        } catch (RuntimeException error) {
+            return Optional.empty();
+        }
     }
 
     private static DecodeResult decodeHello(JsonObject json) {

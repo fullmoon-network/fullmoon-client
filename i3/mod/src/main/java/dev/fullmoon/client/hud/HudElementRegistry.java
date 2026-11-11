@@ -35,6 +35,7 @@ public final class HudElementRegistry {
         register(new ServerTickHud());
         register(new ArmorHud());
         register(new StatusEffectsHud());
+        register(new SeasonMissionHud());
 
         try {
             configPath = FabricLoader.getInstance().getConfigDir().resolve("fullmoon").resolve("hud.json");

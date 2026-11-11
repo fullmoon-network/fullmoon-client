@@ -1,19 +1,25 @@
 /* What the player's machine can carry, and the defaults that follow from it.
 
-   The launcher used to give every machine the same 4 GiB heap and leave the
-   game's options at its own defaults. In world the client keeps about 250-300
-   MiB live (client bench, 2026-10-08), so on a 4 GB PC a 4 GiB ceiling only
-   lets the heap crowd out the OS and page; and the game's default options are
-   tuned for a GPU a low-spec PC does not have. */
+The launcher used to give every machine the same 4 GiB heap and leave the
+game's options at its own defaults. In world the client keeps about 250-300
+MiB live (client bench, 2026-10-08), so on a 4 GB PC a 4 GiB ceiling only
+lets the heap crowd out the OS and page; and the game's default options are
+tuned for a GPU a low-spec PC does not have. */
 use std::path::Path;
 
-use crate::{error::Result, model::{Instance, Settings}};
+use crate::{
+    error::Result,
+    model::{Instance, Settings},
+};
 
 /// What every install got before the heap followed the machine's RAM.
 pub const OLD_DEFAULT_HEAP_MB: u32 = 4096;
 
 /// The game version whose option names and data version `FAST_OPTIONS` uses.
 pub const FAST_OPTIONS_VERSION: &str = "26.1.2";
+
+/// The data version an `options.txt` written for `FAST_OPTIONS_VERSION` carries.
+pub const OPTIONS_DATA_VERSION: u32 = 4790;
 
 /// MC 26.1.2's own Fast graphics preset (`GraphicsPreset.apply`), as the game
 /// writes it. `version` has to be present: without it the data fixer treats the
@@ -80,9 +86,9 @@ pub fn logical_cpus() -> usize {
 pub fn heap_mb(total_mb: u64) -> u32 {
     match total_mb {
         0 => OLD_DEFAULT_HEAP_MB,
-        ..=4608 => 1536,
-        ..=6656 => 2048,
-        ..=8704 => 3072,
+        1..=4608 => 1536,
+        4609..=6656 => 2048,
+        6657..=8704 => 3072,
         _ => OLD_DEFAULT_HEAP_MB,
     }
 }
@@ -105,7 +111,10 @@ pub fn tune_heap(settings: &mut Settings, instances: &mut [Instance], total_mb: 
         if settings.memory_mb == OLD_DEFAULT_HEAP_MB {
             settings.memory_mb = target;
         }
-        for inst in instances.iter_mut().filter(|i| i.memory_mb == OLD_DEFAULT_HEAP_MB) {
+        for inst in instances
+            .iter_mut()
+            .filter(|i| i.memory_mb == OLD_DEFAULT_HEAP_MB)
+        {
             inst.memory_mb = target;
         }
     }
@@ -150,7 +159,10 @@ mod tests {
 
     #[test]
     fn meminfo_total_is_read_in_mb() {
-        assert_eq!(meminfo_total_mb("MemTotal:       16384000 kB\nMemFree: 1 kB\n"), 16000);
+        assert_eq!(
+            meminfo_total_mb("MemTotal:       16384000 kB\nMemFree: 1 kB\n"),
+            16000
+        );
         assert_eq!(meminfo_total_mb("nothing"), 0);
     }
 
@@ -199,7 +211,7 @@ mod tests {
 
     #[test]
     fn the_fast_preset_is_the_one_the_game_writes() {
-        assert!(FAST_OPTIONS.starts_with("version:4790\n"));
+        assert!(FAST_OPTIONS.starts_with(&format!("version:{OPTIONS_DATA_VERSION}\n")));
         assert!(FAST_OPTIONS.contains("graphicsPreset:\"fast\"\n"));
         assert!(FAST_OPTIONS.contains("renderDistance:8\n"));
         assert!(FAST_OPTIONS.lines().all(|l| l.split_once(':').is_some()));
@@ -212,16 +224,33 @@ mod tests {
         tokio::fs::create_dir_all(&dir).await.unwrap();
         let file = dir.join("options.txt");
 
-        assert!(!seed_options(&dir, "26.1.2", false).await.unwrap(), "standard machine");
-        assert!(!seed_options(&dir, "1.21.4", true).await.unwrap(), "another version");
+        assert!(
+            !seed_options(&dir, "26.1.2", false).await.unwrap(),
+            "standard machine"
+        );
+        assert!(
+            !seed_options(&dir, "1.21.4", true).await.unwrap(),
+            "another version"
+        );
         assert!(!file.exists());
 
         assert!(seed_options(&dir, "26.1.2", true).await.unwrap());
-        assert_eq!(tokio::fs::read_to_string(&file).await.unwrap(), FAST_OPTIONS);
+        assert_eq!(
+            tokio::fs::read_to_string(&file).await.unwrap(),
+            FAST_OPTIONS
+        );
 
-        tokio::fs::write(&file, "renderDistance:12\n").await.unwrap();
-        assert!(!seed_options(&dir, "26.1.2", true).await.unwrap(), "the player's file stays");
-        assert_eq!(tokio::fs::read_to_string(&file).await.unwrap(), "renderDistance:12\n");
+        tokio::fs::write(&file, "renderDistance:12\n")
+            .await
+            .unwrap();
+        assert!(
+            !seed_options(&dir, "26.1.2", true).await.unwrap(),
+            "the player's file stays"
+        );
+        assert_eq!(
+            tokio::fs::read_to_string(&file).await.unwrap(),
+            "renderDistance:12\n"
+        );
         let _ = tokio::fs::remove_dir_all(&dir).await;
     }
 }

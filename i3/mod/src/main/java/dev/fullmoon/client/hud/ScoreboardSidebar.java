@@ -11,6 +11,7 @@ import dev.fullmoon.client.design.Tokens;
 import dev.fullmoon.client.layout.Box;
 import dev.fullmoon.client.menu.ServerMenuSample;
 import dev.fullmoon.client.render.Painter;
+import dev.fullmoon.client.render.Rgb;
 import dev.fullmoon.client.text.Typeset;
 import dev.fullmoon.client.ui.Glass;
 
@@ -236,7 +237,13 @@ public final class ScoreboardSidebar {
         if (color == null) {
             return 0;
         }
-        return switch (color.serialize()) {
+        int named = namedColor(color.serialize());
+        return named != 0 ? named : Rgb.opaque(color.getValue());
+    }
+
+    /** A named chat colour as the token it means on the glass, or 0 for a name that is not one. */
+    public static int namedColor(String name) {
+        return switch (name) {
             case "yellow", "gold" -> Tokens.Color.CHAT_YELLOW;
             case "aqua", "dark_aqua" -> Tokens.Color.CHAT_AQUA;
             case "green", "dark_green" -> Tokens.Color.STATUS_LIVE;
@@ -246,7 +253,7 @@ public final class ScoreboardSidebar {
             case "gray" -> Tokens.Color.INK_SECONDARY;
             case "dark_gray" -> Tokens.Color.INK_TERTIARY;
             case "white", "black" -> Tokens.Color.INK_PRIMARY;
-            default -> 0xFF000000 | color.getValue();
+            default -> 0;
         };
     }
 

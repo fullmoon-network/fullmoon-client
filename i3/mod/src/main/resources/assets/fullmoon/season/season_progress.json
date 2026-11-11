@@ -1,0 +1,28 @@
+{
+  "type": "season_progress",
+  "level": 3,
+  "into": 5,
+  "step": 17,
+  "tracked": {
+    "id": "daily_coal",
+    "name": "\uc11d\ud0c4 \uce90\uae30",
+    "material": "minecraft:coal",
+    "progress": 13,
+    "goal": 32,
+    "unit": "\uac1c",
+    "done": false
+  },
+  "recent": {
+    "id": "season_hunter",
+    "name": "\ubaac\uc2a4\ud130 \uc0ac\ub0e5\uafbc II",
+    "material": "minecraft:iron_sword",
+    "progress": 400,
+    "goal": 400,
+    "unit": "\ub9c8\ub9ac",
+    "done": true
+  },
+  "flash": {
+    "mission": "season_hunter",
+    "label": "\ubaac\uc2a4\ud130 \uc0ac\ub0e5\uafbc II \uc644\ub8cc"
+  }
+}

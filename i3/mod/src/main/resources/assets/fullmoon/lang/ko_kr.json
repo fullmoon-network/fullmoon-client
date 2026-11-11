@@ -222,5 +222,9 @@
     "fullmoon.hud.editor.hint.drag": "옮기기",
     "fullmoon.hud.editor.hint.click.key": "클릭",
     "fullmoon.hud.editor.hint.click": "켜고 끄기",
-    "fullmoon.hud.editor.hint.done": "완료"
+    "fullmoon.hud.editor.hint.done": "완료",
+    "fullmoon.season.hint.claim": "Claim",
+    "fullmoon.season.hint.claim_all": "Claim all",
+    "fullmoon.season.hint.track": "Track",
+    "fullmoon.season.hint.buy": "Buy"
 }

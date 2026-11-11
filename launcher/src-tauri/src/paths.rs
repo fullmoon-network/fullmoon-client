@@ -1,6 +1,6 @@
 /* Every path the launcher touches is derived here from one root, so an
-   instance can never write outside its own directory (MultiMC-style
-   isolation, PLAN §1) and a rebrand moves the whole tree at once. */
+instance can never write outside its own directory (MultiMC-style
+isolation, PLAN §1) and a rebrand moves the whole tree at once. */
 use std::path::{Path, PathBuf};
 
 pub const BRAND_NAME: &str = env!("PINION_NAME");
@@ -24,7 +24,11 @@ pub fn root() -> PathBuf {
         dirs::data_local_dir()
     };
     base.unwrap_or_else(|| PathBuf::from("."))
-        .join(if cfg!(windows) { BRAND_NAME } else { BRAND_SLUG })
+        .join(if cfg!(windows) {
+            BRAND_NAME
+        } else {
+            BRAND_SLUG
+        })
 }
 
 pub fn settings_file() -> PathBuf {
@@ -95,7 +99,9 @@ const MOD_NAMESPACE: &str = "fullmoon";
 /// the game `instance_minecraft_dir` as both `--gameDir` and its working directory. So this is
 /// the exact path the running mod opens.
 fn instance_mod_config_dir(id: &str) -> PathBuf {
-    instance_minecraft_dir(id).join("config").join(MOD_NAMESPACE)
+    instance_minecraft_dir(id)
+        .join("config")
+        .join(MOD_NAMESPACE)
 }
 
 /// Written by the launcher's HUD editor and by the in-game one, read by the mod on a poll.

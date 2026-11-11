@@ -1,4 +1,4 @@
-/* verify.mjs — drives the Fullmoon Launcher in headless Chrome and
+/* verify.mjs — drives the Fullmoon Launcher in headless Chrome or Firefox and
    screenshots the full user journey:
    1. Home dashboard
    2. Mods browser
@@ -8,11 +8,15 @@
    6. Settings HUD editor
    7. Command palette (Ctrl+K)
    8. Launch overlay
-   9. Clean-profile one-click offline account */
+   9. Clean-profile one-click offline account
+
+   Chromium stays the default. Set BROWSER_PATH to a Firefox binary on hosts
+   without Chromium; the launch adapts to the engine behind that path. */
 
 import puppeteer from "puppeteer-core";
 import { setTimeout as sleep } from "node:timers/promises";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 const findBrowser = () => {
@@ -30,12 +34,16 @@ const findBrowser = () => {
   for (const c of candidates) {
     if (fs.existsSync(c)) return c;
   }
-  throw new Error("No compatible Chrome/Chromium browser found");
+  throw new Error("No compatible Chrome/Chromium or Firefox browser found");
 };
 
 const BROWSER_PATH = findBrowser();
+const IS_FIREFOX = /firefox/i.test(path.basename(BROWSER_PATH));
+const HEADLESS = process.env.HEADLESS !== "0";
 const URL = "http://127.0.0.1:5921";
 const OUT = process.env.OUT_DIR || "/tmp/fullmoon-launcher-shots";
+const PROFILE_DIR =
+  process.env.PROFILE_DIR || fs.mkdtempSync(path.join(os.tmpdir(), "fullmoon-verify-"));
 
 if (!fs.existsSync(OUT)) {
   fs.mkdirSync(OUT, { recursive: true });
@@ -61,8 +69,22 @@ const clickNav = async (page, text) => {
 
 const browser = await puppeteer.launch({
   executablePath: BROWSER_PATH,
-  headless: "new",
-  args: ["--window-size=1600,1000", "--force-device-scale-factor=1", "--no-sandbox"],
+  ...(IS_FIREFOX
+    ? {
+        browser: "firefox",
+        firefoxUserPrefs: {
+          "webgl.disabled": false,
+          "webgl.force-enabled": true,
+          "webgl.forbid-software": false,
+          "gfx.webrender.software": true,
+        },
+      }
+    : {}),
+  headless: IS_FIREFOX ? HEADLESS : "new",
+  userDataDir: PROFILE_DIR,
+  args: IS_FIREFOX
+    ? []
+    : ["--window-size=1600,1000", "--force-device-scale-factor=1", "--no-sandbox"],
   defaultViewport: { width: 1600, height: 1000 },
 });
 
@@ -85,12 +107,12 @@ try {
   await shot(page, "01b-dashboard-servers");
 
   // 1c. Dashboard Screen (Wallet Analytics)
-  await clickNav(page, "재화 통계 및 내역");
+  await page.click("#dash-tab-wallet");
   await sleep(600);
   await shot(page, "01c-dashboard-wallet");
 
   // 1d. Dashboard Screen (News Feed)
-  await clickNav(page, "새 소식 및 패치노트");
+  await page.click("#dash-tab-news");
   await sleep(600);
   await shot(page, "01d-dashboard-news");
 

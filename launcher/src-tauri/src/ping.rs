@@ -1,16 +1,16 @@
 /* Server List Ping.
 
-   The server card used to show a motd, a player count and a latency that came
-   out of the catalogue — numbers that were the same whether the server was up,
-   down or fictional. This asks the server.
+The server card used to show a motd, a player count and a latency that came
+out of the catalogue — numbers that were the same whether the server was up,
+down or fictional. This asks the server.
 
-   The protocol is the handshake half of the vanilla one and has been stable
-   since 1.7: connect, send handshake with next-state 1, send an empty status
-   request, read a JSON blob back. Then send a ping payload and time the pong —
-   that round trip is the latency the game itself would report, not a TCP
-   connect time. Everything is length-prefixed with varints, packets included,
-   so the reader has to know how long a varint is before it knows how much to
-   read. */
+The protocol is the handshake half of the vanilla one and has been stable
+since 1.7: connect, send handshake with next-state 1, send an empty status
+request, read a JSON blob back. Then send a ping payload and time the pong —
+that round trip is the latency the game itself would report, not a TCP
+connect time. Everything is length-prefixed with varints, packets included,
+so the reader has to know how long a varint is before it knows how much to
+read. */
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
@@ -84,15 +84,17 @@ async fn query(address: &str) -> Result<ServerStatus> {
     let mut cur = &body[..];
     let id = read_varint(&mut cur)?;
     if id != 0x00 {
-        return Err(Error::Invalid(format!("unexpected status packet 0x{id:02x}")));
+        return Err(Error::Invalid(format!(
+            "unexpected status packet 0x{id:02x}"
+        )));
     }
     let json = read_string(&mut cur)?;
     let raw: RawStatus = serde_json::from_str(&json)
         .map_err(|e| Error::Invalid(format!("server sent unreadable status: {e}")))?;
 
     /* The pong echoes the payload, so a server that answers at all answers
-       this; the timing is what we are after, and a server that stops talking
-       here still gave us a real status. */
+    this; the timing is what we are after, and a server that stops talking
+    here still gave us a real status. */
     let mut ping = Vec::new();
     write_varint(&mut ping, 0x01);
     ping.extend_from_slice(&0i64.to_be_bytes());
@@ -190,7 +192,9 @@ async fn read_packet(sock: &mut TcpStream) -> Result<Vec<u8>> {
 fn read_varint(cur: &mut &[u8]) -> Result<i32> {
     let mut result: i32 = 0;
     for shift in 0..5 {
-        let (byte, rest) = cur.split_first().ok_or_else(|| Error::Invalid("packet ended early".into()))?;
+        let (byte, rest) = cur
+            .split_first()
+            .ok_or_else(|| Error::Invalid("packet ended early".into()))?;
         *cur = rest;
         result |= ((byte & 0x7F) as i32) << (shift * 7);
         if byte & 0x80 == 0 {
@@ -289,8 +293,14 @@ mod tests {
 
     #[test]
     fn address_forms() {
-        assert_eq!(split_address("play.example.net"), ("play.example.net".into(), 25565));
-        assert_eq!(split_address("127.0.0.1:25566"), ("127.0.0.1".into(), 25566));
+        assert_eq!(
+            split_address("play.example.net"),
+            ("play.example.net".into(), 25565)
+        );
+        assert_eq!(
+            split_address("127.0.0.1:25566"),
+            ("127.0.0.1".into(), 25566)
+        );
         assert_eq!(split_address("[::1]:25567"), ("::1".into(), 25567));
         // a host with a colon but no number is a host, not a parse error
         assert_eq!(split_address("weird:host"), ("weird:host".into(), 25565));

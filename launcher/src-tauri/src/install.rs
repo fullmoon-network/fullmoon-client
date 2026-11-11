@@ -1,15 +1,15 @@
 /* Installing a version, in the order the game needs it:
 
-     manifest → libraries (+ natives) → assets → fabric → mods → done
+  manifest → libraries (+ natives) → assets → fabric → mods → done
 
-   Everything shared lives under `shared/` and is content-addressed by the
-   metadata's own SHA1, so two instances on the same version download it once.
-   The instance directory only ever holds what is genuinely per-instance:
-   extracted natives, mods, config, saves.
+Everything shared lives under `shared/` and is content-addressed by the
+metadata's own SHA1, so two instances on the same version download it once.
+The instance directory only ever holds what is genuinely per-instance:
+extracted natives, mods, config, saves.
 
-   Stages are reported as they start, and the bar inside a stage is driven by
-   bytes. A stage that fails aborts the install with the real reason — a
-   half-installed instance is never marked installed. */
+Stages are reported as they start, and the bar inside a stage is driven by
+bytes. A stage that fails aborts the install with the real reason — a
+half-installed instance is never marked installed. */
 use std::{
     path::{Path, PathBuf},
     sync::{atomic::Ordering, Arc},
@@ -114,7 +114,9 @@ async fn asset_items(client: &reqwest::Client, v: &VersionJson) -> Result<Vec<It
     let Some(idx) = v.asset_index.as_ref() else {
         return Ok(Vec::new());
     };
-    let index_file = paths::assets_dir().join("indexes").join(format!("{}.json", idx.id));
+    let index_file = paths::assets_dir()
+        .join("indexes")
+        .join(format!("{}.json", idx.id));
     let item = Item {
         url: idx.url.clone(),
         path: index_file.clone(),
@@ -160,20 +162,29 @@ async fn extract_natives(v: &VersionJson, target: &Path) -> Result<usize> {
     tokio::task::spawn_blocking(move || -> Result<usize> {
         let mut written = 0;
         for jar in jars {
-            let Ok(file) = std::fs::File::open(&jar) else { continue };
+            let Ok(file) = std::fs::File::open(&jar) else {
+                continue;
+            };
             let mut zip = zip::ZipArchive::new(file)
                 .map_err(|e| Error::Invalid(format!("{}: {e}", jar.display())))?;
             for i in 0..zip.len() {
                 let mut entry = zip
                     .by_index(i)
                     .map_err(|e| Error::Invalid(format!("{}: {e}", jar.display())))?;
-                let Some(name) = entry.enclosed_name().map(|p| p.to_path_buf()) else { continue };
-                let ext = name.extension().and_then(|e| e.to_str()).unwrap_or_default();
+                let Some(name) = entry.enclosed_name().map(|p| p.to_path_buf()) else {
+                    continue;
+                };
+                let ext = name
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .unwrap_or_default();
                 if !matches!(ext, "dll" | "so" | "dylib" | "jnilib") {
                     continue;
                 }
                 // flatten: the loader looks for bare filenames on the library path
-                let Some(base) = name.file_name() else { continue };
+                let Some(base) = name.file_name() else {
+                    continue;
+                };
                 let out = target.join(base);
                 let mut sink = std::fs::File::create(&out)?;
                 std::io::copy(&mut entry, &mut sink)?;

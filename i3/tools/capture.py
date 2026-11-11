@@ -76,6 +76,9 @@ def main():
                     help="gui scale, so gui pixels are geometry over this (default: %(default)s)")
     ap.add_argument("--language", default="ko_kr",
                     help="language pinned in options.txt (default: %(default)s)")
+    ap.add_argument("--chat", default="2",
+                    help="chatVisibility pinned in options.txt; 0 lets a probe send commands "
+                         "(default: %(default)s)")
     ap.add_argument("--server",
                     help="quick-play multiplayer address, for captures over a live world")
     ap.add_argument("--lobby", default="127.0.0.1:25565",
@@ -83,6 +86,8 @@ def main():
                          "the production lobby (default: %(default)s)")
     ap.add_argument("--dev-screen",
                     help="open a fixture of a server-driven screen after boot (e.g. casino-menu)")
+    ap.add_argument("--lifecycle-probe", action="store_true",
+                    help="log the bridge observation for every level change")
     ap.add_argument("--gap", type=float, default=0.6,
                     help="seconds between a tap and the next thing (default: %(default)s)")
     args = ap.parse_args()
@@ -101,7 +106,7 @@ def main():
         "guiScale": args.scale,
         "fullscreen": "false",
         "lang": args.language,
-        "chatVisibility": "2",
+        "chatVisibility": args.chat,
         "tutorialStep": "none",
     })
     print(f"{width}x{height} at scale {args.scale} "
@@ -126,6 +131,8 @@ def main():
             command.append(f"-Plobby={args.lobby}")
             if args.dev_screen:
                 command.append(f"-Pdev_screen={args.dev_screen}")
+            if args.lifecycle_probe:
+                command.append("-Plifecycle_probe=true")
             client = subprocess.Popen(
                 command,
                 cwd=MOD, env=env, stdout=sink, stderr=subprocess.STDOUT,
@@ -262,8 +269,9 @@ def capture_framebuffer(d, destination):
 
 def type_text(d, value):
     """Type printable ASCII through XTEST; localized text belongs in language resources."""
+    names = {"/": "slash", ".": "period", "-": "minus", ",": "comma"}
     for char in value:
-        tap(d, "space" if char == " " else char)
+        tap(d, names.get(char, "space" if char == " " else char))
 
 
 if __name__ == "__main__":

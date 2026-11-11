@@ -1,6 +1,6 @@
 /* piston-meta is the source of truth for what a version *is*. Nothing here
-   guesses: the manifest is fetched, cached on disk, and if the network is
-   down we say so with the cache's age rather than inventing a version list. */
+guesses: the manifest is fetched, cached on disk, and if the network is
+down we say so with the cache's age rather than inventing a version list. */
 use serde::{Deserialize, Serialize};
 
 use crate::{error::Result, model::VersionSummary, paths, store};
@@ -54,8 +54,7 @@ pub async fn manifest(client: &reqwest::Client) -> Result<VersionManifest> {
             Ok(parsed)
         }
         other => {
-            let cached: Option<VersionManifest> =
-                store::read_or(&cache_file(), || None).await;
+            let cached: Option<VersionManifest> = store::read_or(&cache_file(), || None).await;
             match cached {
                 Some(m) => Ok(m),
                 None => Err(match other {

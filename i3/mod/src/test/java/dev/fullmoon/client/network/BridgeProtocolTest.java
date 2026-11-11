@@ -335,6 +335,22 @@ final class BridgeProtocolTest {
     }
 
     @Test
+    void aRefusedPayloadStillNamesItsTypeForTheVisibleFallback() {
+        assertEquals("season_open", BridgeProtocol.rejectedType(json("""
+            {"type":"season_open","proto":1,"id":"s","revision":-2}""")).orElseThrow());
+        assertEquals("menu_open", BridgeProtocol.rejectedType(json("""
+            {"type":"menu_open","rows":9}""")).orElseThrow());
+        assertTrue(BridgeProtocol.rejectedType(json("not-json")).isEmpty());
+        assertTrue(BridgeProtocol.rejectedType(json("[]")).isEmpty());
+        assertTrue(BridgeProtocol.rejectedType(json("{}")).isEmpty());
+        assertTrue(BridgeProtocol.rejectedType(null).isEmpty());
+        assertTrue(BridgeProtocol.rejectedType(
+            new byte[BridgeProtocol.MAX_PAYLOAD_BYTES + 1]).isEmpty());
+        assertTrue(BridgeProtocol.rejectedType(json("""
+            {"type":"%s"}""".formatted("t".repeat(65)))).isEmpty());
+    }
+
+    @Test
     void handshakeMessagesValidateEveryRequiredField() {
         assertEquals("hello proto must be a non-negative integer", decodeError("""
             {"type":"hello","client":"fullmoon","version":"3.0.0"}

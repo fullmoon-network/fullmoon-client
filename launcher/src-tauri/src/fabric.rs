@@ -1,11 +1,11 @@
 /* Fabric, straight from meta.fabricmc.net. The profile it returns is already
-   in launcher format with `inheritsFrom` pointing at the vanilla version, so
-   nothing here has to know what a loader does — it downloads the overlay and
-   hands it to version::inherit.
+in launcher format with `inheritsFrom` pointing at the vanilla version, so
+nothing here has to know what a loader does — it downloads the overlay and
+hands it to version::inherit.
 
-   A game version Fabric has not shipped for is a hard error with the version
-   in the message, not a silent fallback to vanilla: the instance said Fabric,
-   and quietly launching something else would be a lie about what is running. */
+A game version Fabric has not shipped for is a hard error with the version
+in the message, not a silent fallback to vanilla: the instance said Fabric,
+and quietly launching something else would be a lie about what is running. */
 use serde::Deserialize;
 
 use crate::{

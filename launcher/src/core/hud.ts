@@ -177,6 +177,7 @@ export const ELEMENT_ORDER = [
   "tps",
   "armor",
   "effects",
+  "season",
 ] as const;
 
 export type ElementId = (typeof ELEMENT_ORDER)[number];

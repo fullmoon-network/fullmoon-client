@@ -32,6 +32,10 @@ pub struct AppState {
     pub log: Arc<Mutex<VecDeque<LogEvent>>>,
     /// Dropping this sender is harmless; sending on it kills the game.
     pub kill: Mutex<Option<oneshot::Sender<()>>>,
+    /// The launcher's one launch-preparation slot. A reservation takes it
+    /// without waiting; a second concurrent launch is refused politely. See
+    /// `launchguard`.
+    pub launch: Arc<Mutex<()>>,
 }
 
 impl AppState {
@@ -41,7 +45,11 @@ impl AppState {
         let mut saved_instances: Vec<Instance> =
             store::read_or(&paths::instances_file(), Vec::new).await;
         // before the managed instance is made, so a first start gets the tuned heap too
-        if spec::tune_heap(&mut settings, &mut saved_instances, spec::total_memory_mb().await) {
+        if spec::tune_heap(
+            &mut settings,
+            &mut saved_instances,
+            spec::total_memory_mb().await,
+        ) {
             // a save that fails only means the tuning runs again next start
             let _ = store::write(&paths::settings_file(), &settings).await;
             if !saved_instances.is_empty() {
@@ -80,6 +88,7 @@ impl AppState {
             })),
             log: Arc::new(Mutex::new(VecDeque::new())),
             kill: Mutex::new(None),
+            launch: Arc::new(Mutex::new(())),
         })
     }
 }
@@ -135,11 +144,8 @@ mod tests {
             memory_mb: 6144,
             ..Settings::default()
         };
-        let (instances, created) = bootstrap_instances(
-            Vec::new(),
-            &settings,
-            "2026-08-31T00:00:00Z",
-        );
+        let (instances, created) =
+            bootstrap_instances(Vec::new(), &settings, "2026-08-31T00:00:00Z");
 
         assert!(created);
         assert_eq!(instances.len(), 1);
@@ -149,7 +155,10 @@ mod tests {
         assert_eq!(instance.version_id, "26.1.2");
         assert_eq!(instance.loader, "fabric");
         assert_eq!(instance.memory_mb, 6144);
-        assert_eq!(instance.quick_play_server.as_deref(), Some("play.fullmoon.ink"));
+        assert_eq!(
+            instance.quick_play_server.as_deref(),
+            Some("play.fullmoon.ink")
+        );
         assert!(!instance.installed);
         assert!(instance.installing.is_none());
     }
@@ -173,11 +182,8 @@ mod tests {
             quick_play_server: None,
         };
 
-        let (instances, created) = bootstrap_instances(
-            vec![existing],
-            &Settings::default(),
-            "2026-08-31T00:00:00Z",
-        );
+        let (instances, created) =
+            bootstrap_instances(vec![existing], &Settings::default(), "2026-08-31T00:00:00Z");
 
         assert!(!created);
         assert_eq!(instances.len(), 1);

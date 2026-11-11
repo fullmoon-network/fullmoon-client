@@ -1,0 +1,232 @@
+{
+  "type": "season_open",
+  "id": "2ac6f3ea-8f45-4d72-bb9c-cbded41b57d1",
+  "revision": 3,
+  "tab": "track",
+  "season": {
+    "id": "s1",
+    "name": "\uc2dc\uc98c 1 \u00b7 \ucd08\uc2b9\ub2ec",
+    "phase": "live",
+    "endsIn": "16\uc77c 18\uc2dc\uac04 \ub0a8\uc74c",
+    "endsAt": "2026-12-28T06:00:00+09:00"
+  },
+  "terms": {
+    "point": "XP"
+  },
+  "me": {
+    "level": 3,
+    "maxLevel": 5,
+    "xp": 31,
+    "into": 5,
+    "step": 17,
+    "plus": false,
+    "claimable": 1,
+    "balance": "50\ub9cc\uc6d0"
+  },
+  "levels": [
+    {
+      "level": 1,
+      "at": 0,
+      "free": {
+        "kind": "won",
+        "label": "5\ucc9c\uc6d0",
+        "material": "minecraft:gold_nugget",
+        "state": "claimed"
+      },
+      "plus": {
+        "kind": "title",
+        "label": "\ucd08\uc2b9\ub2ec \ub3d9\ud589",
+        "color": "light_purple",
+        "material": "minecraft:name_tag",
+        "state": "plus_locked"
+      }
+    },
+    {
+      "level": 2,
+      "at": 11,
+      "free": {
+        "kind": "won",
+        "label": "1\ub9cc 2\ucc9c\uc6d0",
+        "material": "minecraft:gold_ingot",
+        "state": "pending"
+      },
+      "plus": {
+        "kind": "won",
+        "label": "7\ucc9c\uc6d0",
+        "material": "minecraft:gold_nugget",
+        "state": "plus_locked"
+      }
+    },
+    {
+      "level": 3,
+      "at": 26,
+      "free": {
+        "kind": "title",
+        "label": "\ucd08\uc2b9\ub2ec",
+        "color": "yellow",
+        "material": "minecraft:name_tag",
+        "state": "claimable"
+      },
+      "plus": {
+        "kind": "won",
+        "label": "2\ub9cc 4\ucc9c\uc6d0",
+        "material": "minecraft:gold_block",
+        "state": "plus_locked"
+      }
+    },
+    {
+      "level": 4,
+      "at": 43,
+      "free": {
+        "kind": "won",
+        "label": "6\ucc9c\uc6d0",
+        "material": "minecraft:gold_nugget",
+        "state": "locked"
+      },
+      "plus": null
+    },
+    {
+      "level": 5,
+      "at": 64,
+      "free": {
+        "kind": "won",
+        "label": "8\ucc9c\uc6d0",
+        "material": "minecraft:gold_nugget",
+        "state": "locked"
+      },
+      "plus": {
+        "kind": "cosmetic",
+        "label": "\ucd08\uc2b9\ub2ec \uac80",
+        "id": "crescent_sword",
+        "model": "fullmoon.skin.crescent_sword.1",
+        "material": "minecraft:iron_sword",
+        "state": "locked"
+      }
+    }
+  ],
+  "missions": {
+    "daily": [
+      {
+        "id": "daily_coal",
+        "name": "\uc11d\ud0c4 \uce90\uae30",
+        "material": "minecraft:coal",
+        "progress": 12,
+        "goal": 32,
+        "unit": "\uac1c",
+        "xp": 40,
+        "tier": 0,
+        "tiers": 1,
+        "done": false,
+        "plusExtra": false,
+        "tracked": true,
+        "trackable": true,
+        "discord": false
+      },
+      {
+        "id": "daily_iron",
+        "name": "\ucca0\uad11\uc11d \uce90\uae30",
+        "material": "minecraft:raw_iron",
+        "progress": 0,
+        "goal": 16,
+        "unit": "\uac1c",
+        "xp": 40,
+        "tier": 0,
+        "tiers": 1,
+        "done": false,
+        "plusExtra": false,
+        "tracked": false,
+        "trackable": true,
+        "discord": false
+      },
+      {
+        "id": "daily_gold",
+        "name": "\uae08\uad11\uc11d \uce90\uae30",
+        "material": "minecraft:raw_gold",
+        "progress": 0,
+        "goal": 8,
+        "unit": "\uac1c",
+        "xp": 45,
+        "tier": 0,
+        "tiers": 1,
+        "done": false,
+        "plusExtra": true,
+        "tracked": false,
+        "trackable": false,
+        "discord": false
+      }
+    ],
+    "weekly": [
+      {
+        "id": "weekly_diamonds",
+        "name": "\ub2e4\uc774\uc544\ubaac\ub4dc \uce90\uae30",
+        "material": "minecraft:diamond",
+        "progress": 0,
+        "goal": 5,
+        "unit": "\uac1c",
+        "xp": 150,
+        "tier": 0,
+        "tiers": 1,
+        "done": false,
+        "plusExtra": false,
+        "tracked": false,
+        "trackable": true,
+        "discord": false
+      },
+      {
+        "id": "weekly_chat",
+        "name": "\ub514\uc2a4\ucf54\ub4dc\uc5d0\uc11c \uc774\uc57c\uae30\ud558\uae30",
+        "material": "minecraft:writable_book",
+        "progress": 0,
+        "goal": 60,
+        "unit": "\ubd84",
+        "xp": 120,
+        "tier": 0,
+        "tiers": 1,
+        "done": false,
+        "plusExtra": false,
+        "tracked": false,
+        "trackable": false,
+        "discord": true
+      }
+    ],
+    "season": [
+      {
+        "id": "season_hunter",
+        "name": "\ubaac\uc2a4\ud130 \uc0ac\ub0e5\uafbc II",
+        "material": "minecraft:iron_sword",
+        "progress": 120,
+        "goal": 400,
+        "unit": "\ub9c8\ub9ac",
+        "xp": 80,
+        "tier": 1,
+        "tiers": 3,
+        "done": false,
+        "plusExtra": false,
+        "tracked": false,
+        "trackable": true,
+        "discord": false
+      }
+    ],
+    "resets": {
+      "daily": "18\uc2dc\uac04",
+      "weekly": "2\uc77c 18\uc2dc\uac04"
+    }
+  },
+  "plus": {
+    "owned": false,
+    "price": "40\ub9cc\uc6d0",
+    "canBuy": true,
+    "confirming": false,
+    "reason": null,
+    "perks": [
+      "\ud50c\ub7ec\uc2a4 \ubcf4\uc0c1 \uce78 \u00b7 \ub808\ubca8\ub9c8\ub2e4 \ud50c\ub7ec\uc2a4 \ubcf4\uc0c1\uc774 \ud558\ub098\uc529 \ub354 \uc788\uc5b4\uc694",
+      "\uc624\ub298\uc758 \ubbf8\uc158 +1 \u00b7 \ub9e4\uc77c \ubbf8\uc158\uc774 1\uac1c \ub354 \uc5f4\ub824\uc694",
+      "\ud50c\ub7ec\uc2a4 \uc2dc\uc98c \uce6d\ud638 \u00b7 \u300c\ucd08\uc2b9\ub2ec \ub3d9\ud589\u300d",
+      "\ub514\uc2a4\ucf54\ub4dc \ud50c\ub7ec\uc2a4 \uc5ed\ud560 \u00b7 \ud480\ubb38 \ub514\uc2a4\ucf54\ub4dc\uc5d0 \ud50c\ub7ec\uc2a4 \uc5ed\ud560\uc774 \ubd99\uc5b4\uc694"
+    ]
+  },
+  "notice": {
+    "tone": "ok",
+    "text": "\ubcf4\uc0c1\uc744 \ubc1b\uc558\uc5b4\uc694 \u00b7 5\ucc9c\uc6d0"
+  }
+}

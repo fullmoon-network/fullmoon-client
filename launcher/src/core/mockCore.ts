@@ -272,14 +272,15 @@ const TXS: WalletTx[] = [
    so this file stays a standalone stand-in, and wrong the moment it drifts. */
 const DEFAULT_HUD: HudConfig = {
   elements: {
-    coords: { enabled: true, anchor: "TOP_LEFT", offsetX: 16, offsetY: 56, scale: 1 },
-    fps: { enabled: true, anchor: "TOP_LEFT", offsetX: 16, offsetY: 82, scale: 1 },
-    ping: { enabled: true, anchor: "TOP_RIGHT", offsetX: 16, offsetY: 56, scale: 1 },
-    clock: { enabled: true, anchor: "TOP_RIGHT", offsetX: 16, offsetY: 82, scale: 1 },
-    keystrokes: { enabled: true, anchor: "BOTTOM_RIGHT", offsetX: 16, offsetY: 56, scale: 1 },
-    tps: { enabled: false, anchor: "TOP_RIGHT", offsetX: 16, offsetY: 108, scale: 1 },
+    coords: { enabled: true, anchor: "TOP_LEFT", offsetX: 8, offsetY: 8, scale: 1 },
+    fps: { enabled: true, anchor: "TOP_LEFT", offsetX: 8, offsetY: 28, scale: 1 },
+    ping: { enabled: true, anchor: "TOP_RIGHT", offsetX: 8, offsetY: 28, scale: 1 },
+    clock: { enabled: true, anchor: "TOP_RIGHT", offsetX: 8, offsetY: 8, scale: 1 },
+    keystrokes: { enabled: true, anchor: "BOTTOM_RIGHT", offsetX: 8, offsetY: 8, scale: 1 },
+    tps: { enabled: false, anchor: "TOP_RIGHT", offsetX: 8, offsetY: 48, scale: 1 },
     armor: { enabled: false, anchor: "BOTTOM_LEFT", offsetX: 16, offsetY: 56, scale: 1 },
     effects: { enabled: false, anchor: "TOP_RIGHT", offsetX: 16, offsetY: 134, scale: 1 },
+    season: { enabled: true, anchor: "TOP_LEFT", offsetX: 8, offsetY: 48, scale: 1 },
   },
   gridSnap: 4,
 };

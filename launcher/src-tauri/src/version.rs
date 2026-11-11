@@ -1,11 +1,11 @@
 /* The version JSON as Mojang actually ships it, plus the two things every
-   launcher has to get right: rule evaluation (a library that is not for this
-   OS must never reach the classpath) and inheritance (a Fabric profile is a
-   thin overlay whose `inheritsFrom` points at the vanilla version).
+launcher has to get right: rule evaluation (a library that is not for this
+OS must never reach the classpath) and inheritance (a Fabric profile is a
+thin overlay whose `inheritsFrom` points at the vanilla version).
 
-   Unknown fields are kept out of the way rather than rejected — the format
-   grows a key every few releases and a launcher that refuses to parse the
-   game it targets is useless. */
+Unknown fields are kept out of the way rather than rejected — the format
+grows a key every few releases and a launcher that refuses to parse the
+game it targets is useless. */
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -77,10 +77,7 @@ pub struct JavaVersion {
 #[serde(untagged)]
 pub enum Arg {
     Plain(String),
-    Conditional {
-        rules: Vec<Rule>,
-        value: ArgValue,
-    },
+    Conditional { rules: Vec<Rule>, value: ArgValue },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,8 +148,8 @@ pub fn allowed(rules: &Option<Vec<Rule>>) -> bool {
     for r in rules {
         let matches = match (&r.os, &r.features) {
             (Some(os), _) => {
-                os.name.as_deref().map_or(true, |n| n == os_name())
-                    && os.arch.as_deref().map_or(true, |a| a == os_arch())
+                os.name.as_deref().is_none_or(|n| n == os_name())
+                    && os.arch.as_deref().is_none_or(|a| a == os_arch())
             }
             (None, Some(_)) => false,
             (None, None) => true,
@@ -217,8 +214,7 @@ impl Library {
     /// Native jars are extracted next to the instance, never put on the
     /// classpath — LWJGL loads the DLLs from `java.library.path`.
     pub fn is_native(&self) -> bool {
-        self.classifier().is_some_and(|c| c.starts_with("natives"))
-            || self.natives.is_some()
+        self.classifier().is_some_and(|c| c.starts_with("natives")) || self.natives.is_some()
     }
 
     pub fn classifier(&self) -> Option<&str> {
@@ -231,8 +227,12 @@ impl Library {
     /// extraction flattens by filename, and letting the arm64 jar through
     /// overwrites lwjgl.dll with one this machine cannot load.
     pub fn matches_arch(&self) -> bool {
-        let Some(classifier) = self.classifier() else { return true };
-        let Some(rest) = classifier.strip_prefix("natives-") else { return true };
+        let Some(classifier) = self.classifier() else {
+            return true;
+        };
+        let Some(rest) = classifier.strip_prefix("natives-") else {
+            return true;
+        };
         // "windows" | "windows-arm64" | "macos-arm64" | "linux"
         let suffix = rest.split_once('-').map(|(_, s)| s);
         match suffix {
@@ -267,7 +267,11 @@ impl VersionJson {
             main_class: child.main_class.or(parent.main_class),
             asset_index: child.asset_index.or(parent.asset_index),
             assets: child.assets.or(parent.assets),
-            downloads: if child.downloads.is_empty() { parent.downloads } else { child.downloads },
+            downloads: if child.downloads.is_empty() {
+                parent.downloads
+            } else {
+                child.downloads
+            },
             libraries,
             arguments,
             minecraft_arguments: child.minecraft_arguments.or(parent.minecraft_arguments),
@@ -296,7 +300,6 @@ pub fn client_jar_file(id: &str) -> std::path::PathBuf {
     paths::versions_dir().join(id).join(format!("{id}.jar"))
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -304,7 +307,10 @@ mod tests {
     fn rule(action: &str, os: Option<&str>) -> Rule {
         Rule {
             action: action.into(),
-            os: os.map(|n| OsRule { name: Some(n.into()), arch: None }),
+            os: os.map(|n| OsRule {
+                name: Some(n.into()),
+                arch: None,
+            }),
             features: None,
         }
     }
@@ -316,14 +322,21 @@ mod tests {
 
     #[test]
     fn other_os_is_rejected() {
-        let other = if os_name() == "windows" { "linux" } else { "windows" };
+        let other = if os_name() == "windows" {
+            "linux"
+        } else {
+            "windows"
+        };
         assert!(!allowed(&Some(vec![rule("allow", Some(other))])));
         assert!(allowed(&Some(vec![rule("allow", Some(os_name()))])));
     }
 
     #[test]
     fn disallow_wins_when_it_comes_last() {
-        assert!(!allowed(&Some(vec![rule("allow", None), rule("disallow", Some(os_name()))])));
+        assert!(!allowed(&Some(vec![
+            rule("allow", None),
+            rule("disallow", Some(os_name()))
+        ])));
     }
 
     #[test]
@@ -351,7 +364,14 @@ mod tests {
 
     #[test]
     fn only_this_machines_native_arch_survives() {
-        let plain = native(&format!("natives-{}", if os_name() == "osx" { "macos" } else { os_name() }));
+        let plain = native(&format!(
+            "natives-{}",
+            if os_name() == "osx" {
+                "macos"
+            } else {
+                os_name()
+            }
+        ));
         let arm = native("natives-windows-arm64");
         let x86 = native("natives-windows-x86");
         assert_eq!(plain.matches_arch(), os_arch() == "x86_64");

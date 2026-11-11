@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 
 final class PixelArtTest {
     private static final IntUnaryOperator PALETTE = pixel -> switch (pixel) {
-        case 'A' -> 0xFF112233;
-        case 'B' -> 0xFF445566;
+        case 'A' -> Rgb.opaque(0x112233);
+        case 'B' -> Rgb.opaque(0x445566);
         default -> 0;
     };
 

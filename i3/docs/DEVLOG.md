@@ -1276,3 +1276,121 @@ boxes (name 8 px, facts 3 px high). Run 36617844770 re-shot everything after it:
 `cb68209` checks (help line, 궁궐 order) passing. The server menu now rises and falls through
 `render/Fade` like the route screen; `CHANGELOG.md` carries the v0.3.0 notes. Evidence:
 `i3/docs/evidence/phaseB/title-*-pair.jpg`, `*-1080p-pair.jpg`, `glide-title-1080p.gif`.
+
+## 2026-11-11 — beta 1.0.2 mod lifecycle and native season (3.3.0-beta.1)
+
+Branch `feat/beta102-mod` from `origin/main` `bfe89dc`; Minecraft stays `26.1.2`. The shipped
+`v0.3.1` line only resets the bridge on `JOIN` and `DISCONNECT`, and it never advertises season
+capabilities or the selected GUI pack.
+
+Lifecycle: `BackendSession` records the login packet as the only client-visible backend boundary.
+A Velocity lobby -> test -> lobby run in a local loopback harness showed three distinct sessions:
+`ACTIVE` on the lobby, `WAITING` then `FALLBACK` on a bridge-less test backend after five seconds,
+and `ACTIVE` again with a fresh `welcome` and native menu after returning, without a relog. Death,
+respawn, and dimension changes are observed as level changes and keep the state; the transfer path
+dismisses native menus, warp screens, and season screens locally, without sending their close
+actions to the new backend.
+
+Capabilities: `hello` now carries `features` (`season_v1`, `season_hud`) and `packs`. `ClientPacks`
+hashes the selected `resourcepacks/fullmoon-gui.zip` and reports `fullmoon-gui` only while it is
+selected; a runtime run with the beta pack selected logged the exact SHA-1
+`175de05a740e46b47a2db6533c3d217c1c14cb19`.
+
+Season: the native pass, mission board, track board, Plus page, and HUD follow the server contract.
+`Phase.ENDED` is accepted, cosmetics keep `id` and `model`, pending daily-cap cells are drawn,
+nullable balance and resets stay empty, and a level-zero `season_progress` hides the widget. The
+server's golden `season_open.json` and `season_progress.json` are carried read-only in
+`assets/fullmoon/season/` as parsed-JSON semantic copies (non-English characters stored as ASCII
+escapes; verified equal to the producer's fixtures); fixture captures use those exact documents and
+change only a phase, tab, or frame flag. Amounts and durations are drawn verbatim.
+
+Evidence: unit tests cover lifecycle, state reset, protocol fallback, malformed boundaries, action
+encoding, pack selection, and the season decoders. Runtime captures are under
+`/home/person/.local/state/fullmoon-beta102/mod-implementation/`; fixture-based season screens are
+kept apart from the real local proxy transfer run. The beta backend still has no FullmoonBridge, so
+native season and pack suppression remain unavailable there until the server deployment gate is
+opened; the client falls back to vanilla chest menus and the five-second bridge fallback.
+
+## 2026-11-11 — review follow-up on the same branch (still 3.3.0-beta.1)
+
+The coordinator and peer review items, resolved in the same uncommitted working tree.
+
+Notices and tab sequencing: `SeasonPending` holds the pass's single outstanding request against a
+clock it is given, so the send, the wait, the timeout, and the words shown are testable with a
+fixed time. An unreachable bridge, a failed send, and a five-second timeout each leave a persistent
+foot line telling the player to close and reopen the pass; the words clear only when a fresh
+authoritative snapshot arrives. A tab change while a request is out is refused with that reason
+instead of silently drifting the page, and a tab answer or a Plus purchase applies the server's
+own tab. `SeasonPendingTest` covers busy, unreachable, timeout, duplicate, stale, and
+server-initiated settlement; the visible send-failure foot line is captured from the live send
+path against a bridge-less backend (`mod-capture/season-error`).
+
+Layouts at small GUI scales: `TrackLayout` now cuts its column from the top when the body is
+shorter than the design stack — the detail line, column captions, standing, and rail give way
+before the reward rows — so the Plus row and its scrollbar stay inside the body at 320x240 and
+480x270. `SeasonLayout` lets the side column yield before the mission list does, and the mission
+row's bar is sized from the room left after the count instead of a fixed width. Layout tests cover
+the two small sizes alongside the design size; captures at both sizes are under `mod-capture/`.
+
+Server text is presented as sent: the header no longer prefixes `endsIn` with client phase wording,
+and an ended season says `Claim window closed` for locked cells instead of `Unlocks at level N`
+(`SeasonCopyTest`, capture `mod-capture/season-ended-claim`).
+
+Display tolerance: `SeasonProtocol` distinguishes identity from display. Over-limit display lines
+(season and mission names, reward labels, perks, notices, reasons, formatted figures) are
+ellipsized into the bound instead of refusing the whole snapshot; ids, materials, colours,
+revisions, and counts stay strict, and decoder tests carry an over-limit fixture per field group.
+A truly malformed `season_open` or `menu_open` now produces a visible chat recovery line instead
+of only a log line; `BridgeProtocol.rejectedType` names the refused message for that line without
+trusting anything in it.
+
+Lifecycle state: `BackendSession` lost its unused `Action`/`Observation` wrapper; it keeps only
+the session number and the login moment, and the channel does the open/keep/close it always did.
+`BackendSessionTest` keeps every boundary case against that smaller surface. Runtime probes now
+also cover the two cases the earlier evidence missed: a refused transfer (test backend down) keeps
+the lobby session, mode, and native menu with no login packet and no reset
+(`mod-capture/denied-probe`), and an ordinary dimension change on an ACTIVE lobby session logs
+`Level change ... kept` with waypoints and handshake intact (`mod-capture/dimension-probe`).
+
+Token gate: the opaque-alpha mask over a server RGB is now `Rgb.opaque` in the packed-colour
+arithmetic, and the sidebar and test fixtures use it; the `TOKENS-OK` marker is gone and the full
+scanner passes with no exclusions. `i3/mod/logs/` is ignored, and the season hint keys carry
+English values in both language files.
+
+## 2026-11-11 — final visual pass on the same branch (still 3.3.0-beta.1)
+
+Four evidence-driven findings from the coordinator's screenshot inspection, fixed and re-shot.
+
+Bulk claim at small sizes: the Claim all button is placed only where the standing row has a
+button's height to hold it (`SeasonLayout.claimAll`, tested disjoint from the Free row, the Plus
+row, and the tile window at the design size and 480x270). At 320x240, where the compact standing
+has no room, the button is not placed at all and the keyboard carries the bulk claim: `C` on the
+track tab claims all, advertised by a `C Claim all` hint that only shows while the button is
+hidden. The narrowest panel also drops the page-turn hint, which was the one line that clipped the
+hint bar; the tabs stay reachable without it. Recaptured at 640x360, 480x270, and 320x240
+(`mod-capture/final-normal`, `final-small480`, `final-small320`): no button over either reward row,
+hint bar whole.
+
+Phase gating: `SeasonGates` decides from the snapshot whether the claim window is open (live or
+the grace after it) and whether an action may be sent at all. Claims and purchases are refused on
+an ended or upcoming season however a stale claimable count reads; pages and tracked missions stay
+open. The standing row reads `Closed` instead of a ready count, the Claim all button is disabled,
+the Enter-Claim hint and the ready-to-claim detail line give way to `Claim window closed`, and the
+ended fixture now carries the producer's own closed state: every unclaimed cell locked, claim
+count zero, purchase refused. `SeasonGatesTest` covers the stale-claimable case; the ended screen
+and a refused Enter are captured (`mod-capture/final-ended`).
+
+Fixture provenance: the two season fixtures are stored with their non-English characters as ASCII
+escapes, plain bytes throughout, and their parsed data is unchanged — the suite compares the
+decoded pass against the fixture's own JSON (`SeasonSampleTest`), and a scripted check confirms
+parsed-JSON semantic equality against the producer's golden fixtures at
+`/home/person/wt/fullmoon-beta-20261110/coin-bridge/src/test/resources/golden/seasonpass`
+(exit 0). The earlier "copied byte for byte" wording is withdrawn: the provenance claim is
+parsed-JSON semantic equality.
+
+Gates, with exit codes captured from the shell: `./gradlew clean test build check jacocoTestReport`
+exit 0 — 503 tests, 0 failures, 0 skipped; JaCoCo instruction 97.71%, branch 87.88%, line 96.82%;
+token scanner exit 0 over 268 files; font gate exit 0, five fonts PASS. No new `TOKENS-OK`, no
+disabled or skipped tests; the largest changed source is 764 lines. The staged jar was rebuilt
+after the final run: `fullmoon-client-3.3.0-beta.1.jar`,
+SHA-256 `b3155af55ba8612dee55fb6b957151ce031e6a1d99f680c75cd5a04cc25e8882`.

@@ -45,12 +45,14 @@ const CHIPS: Record<string, { key?: string; value?: string; dot?: boolean; moon?
   clock: { key: "TIME", moon: true },
   tps: { key: "TPS", value: "20.0 · 14.2 ms", reserve: "20.0 · 1000.0 ms" },
   effects: { key: "FX", value: "신속 II · 02:45" },
+  season: { key: "SEASON", value: "27 · 13/32" },
 };
 
 /** The two elements whose size the client fixes rather than measures. */
 const FIXED: Record<string, { w: number; h: number }> = {
   keystrokes: { w: 76, h: 92 },
   armor: { w: 142, h: 20 },
+  season: { w: 168, h: 48 },
 };
 
 const NUDGE: Record<string, { dx: number; dy: number }> = {

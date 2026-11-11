@@ -1,6 +1,7 @@
 // the launcher is the window; a console behind it is debug-only noise
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod atomic;
 mod auth;
 mod catalog;
 mod commands;
@@ -8,20 +9,25 @@ mod cosmetics;
 mod download;
 mod error;
 mod fabric;
+mod filelock;
 mod hud;
 mod install;
 mod java;
 mod launch;
+mod launchguard;
 mod meta;
 mod model;
 mod modlock;
 mod mods;
 mod offline;
+mod packs;
 mod paths;
 mod ping;
 mod spec;
 mod state;
 mod store;
+#[cfg(test)]
+mod test_support;
 mod version;
 
 use tauri::Manager;

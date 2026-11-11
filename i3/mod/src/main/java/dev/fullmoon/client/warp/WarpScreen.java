@@ -108,6 +108,11 @@ public final class WarpScreen extends SurfaceScreen {
         }
     }
 
+    /** Dismisses this screen when its backend is gone; a warp screen has no server close packet. */
+    public void dismissLocally() {
+        Minecraft.getInstance().setScreen(null);
+    }
+
     @Override
     protected void init() {
         layout = WarpLayout.fit(new Box(0, 0, width, height), WarpLayout.rowHeight());

@@ -51,6 +51,10 @@ loom {
         providers.gradleProperty("dev_screen").orNull?.let { screen ->
             vmArg("-Dfullmoon.devScreen=$screen")
         }
+        // QA reads this log to show that a respawn or dimension change did not reset a session.
+        providers.gradleProperty("lifecycle_probe").orNull?.let { probe ->
+            vmArg("-Dfullmoon.lifecycleProbe=$probe")
+        }
         // The concept mockup's row spacing, for photographing it beside the shipped spacing.
         providers.gradleProperty("density").orNull?.let { density ->
             vmArg("-Dfullmoon.density=$density")
@@ -95,6 +99,7 @@ fun verifiedCoreClasses() = files(sourceSets.main.get().output.asFileTree.matchi
         "dev/fullmoon/client/hud/HudGrid*",
         "dev/fullmoon/client/hud/HudWatch*",
         "dev/fullmoon/client/settings/SettingSearch*",
+        "dev/fullmoon/client/network/BackendSession*",
         "dev/fullmoon/client/network/BridgeProtocol*",
         "dev/fullmoon/client/network/BridgeState*",
         "dev/fullmoon/client/warp/WarpRoutes*",

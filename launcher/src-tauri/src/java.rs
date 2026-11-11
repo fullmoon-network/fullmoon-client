@@ -1,8 +1,8 @@
 /* Real JDK discovery. Candidates come from JAVA_HOME, PATH and the vendor
-   install roots people actually end up with (Windows: Adoptium, Microsoft,
-   Zulu, Graal; Linux: /usr/lib/jvm, SDKMAN, IntelliJ's ~/.jdks; plus Mojang's
-   own bundled runtimes on both); each is then asked what it is with
-   `java -version`, because a path proves nothing. */
+install roots people actually end up with (Windows: Adoptium, Microsoft,
+Zulu, Graal; Linux: /usr/lib/jvm, SDKMAN, IntelliJ's ~/.jdks; plus Mojang's
+own bundled runtimes on both); each is then asked what it is with
+`java -version`, because a path proves nothing. */
 use std::{
     collections::BTreeSet,
     path::{Path, PathBuf},
@@ -21,7 +21,9 @@ pub async fn detect() -> Result<Vec<JavaRuntime>> {
     let mut out = Vec::new();
 
     for exe in candidates().await {
-        let Ok(canon) = dunce_canonicalize(&exe) else { continue };
+        let Ok(canon) = dunce_canonicalize(&exe) else {
+            continue;
+        };
         if !seen.insert(canon.clone()) {
             continue;
         }
@@ -80,7 +82,9 @@ async fn collect_java_homes(root: &Path, depth: usize, exe: &str, found: &mut Ve
     for _ in 0..depth {
         let mut next = Vec::new();
         for dir in &level {
-            let Ok(mut entries) = tokio::fs::read_dir(dir).await else { continue };
+            let Ok(mut entries) = tokio::fs::read_dir(dir).await else {
+                continue;
+            };
             while let Ok(Some(entry)) = entries.next_entry().await {
                 let sub = entry.path();
                 found.push(sub.join("bin").join(exe));
@@ -117,7 +121,9 @@ fn vendor_roots() -> Vec<PathBuf> {
     let mut roots = Vec::new();
     if cfg!(windows) {
         for base in ["ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA"] {
-            let Ok(base) = std::env::var(base) else { continue };
+            let Ok(base) = std::env::var(base) else {
+                continue;
+            };
             let base = PathBuf::from(base);
             roots.push(base.join("Eclipse Adoptium"));
             roots.push(base.join("Java"));
@@ -127,7 +133,13 @@ fn vendor_roots() -> Vec<PathBuf> {
             roots.push(base.join("BellSoft"));
             roots.push(base.join("GraalVM"));
             // the official launcher's runtimes, which most players already have
-            roots.push(base.join("Packages").join("Microsoft.4297127D64EC6_8wekyb3d8bbwe").join("LocalCache").join("Local").join("runtime"));
+            roots.push(
+                base.join("Packages")
+                    .join("Microsoft.4297127D64EC6_8wekyb3d8bbwe")
+                    .join("LocalCache")
+                    .join("Local")
+                    .join("runtime"),
+            );
         }
         if let Ok(appdata) = std::env::var("APPDATA") {
             roots.push(PathBuf::from(appdata).join(".minecraft").join("runtime"));
@@ -142,9 +154,9 @@ fn vendor_roots() -> Vec<PathBuf> {
 /// IntelliJ's downloads, SDKMAN and the other version managers, Prism/MultiMC's own copies.
 fn unix_roots(home: Option<&Path>) -> Vec<PathBuf> {
     let mut roots: Vec<PathBuf> = [
-        "/usr/lib/jvm",   // Debian, Ubuntu, Arch, Fedora (`/usr/lib/jvm/java-25-openjdk-amd64`)
+        "/usr/lib/jvm", // Debian, Ubuntu, Arch, Fedora (`/usr/lib/jvm/java-25-openjdk-amd64`)
         "/usr/lib64/jvm", // openSUSE
-        "/usr/java",      // Oracle's rpm
+        "/usr/java",    // Oracle's rpm
         "/opt/java",
         "/opt/jdk",
         "/opt/openjdk",
@@ -211,7 +223,11 @@ async fn probe(exe: &Path) -> Option<JavaRuntime> {
 /// backslash would turn a filename into a different one.
 fn display_path(exe: &Path) -> String {
     let s = exe.to_string_lossy();
-    if cfg!(windows) { s.replace('/', "\\") } else { s.into_owned() }
+    if cfg!(windows) {
+        s.replace('/', "\\")
+    } else {
+        s.into_owned()
+    }
 }
 
 fn property(text: &str, key: &str) -> Option<String> {
@@ -247,7 +263,9 @@ fn dunce_canonicalize(p: &Path) -> std::io::Result<PathBuf> {
     let c = std::fs::canonicalize(p)?;
     let s = c.to_string_lossy();
     Ok(PathBuf::from(
-        s.strip_prefix(r"\\?\").map(str::to_owned).unwrap_or_else(|| s.to_string()),
+        s.strip_prefix(r"\\?\")
+            .map(str::to_owned)
+            .unwrap_or_else(|| s.to_string()),
     ))
 }
 
@@ -291,7 +309,11 @@ mod tests {
             rt("21.0.5", "/usr/lib/jvm/java-21-openjdk/bin/java"),
         ];
         recommend(&mut list);
-        let flagged: Vec<_> = list.iter().filter(|r| r.recommended).map(|r| r.version.as_str()).collect();
+        let flagged: Vec<_> = list
+            .iter()
+            .filter(|r| r.recommended)
+            .map(|r| r.version.as_str())
+            .collect();
         assert_eq!(flagged, ["25.0.3"]);
     }
 
@@ -310,7 +332,9 @@ mod tests {
         assert!(!saved_path_is_usable(None));
         assert!(!saved_path_is_usable(Some("")));
         // what an older build wrote on Linux
-        assert!(!saved_path_is_usable(Some("\\usr\\lib\\jvm\\java-latest-openjdk\\bin\\java")));
+        assert!(!saved_path_is_usable(Some(
+            "\\usr\\lib\\jvm\\java-latest-openjdk\\bin\\java"
+        )));
         let dir = scratch("saved");
         let exe = dir.join("java");
         std::fs::write(&exe, b"").unwrap();
@@ -338,18 +362,26 @@ mod tests {
         // Debian: <root>/java-25-openjdk-amd64/bin/java
         std::fs::create_dir_all(root.join("java-25-openjdk-amd64/bin")).unwrap();
         // Mojang: <root>/java-runtime-epsilon/linux/java-runtime-epsilon/bin/java
-        std::fs::create_dir_all(root.join("java-runtime-epsilon/linux/java-runtime-epsilon/bin")).unwrap();
+        std::fs::create_dir_all(root.join("java-runtime-epsilon/linux/java-runtime-epsilon/bin"))
+            .unwrap();
         let mut found = Vec::new();
-        let rt = tokio::runtime::Builder::new_current_thread().build().unwrap();
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
         rt.block_on(collect_java_homes(&root, MAX_DEPTH, "java", &mut found));
         assert!(found.contains(&root.join("java-25-openjdk-amd64/bin/java")));
-        assert!(found.contains(&root.join("java-runtime-epsilon/linux/java-runtime-epsilon/bin/java")));
+        assert!(
+            found.contains(&root.join("java-runtime-epsilon/linux/java-runtime-epsilon/bin/java"))
+        );
         let _ = std::fs::remove_dir_all(&root);
     }
 
     #[cfg(unix)]
     #[test]
     fn a_unix_path_keeps_its_slashes() {
-        assert_eq!(display_path(Path::new("/usr/lib/jvm/x/bin/java")), "/usr/lib/jvm/x/bin/java");
+        assert_eq!(
+            display_path(Path::new("/usr/lib/jvm/x/bin/java")),
+            "/usr/lib/jvm/x/bin/java"
+        );
     }
 }

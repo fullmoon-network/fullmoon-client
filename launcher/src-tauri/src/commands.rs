@@ -1,6 +1,6 @@
 /* The IPC surface. One command per entry in `bindings.ts`, and every one of
-   them backed by real work — a command that cannot do its job says why, in a
-   sentence, rather than answering with a convincing fake. */
+them backed by real work — a command that cannot do its job says why, in a
+sentence, rather than answering with a convincing fake. */
 use std::collections::HashMap;
 
 use serde::Deserialize;
@@ -11,7 +11,7 @@ use crate::{
     error::{Error, Result},
     hud, install, java, meta,
     model::*,
-    mods, offline, paths, ping, spec,
+    mods, offline, packs, paths, ping, spec,
     state::AppState,
     store,
 };
@@ -94,7 +94,10 @@ pub async fn versions_manifest(state: State<'_, AppState>) -> Result<Vec<Version
 /// Disk only, so the boot never waits on launchermeta; empty before the first fetch.
 #[tauri::command]
 pub async fn versions_cached() -> Result<Vec<VersionSummary>> {
-    Ok(meta::cached().await.map(|m| meta::summaries(&m)).unwrap_or_default())
+    Ok(meta::cached()
+        .await
+        .map(|m| meta::summaries(&m))
+        .unwrap_or_default())
 }
 
 #[tauri::command]
@@ -200,7 +203,10 @@ pub async fn instance_install(
     set_installing(
         &state,
         &id,
-        Some(InstallProgress { stage: InstallStage::Manifest, pct: 0.0 }),
+        Some(InstallProgress {
+            stage: InstallStage::Manifest,
+            pct: 0.0,
+        }),
     )
     .await?;
 
@@ -250,7 +256,10 @@ pub async fn mods_available() -> Result<ModCatalog> {
 }
 
 #[tauri::command]
-pub async fn mods_list(state: State<'_, AppState>, instance_id: String) -> Result<Vec<InstalledMod>> {
+pub async fn mods_list(
+    state: State<'_, AppState>,
+    instance_id: String,
+) -> Result<Vec<InstalledMod>> {
     let loader = {
         let instances = state.instances.lock().await;
         instances
@@ -261,8 +270,8 @@ pub async fn mods_list(state: State<'_, AppState>, instance_id: String) -> Resul
             .clone()
     };
     /* A vanilla instance has no loader to run a mod, so nothing here is on and
-       nothing here can be turned on — the screen used to show all four as
-       active over an instance that would launch without any of them. */
+    nothing here can be turned on — the screen used to show all four as
+    active over an instance that would launch without any of them. */
     let modded = loader == "fabric";
     let st = mods::state(&instance_id).await;
     let present = mods::installed(&instance_id).await;
@@ -311,12 +320,7 @@ pub async fn mod_toggle(
     };
     let concurrency = state.settings.lock().await.concurrency as usize;
 
-    let mut st = mods::state(&instance_id).await;
-    st.disabled.retain(|x| *x != mod_id);
-    if !enabled {
-        st.disabled.push(mod_id);
-    }
-    mods::save_state(&instance_id, &st).await?;
+    mods::toggle(&instance_id, &mod_id, enabled).await?;
 
     mods::apply(
         &state.http,
@@ -332,12 +336,7 @@ pub async fn mod_toggle(
 
 #[tauri::command]
 pub async fn mod_favorite(instance_id: String, mod_id: String, favorite: bool) -> Result<()> {
-    let mut st = mods::state(&instance_id).await;
-    st.favorites.retain(|x| *x != mod_id);
-    if favorite {
-        st.favorites.push(mod_id);
-    }
-    mods::save_state(&instance_id, &st).await
+    mods::favorite(&instance_id, &mod_id, favorite).await
 }
 
 // ── cosmetics / hud ───────────────────────────────────────────
@@ -438,7 +437,10 @@ pub async fn servers_ping(addresses: Vec<String>) -> Result<HashMap<String, ping
     let probes = addresses
         .into_iter()
         .map(|a| async move { (a.clone(), ping::status(&a).await) });
-    Ok(futures::future::join_all(probes).await.into_iter().collect())
+    Ok(futures::future::join_all(probes)
+        .await
+        .into_iter()
+        .collect())
 }
 
 // ── auth ──────────────────────────────────────────────────────
@@ -590,6 +592,12 @@ async fn start_game(
         return Err(Error::Invalid("a game is already running".into()));
     }
 
+    /* Reserved before any optional download: a second click, or a second
+    launcher process, is refused here instead of both racing through pack
+    refresh and mod sync. Unwinding drops it on every later error path. */
+    let reservation =
+        crate::launchguard::reserve(&state.launch, &paths::instance_dir(&instance_id)).await?;
+
     let inst = {
         let instances = state.instances.lock().await;
         instances
@@ -599,7 +607,10 @@ async fn start_game(
             .ok_or_else(|| Error::NotFound(format!("instance {instance_id}")))?
     };
     if !inst.installed {
-        return Err(Error::Invalid(format!("{} is not installed yet", inst.name)));
+        return Err(Error::Invalid(format!(
+            "{} is not installed yet",
+            inst.name
+        )));
     }
 
     let account = {
@@ -618,11 +629,27 @@ async fn start_game(
     let settings = state.settings.lock().await.clone();
 
     let low = spec::low_spec(spec::total_memory_mb().await, spec::logical_cpus());
-    let _ = spec::seed_options(&paths::instance_minecraft_dir(&inst.id), &inst.version_id, low).await;
+    let _ = spec::seed_options(
+        &paths::instance_minecraft_dir(&inst.id),
+        &inst.version_id,
+        low,
+    )
+    .await;
+
+    // Optional art: a missing or failed pack keeps the copy already on disk and
+    // becomes a warning below. It never grounds the launch.
+    let pack_report = packs::apply(&state.http, &instance_id, &inst.version_id).await;
+    /* Surfaced now, before any step that can fail: a failed mod sync or
+    sign-in must not discard what the player was just told. The provisional id
+    only has to be unique; on success the real session id re-surfaces the same
+    warnings into the fresh console below. */
+    let provisional = format!("launch-{}", uuid::Uuid::new_v4().simple());
+    crate::launch::show_pack_warnings(Some(&app), &state.log, &provisional, &pack_report.warnings)
+        .await;
 
     /* Our own mod ships inside the launcher, so updating the launcher has to
-       update the copy in the instance. Placing it only at install time left an
-       instance pinned to whichever build it was created with. */
+    update the copy in the instance. Placing it only at install time left an
+    instance pinned to whichever build it was created with. */
     mods::apply(
         &state.http,
         &paths::resources(&app),
@@ -636,7 +663,10 @@ async fn start_game(
     let version: crate::version::VersionJson = {
         let file = install::resolved_file(&instance_id);
         let bytes = tokio::fs::read(&file).await.map_err(|_| {
-            Error::Invalid(format!("{} has no resolved version — reinstall it", inst.name))
+            Error::Invalid(format!(
+                "{} has no resolved version — reinstall it",
+                inst.name
+            ))
         })?;
         serde_json::from_slice(&bytes)?
     };
@@ -672,12 +702,15 @@ async fn start_game(
     // a new run starts with a clean console; the previous game's tail is not
     // this game's history
     state.log.lock().await.clear();
+    crate::launch::show_pack_warnings(Some(&app), &state.log, &session_id, &pack_report.warnings)
+        .await;
     let kill = crate::launch::spawn(
         &app,
         std::sync::Arc::clone(&state.game),
         std::sync::Arc::clone(&state.log),
         plan,
         session_id.clone(),
+        reservation,
     )?;
     *state.kill.lock().await = Some(kill);
 

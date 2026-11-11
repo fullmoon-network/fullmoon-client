@@ -13,6 +13,11 @@ public final class Rgb {
         return (a << 24) | (argb & 0xFFFFFF);
     }
 
+    /** An opaque copy of an RGB value: a server-sent hex colour carried onto the glass as it is. */
+    public static int opaque(int rgb) {
+        return (0xFF << 24) | (rgb & 0xFFFFFF);
+    }
+
     /** Multiplies the alpha a colour already carries, so a translucent ground can fade as one. */
     public static int scaleAlpha(int argb, float factor) {
         return alpha(argb, alphaOf(argb) * factor);

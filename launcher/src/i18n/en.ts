@@ -432,6 +432,7 @@ const en: Dict = {
       tps: "Server tick",
       armor: "Armor durability",
       effects: "Status effects",
+      season: "Season missions",
     },
   },
   console: {

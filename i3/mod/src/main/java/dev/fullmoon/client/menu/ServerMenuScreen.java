@@ -127,6 +127,15 @@ public final class ServerMenuScreen extends SurfaceScreen {
         Minecraft.getInstance().setScreen(parent);
     }
 
+    /**
+     * Dismisses this menu when its backend is gone. Unlike {@link #onClose()}, this sends no
+     * packet: the menu_close would name a snapshot the new backend never issued.
+     */
+    public void dismissLocally() {
+        closingFromServer = true;
+        Minecraft.getInstance().setScreen(null);
+    }
+
     @Override
     public boolean isPauseScreen() {
         return false;

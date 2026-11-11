@@ -1,7 +1,7 @@
 /* The bundled catalogue: the mods we ship, the cosmetics we drew, the news
-   we wrote and the starter server list. Compiled in rather than fetched —
-   these are product data, not user data, and the launcher must render on a
-   plane with no network. */
+we wrote and the starter server list. Compiled in rather than fetched —
+these are product data, not user data, and the launcher must render on a
+plane with no network. */
 use std::{collections::BTreeMap, sync::OnceLock};
 
 use serde::Deserialize;
@@ -9,6 +9,7 @@ use serde::Deserialize;
 use crate::{
     model::{Cosmetic, HudConfig, Mod, NewsItem, ServerEntry},
     mods::ModSource,
+    packs::PackSource,
     paths,
 };
 
@@ -19,6 +20,10 @@ pub struct Catalog {
     /// Where each listed mod actually comes from. Not part of the wire
     /// contract — the UI has no business knowing a maven coordinate.
     pub mod_sources: BTreeMap<String, ModSource>,
+    /// Resource packs fetched beside the mods. Their checksum is published with
+    /// them, so a new pack needs no new launcher.
+    #[serde(default)]
+    pub packs: Vec<PackSource>,
     pub cosmetics: Vec<Cosmetic>,
     pub news: Vec<NewsItem>,
     pub servers: Vec<ServerEntry>,

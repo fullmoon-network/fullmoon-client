@@ -2,6 +2,21 @@
 
 플레이어가 읽는 글이라 해요체로 적어요. 서버 이름은 로비와 야생이에요.
 
+## 1.3.0-beta.1 (launcher, unreleased)
+
+Launcher 1.3.0-beta.1 prepares the client for the 1.0.2-beta.1 network beta on Minecraft
+26.1.2. The in-game mod coordinate for this packet is 3.3.0-beta.1 and is built separately.
+
+- The launcher refreshes the optional GUI resource pack from the SHA-1 published beside the
+  zip. It downloads only when the local copy differs, bounds the transfer to 64 MiB and 60
+  seconds, verifies the streamed bytes, and replaces the old file only after the hash matches.
+- A missing pack, offline host, malformed or missing SHA-1 line, or corrupt download leaves the
+  existing pack in place and shows a warning in the launch console. The game still starts.
+- The pack is switched on in `options.txt` once. Existing pack choices and ordering are kept;
+  a player who switches it off is not overridden later.
+- No beta wallet, beta public endpoint, or beta server address is added. The beta is reached
+  through the existing network menu.
+
 ## v0.3.1
 
 런처 1.2.1, 인게임 모드 3.2.1이에요. 대상은 Minecraft 26.1.2예요.

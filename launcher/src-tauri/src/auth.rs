@@ -1,15 +1,15 @@
 /* Microsoft sign-in. Every Minecraft launcher has to walk the same chain:
 
-     MSA token → Xbox Live → XSTS → Minecraft services → profile
+  MSA token → Xbox Live → XSTS → Minecraft services → profile
 
-   Two ways in, because they fail in different places. The device code flow
-   needs no local port and works when the browser is on another machine; the
-   auth-code flow is one click when it is the same machine, and uses a loopback
-   redirect with PKCE so no client secret has to exist. Both end in the same
-   Account.
+Two ways in, because they fail in different places. The device code flow
+needs no local port and works when the browser is on another machine; the
+auth-code flow is one click when it is the same machine, and uses a loopback
+redirect with PKCE so no client secret has to exist. Both end in the same
+Account.
 
-   Tokens never cross the IPC boundary. The UI is handed a profile; the session
-   material lives in `sessions.json` and only the launch path reads it. */
+Tokens never cross the IPC boundary. The UI is handed a profile; the session
+material lives in `sessions.json` and only the launch path reads it. */
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -131,7 +131,9 @@ async fn read_token(res: reqwest::Response) -> Result<std::result::Result<MsaTok
     }
     match serde_json::from_str::<OauthError>(&body) {
         Ok(e) => Ok(Err(e)),
-        Err(_) => Err(Error::Invalid(format!("Microsoft replied {status}: {body}"))),
+        Err(_) => Err(Error::Invalid(format!(
+            "Microsoft replied {status}: {body}"
+        ))),
     }
 }
 
@@ -169,9 +171,7 @@ fn default_interval() -> i64 {
     5
 }
 
-pub async fn begin_device_code(
-    client: &reqwest::Client,
-) -> Result<(DeviceCodePrompt, DeviceFlow)> {
+pub async fn begin_device_code(client: &reqwest::Client) -> Result<(DeviceCodePrompt, DeviceFlow)> {
     let cid = client_id()?;
     let res = client
         .post(DEVICE_CODE_URL)
@@ -184,7 +184,9 @@ pub async fn begin_device_code(
         let hint = serde_json::from_str::<OauthError>(&body)
             .map(|e| e.error_description.unwrap_or(e.error))
             .unwrap_or(body);
-        return Err(Error::Invalid(format!("Microsoft refused the sign-in request: {hint}")));
+        return Err(Error::Invalid(format!(
+            "Microsoft refused the sign-in request: {hint}"
+        )));
     }
     let reply: DeviceCodeReply = serde_json::from_str(&body)?;
     let key = format!("dc-{}", uuid::Uuid::new_v4().simple());
@@ -207,9 +209,14 @@ pub async fn begin_device_code(
 
 /// `Ok(None)` means the user has not finished in the browser yet — the only
 /// non-error way this call ends without an account.
-pub async fn poll_device(client: &reqwest::Client, flow: &mut DeviceFlow) -> Result<Option<Account>> {
+pub async fn poll_device(
+    client: &reqwest::Client,
+    flow: &mut DeviceFlow,
+) -> Result<Option<Account>> {
     if now_millis() > flow.expires_at {
-        return Err(Error::Invalid("the sign-in code expired — start again".into()));
+        return Err(Error::Invalid(
+            "the sign-in code expired — start again".into(),
+        ));
     }
     // the UI's timer is a suggestion; Microsoft's interval is not
     let wait = flow.next_poll_at - now_millis();
@@ -238,7 +245,9 @@ pub async fn poll_device(client: &reqwest::Client, flow: &mut DeviceFlow) -> Res
             }
             "authorization_pending" => Ok(None),
             "authorization_declined" => Err(Error::Invalid("the sign-in was declined".into())),
-            "expired_token" => Err(Error::Invalid("the sign-in code expired — start again".into())),
+            "expired_token" => Err(Error::Invalid(
+                "the sign-in code expired — start again".into(),
+            )),
             other => Err(Error::Invalid(
                 e.error_description.unwrap_or_else(|| other.to_string()),
             )),
@@ -265,7 +274,11 @@ fn b64url(bytes: &[u8]) -> String {
     const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
     let mut out = String::new();
     for chunk in bytes.chunks(3) {
-        let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
         let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
         let idx = [n >> 18 & 63, n >> 12 & 63, n >> 6 & 63, n & 63];
         for (i, x) in idx.iter().enumerate() {
@@ -307,8 +320,12 @@ fn done_page(title: &str, body: &str) -> String {
 
 fn query_of(request_line: &str) -> BTreeMap<String, String> {
     let mut out = BTreeMap::new();
-    let Some(target) = request_line.split_whitespace().nth(1) else { return out };
-    let Some((_, query)) = target.split_once('?') else { return out };
+    let Some(target) = request_line.split_whitespace().nth(1) else {
+        return out;
+    };
+    let Some((_, query)) = target.split_once('?') else {
+        return out;
+    };
     for pair in query.split('&') {
         if let Some((k, v)) = pair.split_once('=') {
             out.insert(k.to_string(), unpercent(v));
@@ -371,7 +388,10 @@ pub async fn login_authcode(client: &reqwest::Client) -> Result<Account> {
             let q = query_of(&line);
 
             if let Some(err) = q.get("error") {
-                let msg = q.get("error_description").cloned().unwrap_or_else(|| err.clone());
+                let msg = q
+                    .get("error_description")
+                    .cloned()
+                    .unwrap_or_else(|| err.clone());
                 let _ = sock
                     .write_all(done_page("Sign-in failed", &msg).as_bytes())
                     .await;
@@ -388,7 +408,10 @@ pub async fn login_authcode(client: &reqwest::Client) -> Result<Account> {
             };
             if q.get("state").map(String::as_str) != Some(state.as_str()) {
                 let _ = sock
-                    .write_all(done_page("Sign-in failed", "The reply did not match this request.").as_bytes())
+                    .write_all(
+                        done_page("Sign-in failed", "The reply did not match this request.")
+                            .as_bytes(),
+                    )
                     .await;
                 let _ = sock.shutdown().await;
                 return Err(Error::Invalid(
@@ -397,8 +420,11 @@ pub async fn login_authcode(client: &reqwest::Client) -> Result<Account> {
             }
             let _ = sock
                 .write_all(
-                    done_page("Signed in", "You can close this tab and go back to the launcher.")
-                        .as_bytes(),
+                    done_page(
+                        "Signed in",
+                        "You can close this tab and go back to the launcher.",
+                    )
+                    .as_bytes(),
                 )
                 .await;
             let _ = sock.shutdown().await;
@@ -469,7 +495,9 @@ async fn xbox_live(client: &reqwest::Client, msa: &str) -> Result<XboxReply> {
         .await?;
     if !res.status().is_success() {
         let status = res.status();
-        return Err(Error::Invalid(format!("Xbox Live refused the token ({status})")));
+        return Err(Error::Invalid(format!(
+            "Xbox Live refused the token ({status})"
+        )));
     }
     Ok(res.json().await?)
 }
@@ -495,9 +523,14 @@ async fn xsts(client: &reqwest::Client, xbl: &str) -> Result<XboxReply> {
     let raw: serde_json::Value = res.json().await.unwrap_or_default();
     let xerr = raw.get("XErr").and_then(|v| v.as_i64()).unwrap_or(0);
     Err(Error::Invalid(match xerr {
-        2148916233 => "this Microsoft account has no Xbox profile — create one at xbox.com and sign in again".into(),
+        2148916233 => {
+            "this Microsoft account has no Xbox profile — create one at xbox.com and sign in again"
+                .into()
+        }
         2148916235 => "Xbox Live is not available in this account's country".into(),
-        2148916236 | 2148916237 => "this account needs adult verification before it can use Xbox Live".into(),
+        2148916236 | 2148916237 => {
+            "this account needs adult verification before it can use Xbox Live".into()
+        }
         2148916238 => "this is a child account — add it to a family group before signing in".into(),
         other => format!("Xbox Live rejected the sign-in (XErr {other})"),
     }))
@@ -554,11 +587,7 @@ async fn minecraft_token(client: &reqwest::Client, uhs: &str, xsts: &str) -> Res
 }
 
 async fn minecraft_profile(client: &reqwest::Client, token: &str) -> Result<McProfile> {
-    let res = client
-        .get(MC_PROFILE_URL)
-        .bearer_auth(token)
-        .send()
-        .await?;
+    let res = client.get(MC_PROFILE_URL).bearer_auth(token).send().await?;
     if res.status() == reqwest::StatusCode::NOT_FOUND {
         return Err(Error::Invalid(
             "this account does not own Minecraft: Java Edition".into(),
@@ -566,7 +595,9 @@ async fn minecraft_profile(client: &reqwest::Client, token: &str) -> Result<McPr
     }
     if !res.status().is_success() {
         let status = res.status();
-        return Err(Error::Invalid(format!("the Minecraft profile call failed ({status})")));
+        return Err(Error::Invalid(format!(
+            "the Minecraft profile call failed ({status})"
+        )));
     }
     Ok(res.json().await?)
 }
@@ -601,7 +632,9 @@ async fn finish(client: &reqwest::Client, msa: MsaToken, source: &str) -> Result
 
 fn account_from(profile: &McProfile, source: &str) -> Account {
     let uuid = dashed(&profile.id);
-    let hue_seed = uuid::Uuid::parse_str(&uuid).map(|u| u.as_u128()).unwrap_or(0);
+    let hue_seed = uuid::Uuid::parse_str(&uuid)
+        .map(|u| u.as_u128())
+        .unwrap_or(0);
     Account {
         skin_hue: (hue_seed % 360) as u16,
         skin_url: profile
@@ -634,9 +667,9 @@ async fn upsert(account: &Account) -> Result<()> {
 /* ── refresh ───────────────────────────────────────────────────── */
 
 pub async fn refresh(client: &reqwest::Client, uuid: &str) -> Result<Account> {
-    let stored = session(uuid)
-        .await
-        .ok_or_else(|| Error::Invalid("this account has no stored session — sign in again".into()))?;
+    let stored = session(uuid).await.ok_or_else(|| {
+        Error::Invalid("this account has no stored session — sign in again".into())
+    })?;
     let refresh_token = stored.refresh_token.ok_or_else(|| {
         Error::Invalid(
             "this account was imported, so it has no refresh token — its session ends when the \
@@ -667,7 +700,10 @@ pub async fn refresh(client: &reqwest::Client, uuid: &str) -> Result<Account> {
 /// Called on the launch path: a session that can be renewed silently is, and
 /// one that cannot is reported before the game is spawned rather than after
 /// the user is staring at a multiplayer error.
-pub async fn session_for_launch(client: &reqwest::Client, account: &Account) -> Result<Option<Session>> {
+pub async fn session_for_launch(
+    client: &reqwest::Client,
+    account: &Account,
+) -> Result<Option<Session>> {
     if account.source == "offline" {
         return Ok(None);
     }
@@ -717,13 +753,18 @@ struct OfficialProfile {
 /// `launcher_accounts.json`, the Microsoft Store build writes its own file
 /// beside it.
 fn official_files() -> Vec<std::path::PathBuf> {
-    let Some(roaming) = dirs::data_dir() else { return Vec::new() };
+    let Some(roaming) = dirs::data_dir() else {
+        return Vec::new();
+    };
     let mc = roaming.join(".minecraft");
-    ["launcher_accounts.json", "launcher_accounts_microsoft_store.json"]
-        .iter()
-        .map(|n| mc.join(n))
-        .filter(|p| p.exists())
-        .collect()
+    [
+        "launcher_accounts.json",
+        "launcher_accounts_microsoft_store.json",
+    ]
+    .iter()
+    .map(|n| mc.join(n))
+    .filter(|p| p.exists())
+    .collect()
 }
 
 fn millis_of(iso: &str) -> i64 {
@@ -741,12 +782,20 @@ pub async fn import_official() -> Result<Vec<Account>> {
     let existing: Vec<Account> = store::read_or(&paths::accounts_file(), Vec::new).await;
 
     for file in official_files() {
-        let Ok(bytes) = tokio::fs::read(&file).await else { continue };
-        let Ok(parsed) = serde_json::from_slice::<OfficialFile>(&bytes) else { continue };
+        let Ok(bytes) = tokio::fs::read(&file).await else {
+            continue;
+        };
+        let Ok(parsed) = serde_json::from_slice::<OfficialFile>(&bytes) else {
+            continue;
+        };
         for entry in parsed.accounts.values() {
-            let Some(profile) = entry.profile.as_ref() else { continue };
+            let Some(profile) = entry.profile.as_ref() else {
+                continue;
+            };
             let uuid = dashed(&profile.id);
-            if existing.iter().any(|a| a.uuid == uuid) || added.iter().any(|a: &Account| a.uuid == uuid) {
+            if existing.iter().any(|a| a.uuid == uuid)
+                || added.iter().any(|a: &Account| a.uuid == uuid)
+            {
                 continue;
             }
             let account = account_from(
@@ -798,8 +847,14 @@ mod tests {
 
     #[test]
     fn redirect_uri_survives_percent_encoding() {
-        assert_eq!(percent("http://localhost:1/"), "http%3A%2F%2Flocalhost%3A1%2F");
-        assert_eq!(percent("XboxLive.signin offline_access"), "XboxLive.signin%20offline_access");
+        assert_eq!(
+            percent("http://localhost:1/"),
+            "http%3A%2F%2Flocalhost%3A1%2F"
+        );
+        assert_eq!(
+            percent("XboxLive.signin offline_access"),
+            "XboxLive.signin%20offline_access"
+        );
     }
 
     #[test]
@@ -809,8 +864,12 @@ mod tests {
             !id.is_empty(),
             "msClientId must be set in brand.json so a clean install can sign in with Microsoft",
         );
-        let parsed = uuid::Uuid::parse_str(id).expect("msClientId must be an Application (client) ID");
-        assert!(!parsed.is_nil(), "msClientId must not be the docs placeholder UUID");
+        let parsed =
+            uuid::Uuid::parse_str(id).expect("msClientId must be an Application (client) ID");
+        assert!(
+            !parsed.is_nil(),
+            "msClientId must not be the docs placeholder UUID"
+        );
     }
 
     #[tokio::test]
@@ -843,7 +902,15 @@ mod tests {
             expires_at: 0,
         };
         assert!(!base.is_expired());
-        assert!(Session { expires_at: now_millis() - 1, ..base.clone() }.is_expired());
-        assert!(!Session { expires_at: now_millis() + 3_600_000, ..base }.is_expired());
+        assert!(Session {
+            expires_at: now_millis() - 1,
+            ..base.clone()
+        }
+        .is_expired());
+        assert!(!Session {
+            expires_at: now_millis() + 3_600_000,
+            ..base
+        }
+        .is_expired());
     }
 }

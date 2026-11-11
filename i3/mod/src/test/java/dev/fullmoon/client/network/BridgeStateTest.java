@@ -2,6 +2,7 @@ package dev.fullmoon.client.network;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -175,6 +176,87 @@ final class BridgeStateTest {
     }
 
     @Test
+    void aNewBackendSessionDropsEveryBackendOwnedValue() {
+        BridgeState busy = BridgeState.requestWarp(
+            activeWith(waypoint("gate", 0, 64, 0)), "gate", 2_000);
+        busy = BridgeState.apply(busy, new BridgeProtocol.HudSync(1, 4, 19.7, 14.1), 2_100);
+        busy = BridgeState.apply(busy, notice("maintenance", 4_000), 2_200);
+        busy = BridgeState.apply(busy, coin(1, true), 2_300);
+        busy = BridgeState.apply(busy, progress(1, 3, 5, 17), 2_400);
+
+        assertEquals(BridgeState.Mode.ACTIVE, busy.mode());
+        assertTrue(busy.metrics().isPresent());
+        assertTrue(busy.notice().isPresent());
+        assertTrue(busy.pendingWarp().isPresent());
+        assertTrue(busy.casino().isPresent());
+        assertTrue(busy.season().isPresent());
+
+        BridgeState fresh = BridgeState.connected(5_000);
+
+        assertEquals(BridgeState.Mode.WAITING, fresh.mode());
+        assertEquals(5_000, fresh.connectedAt());
+        assertTrue(fresh.metrics().isEmpty());
+        assertTrue(fresh.notice().isEmpty());
+        assertTrue(fresh.waypoints().isEmpty());
+        assertTrue(fresh.pendingWarp().isEmpty());
+        assertTrue(fresh.warpOutcome().isEmpty());
+        assertTrue(fresh.casino().isEmpty());
+        assertTrue(fresh.season().isEmpty());
+    }
+
+    @Test
+    void seasonProgressFeedsTheHudOnlyInAnActiveMatchingSession() {
+        BridgeState waiting = BridgeState.connected(1_000);
+        SeasonProtocol.Progress value = progress(1, 3, 5, 17);
+
+        assertSame(waiting, BridgeState.apply(waiting, value, 1_100));
+        BridgeState active = active();
+        assertTrue(BridgeState.apply(active, progress(2, 3, 5, 17), 1_200).season().isEmpty());
+
+        BridgeState fed = BridgeState.apply(active, value, 1_300);
+        assertEquals(3, fed.season().orElseThrow().level());
+        assertEquals("daily_coal", fed.season().orElseThrow().tracked().orElseThrow().id());
+        assertEquals(5f / 17f, fed.season().orElseThrow().fraction());
+    }
+
+    @Test
+    void hiddenSeasonProgressClearsTheFeedInsteadOfDrawingAZeroLevel() {
+        BridgeState fed = BridgeState.apply(active(), progress(1, 3, 5, 17), 2_000);
+
+        BridgeState hidden = BridgeState.apply(fed, progress(1, 0, 0, 0), 2_100);
+
+        assertTrue(hidden.season().isEmpty());
+    }
+
+    @Test
+    void aNewerWelcomeDisablesBridgeFeaturesAndDropsTheOldSnapshot() {
+        BridgeState busy = BridgeState.apply(
+            activeWith(waypoint("gate", 0, 64, 0)), progress(1, 3, 5, 17), 2_000);
+
+        BridgeState incompatible = BridgeState.apply(
+            BridgeState.connected(2_000), new BridgeProtocol.Welcome(2), 2_100);
+
+        assertEquals(BridgeState.Mode.INCOMPATIBLE, incompatible.mode());
+        assertTrue(incompatible.waypoints().isEmpty());
+        assertTrue(incompatible.season().isEmpty());
+        assertTrue(incompatible.notice().isEmpty());
+        assertSame(busy, BridgeState.apply(busy, new BridgeProtocol.Welcome(2), 2_200),
+            "there is no renegotiation inside a live session");
+    }
+
+    @Test
+    void aSilentOrDeniedTransferLeavesAnActiveSnapshotIntact() {
+        BridgeState active = activeWith(waypoint("gate", 0, 64, 0));
+
+        assertSame(active, BridgeState.tick(active, 60_000));
+
+        BridgeState afterDiagnostic = BridgeState.apply(
+            active, new BridgeProtocol.Unknown(1, "transfer_denied"), 60_100);
+        assertSame(active, afterDiagnostic);
+        assertEquals(List.of(waypoint("gate", 0, 64, 0)), afterDiagnostic.waypoints());
+    }
+
+    @Test
     void decodedPayloadsDriveTheReducerEndToEnd() {
         BridgeProtocol.Message welcome = BridgeProtocol.decode(
             "{\"type\":\"welcome\",\"proto\":1}".getBytes(StandardCharsets.UTF_8))
@@ -234,6 +316,16 @@ final class BridgeStateTest {
     private static BridgeProtocol.Waypoint waypoint(String id, int x, int y, int z) {
         return new BridgeProtocol.Waypoint(
             id, id, "moon", x, y, z, "world", "palace", "");
+    }
+
+    private static SeasonProtocol.Progress progress(int proto, int level, long into, long step) {
+        String text = "{\"type\":\"season_progress\",\"proto\":" + proto + ",\"level\":" + level
+            + ",\"into\":" + into + ",\"step\":" + step
+            + ",\"tracked\":{\"id\":\"daily_coal\",\"name\":\"Mine coal\","
+            + "\"material\":\"minecraft:coal\",\"progress\":13,\"goal\":32,"
+            + "\"unit\":\" blocks\",\"done\":false}}";
+        return assertInstanceOf(SeasonProtocol.Progress.class,
+            BridgeProtocol.decode(text.getBytes(StandardCharsets.UTF_8)).message().orElseThrow());
     }
 
     private static BridgeProtocol.Notice notice(String id, int durationMillis) {

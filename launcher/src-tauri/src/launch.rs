@@ -1,14 +1,14 @@
 /* Turning an installed instance into a running game.
 
-   The command line is built from the version JSON's own argument lists —
-   nothing is hardcoded, because Mojang moves flags between releases and a
-   launcher that hardcodes 1.20's arguments breaks on 26.x. Rules are honoured
-   (an arg for another OS never appears), placeholders are substituted from one
-   table, and anything still unsubstituted is dropped rather than passed to the
-   game as a literal `${…}`.
+The command line is built from the version JSON's own argument lists —
+nothing is hardcoded, because Mojang moves flags between releases and a
+launcher that hardcodes 1.20's arguments breaks on 26.x. Rules are honoured
+(an arg for another OS never appears), placeholders are substituted from one
+table, and anything still unsubstituted is dropped rather than passed to the
+game as a literal `${…}`.
 
-   stdout and stderr are streamed to the UI as they arrive. The process is
-   owned by the launcher: closing the window kills nothing, but 게임 종료 does. */
+stdout and stderr are streamed to the UI as they arrive. The process is
+owned by the launcher: closing the window kills nothing, but 게임 종료 does. */
 use std::{
     collections::{HashMap, VecDeque},
     path::PathBuf,
@@ -139,7 +139,9 @@ pub fn plan(
     vars.insert("auth_uuid", account.uuid.replace('-', ""));
     vars.insert(
         "auth_access_token",
-        session.map(|s| s.access_token.clone()).unwrap_or_else(|| "0".into()),
+        session
+            .map(|s| s.access_token.clone())
+            .unwrap_or_else(|| "0".into()),
     );
     vars.insert(
         "auth_xuid",
@@ -148,7 +150,11 @@ pub fn plan(
     vars.insert("clientid", String::new());
     vars.insert(
         "user_type",
-        if account.source == "microsoft" { "msa".into() } else { "legacy".into() },
+        if account.source == "microsoft" {
+            "msa".into()
+        } else {
+            "legacy".into()
+        },
     );
     vars.insert("version_name", v.id.clone());
     vars.insert("version_type", LAUNCHER_NAME.to_lowercase());
@@ -178,7 +184,10 @@ pub fn plan(
     // not fewer collections (client bench, 2026-10-08), and -Xmx still lets the heap grow
     args.push(format!("-Xms{}M", (inst.memory_mb / 2).clamp(512, 1536)));
     // product in JDK 25 (JEP 519), unknown to anything older; a game that asks for 25 cannot run on less
-    if v.java_version.as_ref().is_some_and(|j| j.major_version >= 25) {
+    if v.java_version
+        .as_ref()
+        .is_some_and(|j| j.major_version >= 25)
+    {
         args.push("-XX:+UseCompactObjectHeaders".into());
     }
     args.extend(
@@ -201,7 +210,43 @@ pub fn plan(
         args.push(server.to_string());
     }
 
-    Ok(Plan { program: PathBuf::from(java), args, cwd: game_dir })
+    Ok(Plan {
+        program: PathBuf::from(java),
+        args,
+        cwd: game_dir,
+    })
+}
+
+/// Pack warnings are surfaced when they are detected, not after every later
+/// launch step has succeeded: a failed sign-in would otherwise discard them
+/// and the player would never learn why their pack is stale. They go to
+/// stderr and the console backlog under the session id the launch has at that
+/// moment — a provisional one while preparation is still running, the real
+/// one once the run exists. The UI event is best-effort: a failed delivery is
+/// logged, never fatal, because a warning is not worth grounding a launch on.
+pub(crate) async fn show_pack_warnings(
+    app: Option<&AppHandle>,
+    log: &Mutex<VecDeque<LogEvent>>,
+    session_id: &str,
+    warnings: &[String],
+) {
+    for warning in warnings {
+        let line = format!("resource pack: {warning}");
+        eprintln!("{line}");
+        let event = LogEvent {
+            session_id: session_id.to_string(),
+            level: "WARN".into(),
+            line,
+        };
+        log.lock().await.push_back(event.clone());
+        if let Some(app) = app {
+            if let Err(e) = app.emit("game://log", event) {
+                eprintln!(
+                    "resource pack: session {session_id}: warning could not be delivered to the launcher UI: {e}"
+                );
+            }
+        }
+    }
 }
 
 /// Uppercased, because `level_of` matches against an uppercased line.
@@ -234,6 +279,7 @@ pub fn spawn(
     log: Arc<Mutex<VecDeque<LogEvent>>>,
     plan: Plan,
     session_id: String,
+    reservation: crate::launchguard::Reservation,
 ) -> Result<tokio::sync::oneshot::Sender<()>> {
     let mut cmd = tokio::process::Command::new(&plan.program);
     cmd.args(&plan.args)
@@ -250,14 +296,28 @@ pub fn spawn(
     let mut child = cmd.spawn()?;
 
     if let Some(out) = child.stdout.take() {
-        pump(app.clone(), Arc::clone(&game), Arc::clone(&log), session_id.clone(), out, false);
+        pump(
+            app.clone(),
+            Arc::clone(&game),
+            Arc::clone(&log),
+            session_id.clone(),
+            out,
+            false,
+        );
     }
     if let Some(err) = child.stderr.take() {
-        pump(app.clone(), Arc::clone(&game), Arc::clone(&log), session_id.clone(), err, true);
+        pump(
+            app.clone(),
+            Arc::clone(&game),
+            Arc::clone(&log),
+            session_id.clone(),
+            err,
+            true,
+        );
     }
 
     let (kill_tx, kill_rx) = tokio::sync::oneshot::channel::<()>();
-    watch(app.clone(), game, session_id, child, kill_rx);
+    watch(app.clone(), game, session_id, child, kill_rx, reservation);
     Ok(kill_tx)
 }
 
@@ -272,7 +332,11 @@ async fn emit_state(
 ) {
     let _ = app.emit(
         "game://state",
-        StateEvent { session_id: session_id.to_string(), state, exit_code },
+        StateEvent {
+            session_id: session_id.to_string(),
+            state,
+            exit_code,
+        },
     );
     let mut guard = game.lock().await;
     if guard.session_id.as_deref() == Some(session_id) {
@@ -306,8 +370,11 @@ fn pump<R>(
                 emit_state(&app, &game, &session_id, GameStateValue::Running, None).await;
             }
             let level = if is_err { "ERROR" } else { level_of(&line) };
-            let event =
-                LogEvent { session_id: session_id.clone(), level: level.into(), line };
+            let event = LogEvent {
+                session_id: session_id.clone(),
+                level: level.into(),
+                line,
+            };
             {
                 let mut kept = log.lock().await;
                 if kept.len() >= LOG_KEEP {
@@ -320,15 +387,20 @@ fn pump<R>(
     });
 }
 
-/// Wait for exit — or for the kill switch — off the command path.
+/// Wait for exit — or for the kill switch — off the command path. The launch
+/// reservation lives exactly as long as this task: the instance is owned from
+/// the first preparation step until the game has exited, so a second launch —
+/// in this process or another — cannot start preparing underneath it.
 fn watch(
     app: AppHandle,
     game: Arc<Mutex<GameState>>,
     session_id: String,
     mut child: tokio::process::Child,
     kill: tokio::sync::oneshot::Receiver<()>,
+    reservation: crate::launchguard::Reservation,
 ) {
     tokio::spawn(async move {
+        let _reservation = reservation;
         let mut asked_to_stop = false;
         let status = tokio::select! {
             s = child.wait() => s,
@@ -353,6 +425,58 @@ fn watch(
 mod tests {
     use super::*;
     use std::collections::BTreeMap;
+
+    #[tokio::test]
+    async fn pack_warnings_surface_under_the_session_identity_the_launch_has() {
+        let log = Arc::new(Mutex::new(VecDeque::new()));
+
+        show_pack_warnings(
+            None,
+            &log,
+            "launch-abc123",
+            &["fullmoon-gui: no published SHA-1 line".to_string()],
+        )
+        .await;
+
+        let kept = log.lock().await;
+        assert_eq!(kept.len(), 1);
+        let event = &kept[0];
+        assert_eq!(event.session_id, "launch-abc123");
+        assert_eq!(event.level, "WARN");
+        assert!(
+            event.line.starts_with("resource pack: fullmoon-gui:"),
+            "unexpected line: {}",
+            event.line
+        );
+    }
+
+    /* start_game surfaces pack warnings immediately after the pack refresh,
+    while the steps that can still fail the launch - mod sync, version
+    resolution, sign-in, plan construction - have not run yet. This asserts
+    the property that sequencing must keep: a warning followed by a failed
+    later step is still in the console backlog afterwards. */
+    #[tokio::test]
+    async fn a_failed_later_launch_step_keeps_the_pack_warnings_it_followed() {
+        let log = Arc::new(Mutex::new(VecDeque::new()));
+
+        show_pack_warnings(
+            None,
+            &log,
+            "launch-provisional",
+            &["fullmoon-gui: offline host kept the previous pack".to_string()],
+        )
+        .await;
+        let later_step: Result<()> = Err(Error::Invalid("no account is selected".into()));
+
+        assert!(later_step.is_err());
+        let kept = log.lock().await;
+        assert!(
+            kept.iter()
+                .any(|e| e.line.contains("fullmoon-gui") && e.level == "WARN"),
+            "the warning must survive the failed step: {:?}",
+            kept.iter().map(|e| &e.line).collect::<Vec<_>>()
+        );
+    }
 
     #[test]
     fn substitutes_known_keys() {
@@ -463,10 +587,14 @@ mod tests {
         assert!(plan.args.contains(&"-Xmx4096M".to_string()));
         assert!(plan.args.contains(&"-Xms1536M".to_string()));
         assert!(plan.args.contains(&"-XX:+UseG1GC".to_string()));
-        assert!(plan.args.contains(&"net.minecraft.client.main.Main".to_string()));
+        assert!(plan
+            .args
+            .contains(&"net.minecraft.client.main.Main".to_string()));
         assert!(plan.args.contains(&"--username".to_string()));
         assert!(plan.args.contains(&"Player123".to_string()));
-        assert!(!plan.args.contains(&"-XX:+UseCompactObjectHeaders".to_string()));
+        assert!(!plan
+            .args
+            .contains(&"-XX:+UseCompactObjectHeaders".to_string()));
 
         let on = |major| {
             let mut v = version.clone();
@@ -474,7 +602,9 @@ mod tests {
                 component: "java-runtime-epsilon".into(),
                 major_version: major,
             });
-            super::plan(&v, &inst, &settings, &account, None, None).unwrap().args
+            super::plan(&v, &inst, &settings, &account, None, None)
+                .unwrap()
+                .args
         };
         let java25 = on(25);
         let compact = java25
@@ -482,7 +612,10 @@ mod tests {
             .position(|a| a == "-XX:+UseCompactObjectHeaders")
             .expect("compact headers on Java 25");
         let user = java25.iter().position(|a| a == "-XX:+UseG1GC").unwrap();
-        assert!(compact < user, "a user arg must be able to turn it back off");
+        assert!(
+            compact < user,
+            "a user arg must be able to turn it back off"
+        );
         assert!(!on(21).contains(&"-XX:+UseCompactObjectHeaders".to_string()));
     }
 }
