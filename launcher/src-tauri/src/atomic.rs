@@ -165,7 +165,7 @@ async fn replace_file(from: &Path, to: &Path) -> std::io::Result<()> {
     }
 
     replace_with_retry(
-        || move_file(from, to),
+        || async { move_file(from, to) },
         is_transient_windows_error,
         REPLACE_ATTEMPTS,
         REPLACE_BACKOFF,
