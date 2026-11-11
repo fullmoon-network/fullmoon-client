@@ -5,6 +5,13 @@ pair of matching string literals (PLAN §0). */
 use std::{env, fs, path::PathBuf};
 
 fn main() {
+    // Windows defaults to a 1 MiB main-thread stack. Tauri startup and the
+    // bundled launcher state can exhaust that reserve in release builds.
+    // Keep this on the executable rather than changing worker-thread stacks.
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+        println!("cargo:rustc-link-arg-bin=fullmoon=/STACK:8388608");
+    }
+
     let brand_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
         .join("..")
         .join("..")
