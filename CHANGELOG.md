@@ -2,20 +2,24 @@
 
 플레이어가 읽는 글이라 해요체로 적어요. 서버 이름은 로비와 야생이에요.
 
-## 1.3.0-beta.1 (launcher, unreleased)
+## v0.4.0 — 베타 서버 대응 (2026-11-12)
 
-Launcher 1.3.0-beta.1 prepares the client for the 1.0.2-beta.1 network beta on Minecraft
-26.1.2. The in-game mod coordinate for this packet is 3.3.0-beta.1 and is built separately.
+**클라이언트 정식 릴리즈**예요. 런처는 1.3.0, 인게임 Fabric 모드는 3.3.0이고,
+Minecraft 26.1.2를 지원해요. 서버의 `1.0.2-beta.1`은 별도 테스트 서버 버전이며
+클라이언트 자체의 베타 버전을 뜻하지 않아요.
 
-- The launcher refreshes the optional GUI resource pack from the SHA-1 published beside the
-  zip. It downloads only when the local copy differs, bounds the transfer to 64 MiB and 60
-  seconds, verifies the streamed bytes, and replaces the old file only after the hash matches.
-- A missing pack, offline host, malformed or missing SHA-1 line, or corrupt download leaves the
-  existing pack in place and shows a warning in the launch console. The game still starts.
-- The pack is switched on in `options.txt` once. Existing pack choices and ordering are kept;
-  a player who switches it off is not overridden later.
-- No beta wallet, beta public endpoint, or beta server address is added. The beta is reached
-  through the existing network menu.
+- 풀문 네트워크에서 베타 서버에 입장하면 전용 시즌패스, 미션 추적 HUD, 스킨 옷장과
+  서버 메뉴가 네이티브 화면으로 열려요. 로비로 돌아오는 기능도 지원해요.
+- 베타 서버용 GUI·스킨 리소스팩을 클라이언트에 내장했어요. 설치 후 별도로 팩을
+  다운로드하지 않아도 되며, 오프라인 상태에서도 내장 파일을 사용할 수 있어요.
+- 기존 리소스팩 선택은 보존하고, 다운로드로 교체해야 하는 일반 팩은 SHA-1을
+  확인한 뒤 안전하게 바꿔요. 실패하더라도 기존 파일을 유지해요.
+- 게임 시작, 런처 설정, 모드 교체와 파일 저장의 오류 경로를 보강했어요.
+- 운영 서버의 지갑·아이템과 베타 서버의 테스트 데이터는 서로 별개예요.
+  베타 서버 참여는 기존 풀문 서버 메뉴에서 선택할 수 있어요.
+
+참고: 베타 **서버의 게임 콘텐츠는 실험 중**이므로 초기화되거나 변경될 수 있어요.
+클라이언트 정식 릴리즈 여부와 별개의 안내예요.
 
 ## v0.3.1
 

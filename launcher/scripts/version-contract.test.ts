@@ -4,8 +4,8 @@ import test from "node:test";
 
 const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
 
-const LAUNCHER_VERSION = "1.3.0-beta.1";
-const MOD_VERSION = "3.3.0-beta.1";
+const LAUNCHER_VERSION = "1.3.0";
+const MOD_VERSION = "3.3.0";
 
 test("every launcher manifest agrees on the release version", () => {
   const pkg = JSON.parse(read("launcher/package.json"));
@@ -30,7 +30,7 @@ test("the Rust package and its lock entry agree with the launcher", () => {
   assert.equal(pinionVersion, LAUNCHER_VERSION);
 });
 
-test("the bundled mod catalogue names the beta build, not the launcher", () => {
+test("the bundled mod catalogue names the stable mod build, not the launcher", () => {
   const catalog = JSON.parse(read("launcher/src-tauri/resources/catalog.json"));
   const mod = catalog.mods.find((entry: { id: string }) => entry.id === "fullmoon-client");
 
