@@ -29,6 +29,9 @@ echo "deb ok: $(dpkg-deb -f "${debs[0]}" Package Version Depends | tr '\n' ' ')"
 
 # the AppImage too (runner has no FUSE: extract, then look inside)
 ( cd "$work" && "$appimage" --appimage-extract >/dev/null )
+entrypoint_permissions=$(stat -c %a "$work/squashfs-root/AppRun.wrapped")
+(( (8#$entrypoint_permissions & 0555) == 0555 )) || fail "AppImage entrypoint permissions are not portable: $entrypoint_permissions"
+echo "appimage entrypoint permissions ok: $entrypoint_permissions" | tee -a linux-smoke-result.txt
 mapfile -t inimg < <(find "$work/squashfs-root" -name fullmoon-client.jar)
 [ "${#inimg[@]}" -eq 1 ] || fail "expected one bundled mod in the AppImage, got ${#inimg[@]}"
 [ "$(sha256sum < "${inimg[0]}")" = "$(sha256sum < "$staged")" ] || fail "AppImage mod hash differs from the staged jar"

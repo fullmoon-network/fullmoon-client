@@ -54,3 +54,14 @@ test("the Linux smoke uses a clean profile and checks the packaged mod and first
   assert.match(smoke, /play\.fullmoon\.ink/);
   assert.match(smoke, /mod hash/);
 });
+
+test("the AppImage entrypoint is portable before packing and checked after extraction", () => {
+  const pack = readFileSync(file(".github/scripts/appimage-host-libs.sh"), "utf8");
+  const smoke = readFileSync(file(".github/scripts/linux-smoke.sh"), "utf8");
+  const permissionFix = 'chmod a+rx "$appdir/AppRun.wrapped"';
+  assert.ok(pack.includes(permissionFix));
+  assert.ok(pack.indexOf(permissionFix) < pack.indexOf('ARCH=x86_64 "$tool"'));
+  assert.match(smoke, /AppRun\.wrapped/);
+  assert.match(smoke, /entrypoint permissions/);
+  assert.match(smoke, /0555/);
+});

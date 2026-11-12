@@ -32,6 +32,7 @@ tool=$(mktemp -d)/appimagetool
 wget -q -O "$tool" https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
 chmod +x "$tool"
 # keep the file name Tauri chose, and its executable bit
+chmod a+rx "$appdir/AppRun.wrapped"
 ARCH=x86_64 "$tool" --appimage-extract-and-run --no-appstream "$appdir" "$image.new"
 mv "$image.new" "$image"
 chmod +x "$image"

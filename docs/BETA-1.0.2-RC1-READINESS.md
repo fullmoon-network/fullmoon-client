@@ -38,12 +38,48 @@ for the combined mod, rebuilt FullmoonBridge, beta CoinBridge and beta proxy.
 The mod's declared version remains `3.3.0-beta.1`; the launcher is
 `1.3.0-beta.1`. The network version is independently `1.0.2-beta.1`.
 
+## Verification checkpoint — 2026-11-12 KST
+
+The initial integrated feature-branch candidate is `050f309`. Its Windows clean-install job in
+[CI run 43045111228](https://github.com/fullmoon-network/fullmoon-client/actions/runs/43045111228)
+passed `.github/scripts/windows-smoke.ps1` and uploaded
+`Fullmoon_1.3.0-beta.1_x64-setup.exe`. Its downloaded SHA-256 matches the
+smoke result, `0d1d6fbfcf1927df2e945f90018cdc352b247505a01438b9c7f7286cddf65155`.
+The bundled mod hash matches the pinned RC1 mod. The recorded launch took
+6.1 seconds. This proves installer startup and first-run state, not an
+authenticated Minecraft session.
+
+Only the failed and cancelled Linux jobs were requested again with
+`gh run rerun 43045111228 --repo Fullmoon-OSS/fullmoon-client --failed`.
+Attempt 2 completed successfully across all five jobs. Its Linux runtime
+reported `SMOKE OK`, and the captured launcher rendered its first-run screen.
+The prior successful Windows, frontend and Fabric jobs were preserved.
+
+Artifact inspection then found `AppRun.wrapped` packaged with mode `0770`.
+The same-user CI smoke did not catch that other users lack read/execute access.
+The packaging fix grants every user read/execute access before repacking, and
+the runtime smoke now rejects nonportable entrypoint permissions. A red
+regression rejected the downloaded artifact with
+`SMOKE FAIL: AppImage entrypoint permissions are not portable: 770`.
+The fixed package must pass a fresh CI run before the Linux artifact is accepted.
+
+Fresh local checks at the same source revision:
+
+- `cargo test --workspace`: 128 passed, zero failed, one existing live
+  Microsoft-auth test ignored. Unlike CI's existing command, this run did not
+  filter out HUD tests.
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings` and
+  `cargo fmt --all -- --check`: both exited zero.
+- `npm test`: 86 passed, zero failed or skipped, including the packaging regression.
+- `npm run build`: TypeScript and Vite passed. The existing Vite warning
+  `Some chunks are larger than 500 kB after minification.` remains.
+  ESLint is not configured and was not run.
+
 ## Outstanding release gates
 
-1. An approved feature-branch push and manual GitHub Actions `CI` run on
-   `windows-latest` must produce an NSIS installer and pass
-   `.github/scripts/windows-smoke.ps1`. A successful local Linux build
-   is **not** a Windows installer test.
+1. Rebuild the Linux AppImage/deb/rpm with portable entrypoint permissions and
+   inspect its runtime smoke result and capture. Windows installation is no
+   longer an open gate.
 2. Confirm a real authenticated Minecraft client's lobby -> isolated beta ->
    lobby round trip, native season UI, zero stale bridge/HUD state and
    resource pack detection on the actual approved beta service.
