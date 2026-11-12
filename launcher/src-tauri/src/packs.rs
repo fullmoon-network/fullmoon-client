@@ -1,10 +1,9 @@
-/* The optional GUI resource pack.
+/* GUI resource pack delivery.
 
-A pack is art that changes when the server's art changes, not when the launcher
-is released, so no checksum for it is built in. The server publishes the zip
-and, beside it, a one-line file with the zip's SHA-1. A launch reads that line,
-fetches the zip only when the copy on disk is not that file, hashes the bytes in
-a temporary file, and renames it into place only after the hash matches.
+The Fullmoon GUI archive ships with the client and seeds or upgrades its local
+copy without a network lookup. The mod also loads its assets unconditionally.
+Other sources remain publish-driven: the server publishes the zip and a SHA-1
+line, and a verified temporary file replaces the old one only after it matches.
 
 A pack never grounds a launch. Every failure - no published line, an offline
 host, an oversized or corrupt download, an unreadable options file - leaves the
@@ -27,6 +26,8 @@ use crate::{
     mods, paths, spec, store,
 };
 
+mod bundled;
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PackSource {
@@ -38,6 +39,8 @@ pub struct PackSource {
     pub sha1_url: String,
     /// The game version the pack was made for; an instance of any other goes without it.
     pub game: String,
+    #[serde(default)]
+    pub bundled: bool,
 }
 
 /// What one refresh did, and everything the player may need to know about a pack
@@ -228,6 +231,9 @@ async fn refresh_one_with(
     }
     let dir = game_dir.join("resourcepacks");
     let path = dir.join(&pack.file);
+    if pack.bundled {
+        return bundled::refresh(pack, &path).await;
+    }
     let want = published(client, pack).await?;
     if sha1_file(&path).await.as_deref() == Some(want.as_str()) {
         return Ok(Refresh::UpToDate);

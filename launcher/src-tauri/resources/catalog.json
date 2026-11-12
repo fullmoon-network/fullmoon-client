@@ -66,6 +66,7 @@
       "file": "fullmoon-gui.zip",
       "url": "https://fullmoon.ink/packs/fullmoon-gui.zip",
       "sha1Url": "https://fullmoon.ink/packs/fullmoon-gui.sha1",
+      "bundled": true,
       "game": "26.1.2"
     }
   ],

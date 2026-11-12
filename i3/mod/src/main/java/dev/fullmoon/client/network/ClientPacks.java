@@ -17,10 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The resource packs the handshake reports. There is one: the server's GUI pack, which the
- * launcher keeps in the instance's {@code resourcepacks/} and switches on once. It is reported
- * only while the player has it on, and by the hash of the file on disk rather than by the hash
- * the launcher was told to expect, so a server that compares it is comparing what is loaded.
+ * The GUI art is always part of the mod's own resources. A selected external GUI archive has
+ * priority, so its actual disk hash is reported instead of claiming the built-in art overrides it.
  */
 public final class ClientPacks {
     private static final Logger LOG = LoggerFactory.getLogger("Fullmoon/Packs");
@@ -36,16 +34,17 @@ public final class ClientPacks {
 
     public static List<BridgeProtocol.Pack> active() {
         Minecraft client = Minecraft.getInstance();
-        if (!selected(client.getResourcePackRepository().getSelectedIds())) {
-            return List.of();
-        }
-        Path file = client.getResourcePackDirectory().resolve(GUI_FILE);
         try {
-            return List.of(new BridgeProtocol.Pack(GUI_PACK, sha1(file)));
+            return active(client.getResourcePackRepository().getSelectedIds(), client.getResourcePackDirectory());
         } catch (IOException error) {
-            LOG.warn("Could not hash {}; the handshake will not report it", file, error);
+            LOG.warn("Could not verify the GUI pack; the handshake will not report it", error);
             return List.of();
         }
+    }
+
+    static List<BridgeProtocol.Pack> active(Collection<String> selected, Path directory) throws IOException {
+        String hash = selected(selected) ? sha1(directory.resolve(GUI_FILE)) : BundledGuiPack.sha1();
+        return List.of(new BridgeProtocol.Pack(GUI_PACK, hash));
     }
 
     static boolean selected(Collection<String> ids) {

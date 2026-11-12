@@ -61,7 +61,12 @@ The packaging fix grants every user read/execute access before repacking, and
 the runtime smoke now rejects nonportable entrypoint permissions. A red
 regression rejected the downloaded artifact with
 `SMOKE FAIL: AppImage entrypoint permissions are not portable: 770`.
-The fixed package must pass a fresh CI run before the Linux artifact is accepted.
+The fix was committed and pushed only to the RC1 feature branch as `43ba4ba`.
+[CI run 43166262370](https://github.com/fullmoon-network/fullmoon-client/actions/runs/43166262370)
+passed all five jobs. The rebuilt Linux artifact reported
+`appimage entrypoint permissions ok: 775`, a visible 1280x820 window,
+`first-run state ok` and `SMOKE OK`. The Windows clean-install smoke also
+passed at this revision. No main-branch merge, tag or public release occurred.
 
 Fresh local checks at the same source revision:
 
@@ -75,19 +80,98 @@ Fresh local checks at the same source revision:
   `Some chunks are larger than 500 kB after minification.` remains.
   ESLint is not configured and was not run.
 
+## Bundled resource checkpoint — 2026-11-12 20:39 KST
+
+The operator rejected optional-download dependence. The beta skin/GUI ZIP
+(SHA-1 `175de05a740e46b47a2db6533c3d217c1c14cb19`) now ships intact in
+the Fabric mod, with its 99 asset files expanded into unconditional mod resources.
+The launcher embeds the identical archive and seeds/upgrades its local copy
+without HTTP. Other pack selections remain ordered and are not reset.
+A selected external GUI archive is still reported by its actual hash rather
+than falsely claiming the bundled version is active.
+
+- `./gradlew --no-daemon --max-workers=2 --rerun-tasks build check
+  jacocoTestReport --console=plain`: `BUILD SUCCESSFUL`; JUnit XML totals
+  507 tests, zero failures/errors/skips, including four new bundle regressions.
+- Artifact inspection compared every archive asset to the built JAR and the
+  intact embedded ZIP: 99 matching files. Local candidate JAR SHA-256:
+  `26d6a90a865a6047363505810eb9e626aca567e67bf81209f7a56ee2b02bbd48`.
+- `npm test`: 86 passed, zero failed/skipped. `npm run build`: passed;
+  the existing Vite chunk-size warning remains. ESLint is not configured/run.
+- Initial `cargo test --workspace`: 131 passed with one existing external
+  auth test ignored. The initial Clippy run rejected an unnecessary
+  same-type conversion in the new bundled writer.
+
+### Direct handoff verification — 2026-11-12 KST
+
+After the bounded Codex handoff, the Rust writer's unnecessary conversion was
+removed and two deterministic failure-path regressions were added: a failed
+destination replacement preserves the existing directory and options and
+cleans the temporary file; unrecognized bundled metadata cannot create files
+or make network requests. Fresh verification from this checkout:
+
+- `cargo fmt --all -- --check`: passed.
+- `cargo test --workspace`: 133 passed, zero failed, one existing external
+  Microsoft-auth test ignored.
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings`:
+  passed without warnings.
+- Fabric `./gradlew --no-daemon --max-workers=2 --rerun-tasks build check
+  jacocoTestReport --console=plain`: success; 507 JUnit tests, zero
+  failures/errors/skips.
+- Launcher `npm test`: 86 passed; `npm run build`: passed with the existing
+  Vite large-chunk warning.
+- Bundled source ZIP SHA-1: `175de05a740e46b47a2db6533c3d217c1c14cb19`.
+
+At 20:43–20:49, real-account client logs also recorded accepted native beta
+welcome responses, season-tab transitions, mission tracking, untracking and
+claim actions with increasing server revisions. Captures of native season and
+return-menu screens exist. This demonstrates interactive native protocol
+responses; it does **not** independently verify the return-menu button's action,
+all wardrobe stage selections, or an authoritative reward-ledger delta.
+
+Real-account test used the new JAR in the private scratch game directory,
+removed the external GUI ZIP, selected only `vanilla`, and retained the earlier
+server-pack refusal. At 20:35:02 the beta hello advertised the bundled hash;
+no resource-pack confirmation appeared. `/skin pack` replied
+`리소스팩을 이미 받았어요.` The native wardrobe and season screen rendered.
+Health remained 20.0 over 83 seconds. `/warp production-lobby` returned normally;
+the inspected lobby capture had no stale season HUD. The owned game/display
+exited normally. Native wardrobe stage-selection actions were not accepted
+by this check; do not infer them from the rendered screen.
+
+The earlier zero-player force-load cleanup was insufficient: an existing
+spider killed the player again at 20:06. A subsequent cleanup at the actual
+live player removed loaded, unnamed, non-NPC hostiles within 96 blocks while
+preserving player health, friendly entities and named/NoAI NPCs. Natural
+spawning is disabled only in the beta overworld. A separate 100.5-second
+full-health idle observation was not a resource-dialog survival test.
+No production OP was granted, lobby copy changed, or production server restarted.
+
+Inventory/ender RCON responses on normal return matched the earlier baseline.
+The Inventory response contains an ellipsis, so this is not a complete
+inventory-byte comparison. Earlier wording claiming exact inventory equality
+was stronger than that evidence supports.
+
 ## Outstanding release gates
 
-1. Rebuild the Linux AppImage/deb/rpm with portable entrypoint permissions and
-   inspect its runtime smoke result and capture. Windows installation is no
-   longer an open gate.
-2. Confirm a real authenticated Minecraft client's lobby -> isolated beta ->
-   lobby round trip, native season UI, zero stale bridge/HUD state and
-   resource pack detection on the actual approved beta service.
-3. The beta service must install the reviewed FullmoonBridge candidate and
-   retain a documented beta-only rollback before claiming native season
-   support. The isolated Paper/PostgreSQL rehearsal succeeded but did not
-   deploy to the running beta backend.
-4. Review the final changelog, commit/tag naming, binary checksums and
-   GitHub Release assets before public publication.
+1. Build and inspect fresh distributable packages at the bundled-resource
+   commit. Existing CI 43166262370 validated the **previous** source revision.
+   Windows real-device installation is assigned to the external tester.
+2. Verify wardrobe stage selection, native return-menu activation (the normal
+   return command is verified), vanilla fallback, and server-authoritative
+   reward accounting separately. Native season actions have live request and
+   response-revision evidence. Retain observed hardcoded English season labels
+   as a UI defect until a localized screenshot is verified.
+3. Review final source/artifact provenance, changelog, checksums and GitHub
+   Release assets. No main merge, tag, public release or announcement is approved.
+
+The approved beta-only bridge rollout completed at 2026-11-12 15:23:42 KST.
+The exact pinned bridge loaded with zero waypoints and CoinBridge logged
+native menus enabled. The first attempt rolled back because the readiness
+probe did not strip Minecraft color codes; its real RCON reply became a
+red/green regression. The second attempt waited for the unchanged native
+start-limit window. Both backups were retained; no production game/proxy
+JAR changed. See the network checkout's
+`docs/releases/1.0.2-beta-rc1-acceptance-20261112.md` for runtime evidence.
 
 **Do not announce RC1 while any of these gates remain unverified.**

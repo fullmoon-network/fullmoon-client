@@ -148,6 +148,9 @@ tasks.jacocoTestCoverageVerification {
 tasks.check { dependsOn(tasks.jacocoTestCoverageVerification) }
 
 tasks.processResources {
+    from(zipTree("src/main/resources/fullmoon/gui-pack.zip")) {
+        include("assets/**")
+    }
     val props = mapOf(
         "version" to modVersion,
         "minecraft_version" to minecraftVersion,

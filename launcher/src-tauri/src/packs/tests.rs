@@ -8,6 +8,7 @@ use tokio::{
 };
 
 mod atomic;
+mod bundled;
 
 const HASH: &str = "175de05a740e46b47a2db6533c3d217c1c14cb19";
 const GAME: &str = "26.1.2";
@@ -115,6 +116,7 @@ fn source(base: &str, file: &str) -> PackSource {
         url: format!("{base}/fullmoon-gui.zip"),
         sha1_url: format!("{base}/fullmoon-gui.sha1"),
         game: GAME.into(),
+        bundled: false,
     }
 }
 
@@ -404,6 +406,7 @@ async fn malformed_missing_and_offline_hashes_keep_the_existing_pack() {
         url: format!("http://127.0.0.1:{port}/fullmoon-gui.zip"),
         sha1_url: format!("http://127.0.0.1:{port}/fullmoon-gui.sha1"),
         game: GAME.into(),
+        bundled: false,
     };
 
     let (report, switched) = tokio::time::timeout(

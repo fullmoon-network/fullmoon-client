@@ -38,7 +38,7 @@ test("the bundled mod catalogue names the beta build, not the launcher", () => {
   assert.equal(mod.version, MOD_VERSION);
 });
 
-test("the GUI pack stays publish-driven", () => {
+test("the beta GUI and skin pack are bundled by default", () => {
   const catalog = JSON.parse(read("launcher/src-tauri/resources/catalog.json"));
   const pack = catalog.packs.find((entry: { id: string }) => entry.id === "fullmoon-gui");
 
@@ -46,5 +46,5 @@ test("the GUI pack stays publish-driven", () => {
   assert.match(pack.sha1Url, /^https:\/\/.+\/fullmoon-gui\.sha1$/);
   assert.match(pack.url, /^https:\/\/.+\/fullmoon-gui\.zip$/);
   assert.equal(pack.game, "26.1.2");
-  assert.equal("sha1" in pack, false, "the checksum must not be baked into the launcher");
+  assert.equal(pack.bundled, true);
 });
