@@ -10,12 +10,15 @@ through native interfaces. Target: Minecraft `26.1.2` with Paper 26.1.2 and Velo
 - Coordinates, FPS, ping, clock, keystrokes, server tick, armor, and effects HUD elements with a
   drag editor; in-game settings, key bindings, and a terrain map; launcher edits are adopted by the
   running client
+- One-key replay-buffer clips saved into a local library with thumbnails, open/reveal/delete, and a
+  configurable global hotkey — see [docs/CLIPS.md](./docs/CLIPS.md)
 - Server: `play.fullmoon.ink` · Website: [fullmoon.ink](https://fullmoon.ink)
 
 ## Repository guide
 
 | Document | Purpose |
 |---|---|
+| [docs/CLIPS.md](./docs/CLIPS.md) | Launcher clip capture, OBS replay-buffer prerequisites, and the clip IPC surface |
 | [docs/BRIDGE.md](./docs/BRIDGE.md) | Public `fullmoon:v1` server-to-client protocol contract |
 | [docs/MICROSOFT-AUTH.md](./docs/MICROSOFT-AUTH.md) | Microsoft application registration and local test-account setup |
 | [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md) | Bundled and runtime third-party components and licenses |

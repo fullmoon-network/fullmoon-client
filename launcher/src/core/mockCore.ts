@@ -1101,4 +1101,11 @@ export class MockCore implements PinionCore {
     this.clipSettings = { ...this.clipSettings, ...patch };
     return { ...this.clipSettings };
   }
+
+  /* no filesystem in the browser build, so the mock never invents a thumbnail */
+  async clips_thumbnail(id: string): Promise<string | null> {
+    void id;
+    await sleep(20);
+    return null;
+  }
 }

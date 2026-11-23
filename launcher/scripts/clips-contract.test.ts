@@ -32,6 +32,7 @@ const CLIP_METHODS = [
   "clips_open",
   "clips_settings_get",
   "clips_settings_set",
+  "clips_thumbnail",
 ] as const;
 
 function flatten(value: unknown, prefix = "", out: Record<string, string> = {}): Record<string, string> {

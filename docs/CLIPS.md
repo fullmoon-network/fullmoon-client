@@ -34,6 +34,7 @@ The UI calls only the frozen contract in `launcher/src/core/bindings.ts`:
 | `clips_open(id)` / `clips_reveal(id)` | open a clip or reveal it in the file manager |
 | `clips_delete(id)` | remove a clip |
 | `clips_settings_get()` / `clips_settings_set(patch)` | read and write connection settings |
+| `clips_thumbnail(id)` | the stored thumbnail as a `data:` URL, or `null`; the webview cannot read files itself |
 
 Events: `clips://saved` (reload the gallery; global toast when the save came from another screen) and `clips://error` (show the core's message). The same commands are implemented by `MockCore` for the browser build, where clips are in-memory only and no file is written.
 
@@ -41,10 +42,43 @@ Events: `clips://saved` (reload the gallery; global toast when the save came fro
 
 Nothing leaves the machine. OBS WebSocket is a local connection; clip files, thumbnails and the password live in the launcher data folder. Telemetry is unrelated to clips and off by default.
 
+## Timestamps and clock skew
+
+The clip is the replay buffer itself: no external event time is mapped onto the recording, so a
+wrong local clock cannot move a cut. `createdAt` is local wall time and is display metadata only.
+If a later slice clips on a server-sent event (kill, death, objective), that timestamp and the
+recording must be aligned against a shared clock, and the offset has to be measured rather than
+assumed.
+
+## OBS coexistence
+
+This slice attaches to the user's existing OBS WebSocket (`ws://127.0.0.1:4455`) and only reads
+state and asks for a save; it never rewrites OBS configuration. That already avoids the worst
+conflicts with other OBS-backed tools, but it still requires the user to enable the WebSocket
+server, and the UI names OBS. The next slice should run a dedicated portable OBS profile/instance
+on its own port and config directory (so Dor/Outplayed and the user's own OBS are untouched), and
+treat OBS as an implementation detail the player never has to configure. That is not implemented
+here.
+
 ## Current limits
 
-- No upload, cloud sync, trimming, editing or sharing.
+- No upload, cloud sync, trimming, editing or sharing. The next slice adds the upload API and the
+  website/Discord surfaces.
+- No transcoding yet; the saved file is whatever OBS wrote. A share/upload path needs a
+  quality-preserving encode (H.264 CRF for universal playback, HEVC/AV1 for size) and must keep the
+  original until the upload is confirmed.
 - OBS must already be running; the launcher does not start it.
 - The password is plain text in the local settings file (see above).
 - In the browser/mock build, OBS is simulated and saves do not produce real files.
-- A real Tauri window was not available in the UI worker's environment, so the layout has not been visually checked there; the mock build and contract tests have.
+
+## Verification (2026-11-23)
+
+- `cargo test --bin fullmoon --offline` — 63 passed, 0 failed, 1 ignored.
+- `obs::tests::authenticates_and_saves_against_a_fake_obs` runs the real client against a fake
+  obs-websocket v5 server: Hello, auth, Identify, status request, and a save whose
+  `ReplayBufferSaved` event arrives before its own response.
+- `npm run build` and `npm test` — 45 tests passed.
+- Headless Chromium screenshots of the empty library, a saved clip, and the setup panel were taken
+  against the mock core.
+- Unverified: a real OBS handshake (no OBS on the build host), the Windows/macOS file-manager
+  branches (compiled everywhere now, but not executed), and a packaged Windows build.

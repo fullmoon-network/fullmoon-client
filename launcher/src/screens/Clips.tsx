@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { Icon } from "../components/Icon";
 import { Badge, Button, ConfirmModal, Empty, IconButton, Toggle } from "../components/ui";
 import { core, errText } from "../core/client";
@@ -24,9 +23,10 @@ function duration(sec: number | null, none: string): string {
   return `${String(Math.floor(whole / 60)).padStart(2, "0")}:${String(whole % 60).padStart(2, "0")}`;
 }
 
-function localTime(iso: string): string {
+function localTime(iso: string, lang: string): string {
   const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString();
+  const locale = lang.startsWith("ko") ? "ko-KR" : "en-US";
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString(locale);
 }
 
 function ClipCard({
@@ -35,16 +35,39 @@ function ClipCard({
   onReveal,
   onDelete,
   t,
+  lang,
 }: {
   clip: Clip;
   onOpen: (id: string) => void;
   onReveal: (id: string) => void;
   onDelete: (id: string) => void;
   t: (path: string, vars?: Record<string, string | number>) => string;
+  lang: string;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
-  const showImage = clip.thumbnailPath !== null && !imageFailed;
+  const [cover, setCover] = useState<string | null>(null);
+  const showImage = cover !== null && !imageFailed;
   const time = duration(clip.durationSec, t("clips.durationNone"));
+
+  /* the webview cannot read the file, so the core hands the thumbnail over as
+     a data URL; a clip without one keeps the generated cover */
+  useEffect(() => {
+    let live = true;
+    setCover(null);
+    setImageFailed(false);
+    if (clip.thumbnailPath === null) return;
+    void core
+      .clips_thumbnail(clip.id)
+      .then((url) => {
+        if (live) setCover(url);
+      })
+      .catch(() => {
+        if (live) setImageFailed(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [clip.id, clip.thumbnailPath]);
 
   return (
     <article className="clip-card card">
@@ -52,7 +75,7 @@ function ClipCard({
         {showImage && (
           <img
             className="clip-cover-img"
-            src={convertFileSrc(clip.thumbnailPath!)}
+            src={cover}
             alt=""
             onError={() => setImageFailed(true)}
           />
@@ -62,7 +85,7 @@ function ClipCard({
       </div>
       <div className="clip-card-body">
         <div className="clip-card-meta">
-          <span>{localTime(clip.createdAt)}</span>
+          <span>{localTime(clip.createdAt, lang)}</span>
           <span className="num">{t("clips.sizeFmt", { mb: (clip.sizeBytes / 1_048_576).toFixed(1) })}</span>
         </div>
         <div className="clip-card-actions">
@@ -81,7 +104,7 @@ function ClipCard({
 
 export function ClipsScreen() {
   const { toast } = useStore();
-  const { t } = useT();
+  const { t, lang } = useT();
   const [clips, setClips] = useState<Clip[]>([]);
   const [status, setStatus] = useState<ClipStatus | null>(null);
   const [settings, setSettings] = useState<ClipSettings | null>(null);
@@ -374,6 +397,7 @@ export function ClipsScreen() {
               key={clip.id}
               clip={clip}
               t={t}
+              lang={lang}
               onOpen={(id) => void openOrReveal(id, false)}
               onReveal={(id) => void openOrReveal(id, true)}
               onDelete={setConfirmId}

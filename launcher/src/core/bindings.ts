@@ -389,6 +389,9 @@ export interface PinionCore {
   clips_open(id: string): Promise<void>;
   clips_settings_get(): Promise<ClipSettings>;
   clips_settings_set(patch: Partial<ClipSettings>): Promise<ClipSettings>;
+  /** the stored thumbnail as a `data:` URL, or null when the core made none —
+   *  the webview has no filesystem access, so this is how the cover is shown */
+  clips_thumbnail(id: string): Promise<string | null>;
 
   // event subscription — returns an unsubscribe fn
   on<E extends CoreEventName>(event: E, cb: (payload: CoreEvents[E]) => void): () => void;

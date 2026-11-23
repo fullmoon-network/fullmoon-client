@@ -155,6 +155,7 @@ export class TauriCore implements PinionCore {
   clips_settings_get = () => this.call<ClipSettings>("clips_settings_get");
   clips_settings_set = (patch: Partial<ClipSettings>) =>
     this.call<ClipSettings>("clips_settings_set", { patch });
+  clips_thumbnail = (id: string) => this.call<string | null>("clips_thumbnail", { id });
 
   /* Events go through the event plugin, not the raw internals object — the
      internals only carry `invoke`. Registration is async while the store's

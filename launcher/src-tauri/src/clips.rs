@@ -10,6 +10,7 @@ use std::{
     time::Duration,
 };
 
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::Deserialize;
 use serde_json::json;
 use tauri::{AppHandle, Emitter};
@@ -423,6 +424,34 @@ async fn make_thumbnail(
     }
 }
 
+// ── thumbnail ─────────────────────────────────────────────────
+
+/// The stored thumbnail as a `data:` URL, or null when the clip has none. The
+/// webview has no filesystem access, and the asset protocol would need a broad
+/// path scope; a small JPEG read over IPC is the narrow answer.
+pub async fn thumbnail(id: &str) -> Result<Option<String>> {
+    let clip = find_clip(id).await?;
+    let Some(raw) = clip.thumbnail_path.as_deref() else {
+        return Ok(None);
+    };
+    let path = checked_path(raw).await?;
+    let bytes = tokio::fs::read(&path).await?;
+    let extension = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase());
+    let mime = mime_for(extension.as_deref());
+    Ok(Some(format!("data:{mime};base64,{}", STANDARD.encode(bytes))))
+}
+
+fn mime_for(extension: Option<&str>) -> &'static str {
+    match extension {
+        Some("png") => "image/png",
+        Some("webp") => "image/webp",
+        _ => "image/jpeg",
+    }
+}
+
 // ── delete / reveal / open ────────────────────────────────────
 
 pub async fn delete(id: &str) -> Result<()> {
@@ -470,45 +499,37 @@ fn spawn(mut command: tokio::process::Command) -> Result<()> {
     command.spawn().map(|_| ()).map_err(Error::from)
 }
 
-#[cfg(windows)]
+/* One implementation per action, with the platform chosen by `cfg!` rather
+   than by compiling the other branches out: this host can only build the Linux
+   binary, and a Windows branch that has never been type-checked is a branch
+   nobody has read. Both branches compile everywhere. */
 fn reveal_command(path: &Path) -> tokio::process::Command {
-    let mut command = tokio::process::Command::new("explorer");
-    command.arg(format!("/select,{}", path.display()));
+    let mut command;
+    if cfg!(windows) {
+        command = tokio::process::Command::new("explorer");
+        command.arg(format!("/select,{}", path.display()));
+    } else if cfg!(target_os = "macos") {
+        command = tokio::process::Command::new("open");
+        command.arg("-R").arg(path);
+    } else {
+        command = tokio::process::Command::new("xdg-open");
+        command.arg(path.parent().unwrap_or(path));
+    }
     command
 }
 
-#[cfg(windows)]
 fn open_command(path: &Path) -> tokio::process::Command {
-    let mut command = tokio::process::Command::new("cmd");
-    command.args(["/C", "start", ""]).arg(path);
-    command
-}
-
-#[cfg(target_os = "macos")]
-fn reveal_command(path: &Path) -> tokio::process::Command {
-    let mut command = tokio::process::Command::new("open");
-    command.arg("-R").arg(path);
-    command
-}
-
-#[cfg(target_os = "macos")]
-fn open_command(path: &Path) -> tokio::process::Command {
-    let mut command = tokio::process::Command::new("open");
-    command.arg(path);
-    command
-}
-
-#[cfg(all(unix, not(target_os = "macos")))]
-fn reveal_command(path: &Path) -> tokio::process::Command {
-    let mut command = tokio::process::Command::new("xdg-open");
-    command.arg(path.parent().unwrap_or(path));
-    command
-}
-
-#[cfg(all(unix, not(target_os = "macos")))]
-fn open_command(path: &Path) -> tokio::process::Command {
-    let mut command = tokio::process::Command::new("xdg-open");
-    command.arg(path);
+    let mut command;
+    if cfg!(windows) {
+        command = tokio::process::Command::new("cmd");
+        command.args(["/C", "start", ""]).arg(path);
+    } else if cfg!(target_os = "macos") {
+        command = tokio::process::Command::new("open");
+        command.arg(path);
+    } else {
+        command = tokio::process::Command::new("xdg-open");
+        command.arg(path);
+    }
     command
 }
 
@@ -877,5 +898,23 @@ mod tests {
         assert!(matches!(error, obs::Error::Transport(_)));
         let surfaced = Error::from(error).to_string();
         assert!(surfaced.contains("127.0.0.1:1"), "{surfaced}");
+    }
+
+    #[test]
+    fn a_thumbnail_names_the_type_the_bytes_are() {
+        assert_eq!(mime_for(Some("jpg")), "image/jpeg");
+        assert_eq!(mime_for(Some("png")), "image/png");
+        assert_eq!(mime_for(Some("webp")), "image/webp");
+        assert_eq!(mime_for(Some("bin")), "image/jpeg");
+        assert_eq!(mime_for(None), "image/jpeg");
+        assert_eq!(STANDARD.encode([0xff_u8, 0xd8, 0xff]), "/9j/");
+    }
+
+    #[tokio::test]
+    async fn a_missing_clip_has_no_thumbnail() {
+        assert!(matches!(
+            thumbnail("no-such-clip").await,
+            Err(Error::NotFound(_))
+        ));
     }
 }

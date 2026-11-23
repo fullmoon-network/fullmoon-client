@@ -841,6 +841,11 @@ pub async fn clips_settings_get() -> Result<ClipSettings> {
     Ok(clips::load_settings().await)
 }
 
+#[tauri::command]
+pub async fn clips_thumbnail(id: String) -> Result<Option<String>> {
+    clips::thumbnail(&id).await
+}
+
 /// Re-registers the hotkey after a change, so the new combination is live
 /// without a restart — and a registration failure is reported, not fatal.
 #[tauri::command]

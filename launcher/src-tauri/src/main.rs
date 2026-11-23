@@ -108,6 +108,7 @@ fn main() {
             commands::clips_open,
             commands::clips_settings_get,
             commands::clips_settings_set,
+            commands::clips_thumbnail,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Pinion");

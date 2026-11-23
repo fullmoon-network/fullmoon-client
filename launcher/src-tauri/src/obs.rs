@@ -327,4 +327,95 @@ mod tests {
         let b = next_request_id();
         assert_ne!(a, b);
     }
+
+    type TestSocket = tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>;
+
+    async fn read_json(ws: &mut TestSocket) -> Value {
+        loop {
+            match ws.next().await.expect("socket").expect("frame") {
+                Message::Text(text) => return serde_json::from_str(&text).expect("json"),
+                Message::Ping(payload) => ws.send(Message::Pong(payload)).await.expect("pong"),
+                _ => {}
+            }
+        }
+    }
+
+    async fn send_json(ws: &mut TestSocket, value: Value) {
+        ws.send(Message::Text(value.to_string())).await.expect("send");
+    }
+
+    fn response(id: &Value, data: Value) -> Value {
+        json!({"op": 7, "d": {
+            "requestType": "x", "requestId": id,
+            "requestStatus": {"result": true, "code": 100},
+            "responseData": data,
+        }})
+    }
+
+    /// The handshake, a status request, and a save whose event beats its own
+    /// response. This is the whole protocol path the library depends on, run
+    /// against a socket we control rather than a claim that it should work.
+    #[tokio::test]
+    async fn authenticates_and_saves_against_a_fake_obs() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+            send_json(&mut ws, json!({"op": 0, "d": {
+                "obsWebSocketVersion": "5.5.2", "rpcVersion": 1,
+                "authentication": {"challenge": "chal", "salt": "salt"},
+            }})).await;
+
+            let identify = read_json(&mut ws).await;
+            assert_eq!(identify["op"], 1);
+            assert_eq!(identify["d"]["rpcVersion"], 1);
+            assert_eq!(identify["d"]["authentication"], auth_string("pw", "salt", "chal"));
+            send_json(&mut ws, json!({"op": 2, "d": {"negotiatedRpcVersion": 1}})).await;
+
+            let status = read_json(&mut ws).await;
+            assert_eq!(status["d"]["requestType"], "GetReplayBufferStatus");
+            let id = status["d"]["requestId"].clone();
+            send_json(&mut ws, response(&id, json!({"outputActive": true}))).await;
+
+            let save = read_json(&mut ws).await;
+            assert_eq!(save["d"]["requestType"], "SaveReplayBuffer");
+            // the event goes out first: the client must keep it while it waits
+            send_json(&mut ws, json!({"op": 5, "d": {
+                "eventType": "ReplayBufferSaved", "eventIntent": 4,
+                "eventData": {"savedReplayPath": "/tmp/fake-replay.mkv"},
+            }})).await;
+            let id = save["d"]["requestId"].clone();
+            send_json(&mut ws, response(&id, json!({}))).await;
+        });
+
+        let mut client = Client::connect(&format!("ws://{address}"), "pw").await.unwrap();
+        assert!(client.replay_active().await.unwrap());
+        assert_eq!(
+            client.save_replay_file().await.unwrap(),
+            "/tmp/fake-replay.mkv"
+        );
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_refused_identify_is_reported_as_a_password_problem() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+            send_json(&mut ws, json!({"op": 0, "d": {
+                "rpcVersion": 1,
+                "authentication": {"challenge": "chal", "salt": "salt"},
+            }})).await;
+            let _identify = read_json(&mut ws).await;
+            let _ = ws.close(None).await;
+        });
+
+        let error = Client::connect(&format!("ws://{address}"), "wrong")
+            .await
+            .expect_err("the fake OBS closed the connection");
+        assert!(matches!(error, Error::Auth(_)), "{error:?}");
+    }
 }
