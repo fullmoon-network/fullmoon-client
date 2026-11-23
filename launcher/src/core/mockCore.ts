@@ -9,6 +9,9 @@
 import type {
   Account,
   AuthStatus,
+  Clip,
+  ClipSettings,
+  ClipStatus,
   Cosmetic,
   CosmeticSlot,
   CoreEventName,
@@ -453,6 +456,14 @@ export class MockCore implements PinionCore {
   private loadouts: Record<string, Loadout>;
   private hudConfigs: Record<string, HudConfig>;
   private servers: ServerEntry[];
+  private clips: Clip[] = [];
+  private clipSettings: ClipSettings = {
+    enabled: true,
+    obsUrl: "ws://127.0.0.1:4455",
+    obsPassword: "",
+    hotkey: "F8",
+    ffmpegPath: null,
+  };
   private game: GameState = { state: "idle", sessionId: null, instanceId: null, server: null, startedAt: null, exitCode: null };
 
   private handlers = new Map<CoreEventName, Set<Handler<CoreEventName>>>();
@@ -1020,5 +1031,74 @@ export class MockCore implements PinionCore {
     await sleep(70);
     this.servers = list.map((s) => ({ ...s }));
     this.persist();
+  }
+
+  /* ── clips: a browser cannot drive OBS, so this mock keeps the shape and
+     says the buffer is running; it never writes a file ── */
+
+  async clips_list(): Promise<Clip[]> {
+    await sleep(60);
+    return this.clips.map((c) => ({ ...c }));
+  }
+
+  async clips_status(): Promise<ClipStatus> {
+    await sleep(40);
+    return {
+      obs: "connected",
+      replayBufferActive: true,
+      hotkeyRegistered: this.clipSettings.enabled,
+      message: null,
+    };
+  }
+
+  async clips_save(): Promise<Clip> {
+    await sleep(320);
+    const clip: Clip = {
+      id: uid(),
+      path: `/mock/clips/${Date.now()}.mp4`,
+      thumbnailPath: null,
+      createdAt: new Date().toISOString(),
+      durationSec: 30,
+      sizeBytes: 42_000_000,
+    };
+    this.clips = [clip, ...this.clips];
+    this.emit("clips://saved", clip);
+    return { ...clip };
+  }
+
+  async clips_replay_start(): Promise<ClipStatus> {
+    await sleep(80);
+    return this.clips_status();
+  }
+
+  async clips_replay_stop(): Promise<ClipStatus> {
+    await sleep(80);
+    return this.clips_status();
+  }
+
+  async clips_delete(id: string): Promise<void> {
+    await sleep(60);
+    this.clips = this.clips.filter((c) => c.id !== id);
+  }
+
+  async clips_reveal(id: string): Promise<void> {
+    void id;
+    await sleep(30);
+  }
+
+  async clips_open(id: string): Promise<void> {
+    void id;
+    await sleep(30);
+  }
+
+  async clips_settings_get(): Promise<ClipSettings> {
+    await sleep(30);
+    return { ...this.clipSettings };
+  }
+
+  async clips_settings_set(patch: Partial<ClipSettings>): Promise<ClipSettings> {
+    await sleep(40);
+    this.clipSettings = { ...this.clipSettings, ...patch };
+    return { ...this.clipSettings };
   }
 }

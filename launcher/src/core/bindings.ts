@@ -252,10 +252,45 @@ export interface ServerStatus {
   error?: string;
 }
 
+// ── clips ─────────────────────────────────────────────────────
+/* One saved replay-buffer clip. `path` is absolute; `thumbnailPath` is null
+   when ffmpeg is absent or the frame grab failed, and the UI falls back to a
+   generated cover. `createdAt` is RFC 3339 UTC. */
+
+export interface Clip {
+  id: string;
+  path: string;
+  thumbnailPath: string | null;
+  createdAt: string;
+  durationSec: number | null;
+  sizeBytes: number;
+}
+
+/** Launcher-owned clip settings, stored in `<data root>/clips/settings.json` —
+ *  deliberately apart from `Settings` so clip work never rewrites the main file. */
+export interface ClipSettings {
+  enabled: boolean;
+  obsUrl: string;
+  obsPassword: string;
+  hotkey: string;
+  ffmpegPath: string | null;
+}
+
+export type ClipObsState = "connected" | "disconnected" | "error";
+
+export interface ClipStatus {
+  obs: ClipObsState;
+  replayBufferActive: boolean;
+  hotkeyRegistered: boolean;
+  message: string | null;
+}
+
 // ── events ────────────────────────────────────────────────────
 
 export interface CoreEvents {
   "auth://device": { userCode: string; verificationUri: string; expiresIn: number };
+  "clips://saved": Clip;
+  "clips://error": { message: string };
   "download://progress": {
     taskId: string;
     file: string;
@@ -341,6 +376,19 @@ export interface PinionCore {
   // economy — fullmoon; live only while the bridge session token is fresh
   economy_wallet(): Promise<WalletInfo>;
   economy_transactions(): Promise<WalletTx[]>;
+
+  // clips — OBS replay buffer, saved into the launcher's own clip folder
+  clips_list(): Promise<Clip[]>;
+  clips_status(): Promise<ClipStatus>;
+  /** save the replay buffer now; rejects with the OBS reason when it cannot */
+  clips_save(): Promise<Clip>;
+  clips_replay_start(): Promise<ClipStatus>;
+  clips_replay_stop(): Promise<ClipStatus>;
+  clips_delete(id: string): Promise<void>;
+  clips_reveal(id: string): Promise<void>;
+  clips_open(id: string): Promise<void>;
+  clips_settings_get(): Promise<ClipSettings>;
+  clips_settings_set(patch: Partial<ClipSettings>): Promise<ClipSettings>;
 
   // event subscription — returns an unsubscribe fn
   on<E extends CoreEventName>(event: E, cb: (payload: CoreEvents[E]) => void): () => void;

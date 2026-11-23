@@ -9,6 +9,9 @@
 import type {
   Account,
   AuthStatus,
+  Clip,
+  ClipSettings,
+  ClipStatus,
   Cosmetic,
   CosmeticSlot,
   DeviceCodePrompt,
@@ -139,6 +142,19 @@ export class TauriCore implements PinionCore {
   servers_save = (list: ServerEntry[]) => this.call<void>("servers_save", { list });
   servers_ping = (addresses: string[]) =>
     this.call<Record<string, ServerStatus>>("servers_ping", { addresses });
+
+  // clips
+  clips_list = () => this.call<Clip[]>("clips_list");
+  clips_status = () => this.call<ClipStatus>("clips_status");
+  clips_save = () => this.call<Clip>("clips_save");
+  clips_replay_start = () => this.call<ClipStatus>("clips_replay_start");
+  clips_replay_stop = () => this.call<ClipStatus>("clips_replay_stop");
+  clips_delete = (id: string) => this.call<void>("clips_delete", { id });
+  clips_reveal = (id: string) => this.call<void>("clips_reveal", { id });
+  clips_open = (id: string) => this.call<void>("clips_open", { id });
+  clips_settings_get = () => this.call<ClipSettings>("clips_settings_get");
+  clips_settings_set = (patch: Partial<ClipSettings>) =>
+    this.call<ClipSettings>("clips_settings_set", { patch });
 
   /* Events go through the event plugin, not the raw internals object — the
      internals only carry `invoke`. Registration is async while the store's
