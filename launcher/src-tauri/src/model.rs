@@ -286,6 +286,60 @@ pub struct SettingsPatch {
     pub telemetry: Option<bool>,
 }
 
+/// One saved replay-buffer clip. `path` is absolute; `thumbnail_path` is null
+/// when ffmpeg is absent or the frame grab failed, and the UI draws a cover.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Clip {
+    pub id: String,
+    pub path: String,
+    pub thumbnail_path: Option<String>,
+    pub created_at: String,
+    pub duration_sec: Option<f64>,
+    pub size_bytes: u64,
+}
+
+/// Launcher-owned clip settings, stored in `<data root>/clips/settings.json` so
+/// clip work never rewrites the main `Settings` file.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClipSettings {
+    pub enabled: bool,
+    pub obs_url: String,
+    pub obs_password: String,
+    pub hotkey: String,
+    pub ffmpeg_path: Option<String>,
+}
+
+impl Default for ClipSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            obs_url: "ws://127.0.0.1:4455".into(),
+            obs_password: String::new(),
+            hotkey: "F8".into(),
+            ffmpeg_path: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ClipObsState {
+    Connected,
+    Disconnected,
+    Error,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClipStatus {
+    pub obs: ClipObsState,
+    pub replay_buffer_active: bool,
+    pub hotkey_registered: bool,
+    pub message: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JavaRuntime {

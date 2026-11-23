@@ -53,6 +53,20 @@ pub fn cosmetics_file() -> PathBuf {
     root().join("cosmetics.json")
 }
 
+/// Saved replay-buffer clips, kept apart from the game tree — a clip is not an
+/// instance's data and survives every instance being deleted.
+pub fn clips_dir() -> PathBuf {
+    root().join("clips")
+}
+
+pub fn clips_settings_file() -> PathBuf {
+    clips_dir().join("settings.json")
+}
+
+pub fn clips_thumbs_dir() -> PathBuf {
+    clips_dir().join("thumbs")
+}
+
 /// Shared across instances: version metadata, libraries, assets, JREs.
 pub fn shared() -> PathBuf {
     root().join("shared")

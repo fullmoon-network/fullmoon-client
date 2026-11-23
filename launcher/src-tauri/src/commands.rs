@@ -7,7 +7,7 @@ use serde::Deserialize;
 use tauri::{AppHandle, State};
 
 use crate::{
-    catalog, cosmetics,
+    catalog, clips, cosmetics,
     economy, news,
     error::{Error, Result},
     hud, install, java, meta,
@@ -790,6 +790,67 @@ pub async fn game_status(state: State<'_, AppState>) -> Result<GameState> {
 #[tauri::command]
 pub async fn game_log(state: State<'_, AppState>) -> Result<Vec<LogEvent>> {
     Ok(state.log.lock().await.iter().cloned().collect())
+}
+
+// ── clips ─────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn clips_list() -> Result<Vec<Clip>> {
+    Ok(clips::load_index().await)
+}
+
+#[tauri::command]
+pub async fn clips_status(app: AppHandle) -> Result<ClipStatus> {
+    Ok(clips::status(&app).await)
+}
+
+#[tauri::command]
+pub async fn clips_save() -> Result<Clip> {
+    clips::save_clip().await
+}
+
+#[tauri::command]
+pub async fn clips_replay_start(app: AppHandle) -> Result<ClipStatus> {
+    clips::replay_start().await?;
+    Ok(clips::status(&app).await)
+}
+
+#[tauri::command]
+pub async fn clips_replay_stop(app: AppHandle) -> Result<ClipStatus> {
+    clips::replay_stop().await?;
+    Ok(clips::status(&app).await)
+}
+
+#[tauri::command]
+pub async fn clips_delete(id: String) -> Result<()> {
+    clips::delete(&id).await
+}
+
+#[tauri::command]
+pub async fn clips_reveal(id: String) -> Result<()> {
+    clips::reveal(&id).await
+}
+
+#[tauri::command]
+pub async fn clips_open(id: String) -> Result<()> {
+    clips::open(&id).await
+}
+
+#[tauri::command]
+pub async fn clips_settings_get() -> Result<ClipSettings> {
+    Ok(clips::load_settings().await)
+}
+
+/// Re-registers the hotkey after a change, so the new combination is live
+/// without a restart — and a registration failure is reported, not fatal.
+#[tauri::command]
+pub async fn clips_settings_set(
+    app: AppHandle,
+    patch: clips::ClipSettingsPatch,
+) -> Result<ClipSettings> {
+    let settings = clips::update_settings(patch).await?;
+    clips::install_hotkey(&app).await;
+    Ok(settings)
 }
 
 fn now_millis() -> i64 {
