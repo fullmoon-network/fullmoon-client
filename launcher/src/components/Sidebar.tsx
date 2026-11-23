@@ -17,6 +17,7 @@ const GROUPS: Array<{ labelKey: string; items: Array<{ id: Screen; icon: IconNam
     labelKey: "nav.group2",
     items: [
       { id: "cosmetics", icon: "feather" },
+      { id: "clips", icon: "clips" },
       { id: "accounts", icon: "users" },
     ],
   },

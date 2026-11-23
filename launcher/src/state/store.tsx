@@ -37,7 +37,7 @@ import type {
 } from "../core/bindings";
 import { useT } from "../i18n";
 
-export type Screen = "play" | "dashboard" | "home" | "mods" | "cosmetics" | "accounts" | "settings";
+export type Screen = "play" | "dashboard" | "home" | "mods" | "clips" | "cosmetics" | "accounts" | "settings";
 export type SettingsTab = "java" | "perf" | "look" | "hud" | "privacy" | "about";
 
 export interface Toast {
@@ -203,6 +203,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [downloads, setDownloads] = useState<DownloadInfo[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const settingsRef = useRef<Settings | null>(null);
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
 
   const dismissToast = useCallback((id: number) => {
     setToasts((ts) => ts.filter((x) => x.id !== id));
@@ -327,12 +329,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (state === "closed") toast("info", t("console.closedToast"));
     });
 
+    /* a hotkey save can land while the player is on any screen. The clips
+       screen toasts its own save, so suppress the duplicate only there. */
+    const offClipSaved = core.on("clips://saved", () => {
+      if (screenRef.current !== "clips") toast("success", t("clips.savedToast"));
+    });
+
+    const offClipError = core.on("clips://error", ({ message }) => {
+      toast("error", message);
+    });
+
     return () => {
       alive = false;
       offInstall();
       offDl();
       offLog();
       offState();
+      offClipSaved();
+      offClipError();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -12,6 +12,7 @@ import { PlayScreen } from "./screens/Play";
 import { DashboardScreen } from "./screens/Dashboard";
 import { HomeScreen } from "./screens/Home";
 import { ModsScreen } from "./screens/Mods";
+import { ClipsScreen } from "./screens/Clips";
 import { CosmeticsScreen } from "./screens/Cosmetics";
 import { AccountsScreen } from "./screens/Accounts";
 import { SettingsScreen } from "./screens/Settings";
@@ -23,6 +24,7 @@ const SCREENS = {
   dashboard: DashboardScreen,
   home: PlayScreen,
   mods: ModsScreen,
+  clips: ClipsScreen,
   cosmetics: CosmeticsScreen,
   accounts: AccountsScreen,
   settings: SettingsScreen,

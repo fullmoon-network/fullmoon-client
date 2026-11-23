@@ -1870,3 +1870,152 @@
   border-radius: var(--radius-1);
 }
 .inst-actions-spacer { flex: 1; }
+
+
+/* ── clips ───────────────────────────────────────────────────── */
+
+.clips-screen { max-width: var(--content-max); }
+
+.clip-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+.clip-title {
+  font-family: var(--font-display);
+  font-size: var(--text-title);
+  font-weight: 600;
+  letter-spacing: var(--ls-snug);
+}
+.clip-sub { margin-top: var(--space-2xs); font-size: var(--text-small); color: var(--text-2); }
+.clip-head-actions { display: flex; align-items: center; gap: var(--space-xs); flex-wrap: wrap; }
+
+/* the status strip is read before anything else on the screen: one badge per
+   fact the core actually reports, plus its own message verbatim */
+.clip-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-2);
+  background: var(--surface);
+}
+.clip-status-item { display: flex; align-items: center; gap: var(--space-xs); min-width: 0; }
+.clip-status-item > svg { color: var(--text-3); }
+.clip-status-label { font-size: var(--text-small); color: var(--text-2); }
+.clip-status > .iconbtn { margin-left: auto; }
+.clip-status-message {
+  margin-top: var(--space-xs);
+  font-size: var(--text-caption);
+  color: var(--text-2);
+  line-height: var(--leading-ui);
+}
+
+.clip-setup { margin-top: var(--space-md); overflow: hidden; }
+.clip-setup-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  width: 100%;
+  height: var(--control-h-lg);
+  padding: 0 var(--space-md);
+  background: none;
+  color: var(--text);
+  font-size: var(--text-small);
+  font-weight: 600;
+  text-align: left;
+}
+.clip-setup-toggle > svg:first-child { color: var(--accent); }
+.clip-setup-toggle > svg:last-child { margin-left: auto; color: var(--text-3); }
+.clip-setup-toggle:hover { background: var(--sunken); }
+.clip-setup-body { padding: 0 var(--space-md) var(--space-md); border-top: 1px solid var(--line); }
+.clip-setup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+}
+.clip-setup-row strong { font-size: var(--text-small); font-weight: 600; }
+.clip-setup-hint { margin-top: var(--space-2xs); font-size: var(--text-caption); color: var(--text-3); }
+.clip-setup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0 var(--space-md);
+}
+.clip-setup-grid .field { margin-bottom: var(--space-sm); }
+.clip-setup-grid .input { width: 100%; }
+.clip-setup-help,
+.clip-setup-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2xs);
+  font-size: var(--text-caption);
+  color: var(--text-2);
+  line-height: var(--leading-ui);
+}
+.clip-setup-help > svg { margin-top: 1px; color: var(--accent); flex: none; }
+.clip-setup-note { margin-top: var(--space-2xs); color: var(--text-3); }
+.clip-setup-actions { display: flex; justify-content: flex-end; margin-top: var(--space-sm); }
+
+.clip-gallery-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  margin: var(--space-lg) 0 var(--space-sm);
+}
+.clip-gallery-head h2 { font-size: var(--text-heading); font-weight: 600; letter-spacing: var(--ls-snug); }
+.clip-count { font-size: var(--text-caption); color: var(--text-3); }
+
+.clip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: var(--space-md); }
+.clip-card { display: flex; flex-direction: column; overflow: hidden; }
+.clip-cover {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  display: grid;
+  place-items: center;
+  border-bottom: 1px solid var(--line);
+}
+.clip-cover-img { width: 100%; height: 100%; object-fit: cover; }
+.clip-cover-glyph {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgb(255 255 255 / 0.34);
+  border-radius: var(--radius-round);
+  color: #fff;
+  fill: currentColor;
+}
+.clip-cover-glyph > svg { fill: currentColor; }
+.clip-cover-time {
+  position: absolute;
+  right: var(--space-xs);
+  bottom: var(--space-xs);
+  padding: 2px 6px;
+  border-radius: var(--radius-1);
+  background: rgb(7 11 26 / 0.72);
+  color: #fff;
+  font-size: var(--text-caption);
+}
+.clip-card-body { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-sm); }
+.clip-card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  font-size: var(--text-caption);
+  color: var(--text-2);
+}
+.clip-card-actions { display: flex; align-items: center; gap: var(--space-2xs); }
+.clip-card-actions .iconbtn { margin-left: auto; }
+.clip-skeleton { min-height: 220px; opacity: 0.55; }
+
+@media (max-width: 720px) {
+  .clip-head { flex-direction: column; }
+  .clip-status { gap: var(--space-xs) var(--space-md); }
+  .clip-status > .iconbtn { margin-left: 0; }
+}
