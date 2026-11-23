@@ -23,6 +23,7 @@ mod offline;
 mod paths;
 mod ping;
 mod shaders;
+mod share;
 mod state;
 mod store;
 mod version;
