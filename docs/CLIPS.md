@@ -71,6 +71,21 @@ here.
 - The password is plain text in the local settings file (see above).
 - In the browser/mock build, OBS is simulated and saves do not produce real files.
 
+## Next slice (planned, not implemented)
+
+- **Invisible OBS**: provision a portable OBS instance under `<data root>/obs`, with its own
+  profile and scene collection, a generated WebSocket password and a non-default port, launched
+  with `--multi` so an already-running OBS or Dor session is untouched. The clip UI then never
+  says OBS, and a failure reads as "녹화 엔진을 준비하지 못했어요", not as an OBS configuration
+  lesson.
+- **Share encode**: keep the replay file as the master and produce an upload copy with ffmpeg —
+  H.264 High, CRF 20, preset medium, at most 1080p60, AAC 160 kbps, `+faststart` — for universal
+  playback. HEVC/AV1 are only worth their compatibility and encode-time cost when measured against
+  that baseline. The master is deleted only after a confirmed upload.
+- **Upload**: per-user token, retryable POST to the clip API, then a Discord post on success. The
+  PUBG contract is [`web/docs/clips-api.md`](../../web/docs/clips-api.md); Minecraft clips need a
+  `game` discriminator there (or a separate endpoint) before the launcher can use it.
+
 ## Verification (2026-11-23)
 
 - `cargo test --bin fullmoon --offline` — 63 passed, 0 failed, 1 ignored.
