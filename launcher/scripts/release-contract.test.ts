@@ -22,6 +22,8 @@ test("the Windows smoke uses a clean profile and checks first-run state", () => 
   const smoke = readFileSync(smokePath, "utf8");
 
   assert.match(smoke, /FULLMOON_DATA_ROOT/);
+  assert.match(smoke, /-Environment\s+@\{\s*FULLMOON_DATA_ROOT\s*=\s*\$dataRoot/s);
+  assert.match(smoke, /AddSeconds\(90\)/);
   assert.match(smoke, /\/S/);
   assert.match(smoke, /instances\.json/);
   assert.match(smoke, /fullmoon-managed/);

@@ -52,9 +52,13 @@ $launcherProcess = $null
 $startedAt = Get-Date
 
 try {
-    $launcherProcess = Start-Process -FilePath $launchers[0].FullName -PassThru
+    $launcherProcess = Start-Process `
+        -FilePath $launchers[0].FullName `
+        -WorkingDirectory $installRoot `
+        -Environment @{ FULLMOON_DATA_ROOT = $dataRoot } `
+        -PassThru
     $instancesPath = Join-Path $dataRoot "instances.json"
-    $deadline = (Get-Date).AddSeconds(30)
+    $deadline = (Get-Date).AddSeconds(90)
 
     while (-not (Test-Path $instancesPath) -and (Get-Date) -lt $deadline) {
         Start-Sleep -Milliseconds 500
