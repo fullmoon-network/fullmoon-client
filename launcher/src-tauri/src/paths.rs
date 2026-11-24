@@ -59,6 +59,16 @@ pub fn clips_dir() -> PathBuf {
     root().join("clips")
 }
 
+#[allow(dead_code)]
+pub fn obs_dir() -> PathBuf {
+    root().join("obs")
+}
+
+#[allow(dead_code)]
+pub fn obs_runtime_file() -> PathBuf {
+    obs_dir().join("runtime.json")
+}
+
 pub fn clips_settings_file() -> PathBuf {
     clips_dir().join("settings.json")
 }
