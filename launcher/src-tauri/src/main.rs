@@ -19,6 +19,7 @@ mod model;
 mod mods;
 mod news;
 mod obs;
+mod obs_runtime;
 mod offline;
 mod paths;
 mod ping;
